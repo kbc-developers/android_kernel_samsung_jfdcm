@@ -51,7 +51,7 @@ make_cwm_image()
 make_loki_image()
 {
     echo "  execute loki patch"
-    ./release-tools/loki_patch $IMAGE_NAME ./release-tools/$TARGET_DEVICE/aboot.mbn $BIN_DIR/$IMAGE_NAME.img $BIN_DIR/$IMAGE_NAME.lok
+    ./release-tools/loki/loki_patch-linux-x86_64 $IMAGE_NAME ./release-tools/$TARGET_DEVICE/aboot.mbn $BIN_DIR/$IMAGE_NAME.img $BIN_DIR/$IMAGE_NAME.lok
     mv $BIN_DIR/$IMAGE_NAME.lok $BIN_DIR/$IMAGE_NAME.img
 }
 
