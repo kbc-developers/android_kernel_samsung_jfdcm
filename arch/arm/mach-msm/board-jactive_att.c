@@ -1935,6 +1935,48 @@ struct pm8xxx_mpp_config_data mpp4_cfg = {
 
 #define MPP_MCU_NRST PM8921_MPP_PM_TO_SYS(4)
 
+static void clear_ssp_gpio(void)
+{
+	struct pm_gpio ap_mcu_int_cfg = {
+		.direction = PM_GPIO_DIR_IN,
+		.pull = PM_GPIO_PULL_DN,
+		.vin_sel = 2,
+		.function = PM_GPIO_FUNC_NORMAL,
+		.inv_int_pol = 0,
+	};
+	struct pm_gpio mcu_ap_int_2_cfg = {
+		.direction = PM_GPIO_DIR_IN,
+		.pull = PM_GPIO_PULL_DN,
+		.vin_sel = 2,
+		.function = PM_GPIO_FUNC_NORMAL,
+		.inv_int_pol = 0,
+	};
+	struct pm_gpio mcu_ap_int_cfg = {
+		.direction = PM_GPIO_DIR_IN,
+		.pull = PM_GPIO_PULL_DN,
+		.vin_sel = 2,
+		.function = PM_GPIO_FUNC_NORMAL,
+		.inv_int_pol = 0,
+	};
+	struct pm_gpio ap_mcu_nrst_cfg = {
+		.direction = PM_GPIO_DIR_OUT,
+		.pull = PM_GPIO_PULL_NO,
+		.vin_sel = 2,
+		.function = PM_GPIO_FUNC_NORMAL,
+		.inv_int_pol = 0,
+		.out_strength = PM_GPIO_STRENGTH_HIGH,
+	};
+
+	pm8xxx_gpio_config(GPIO_AP_MCU_INT, &ap_mcu_int_cfg);
+	pm8xxx_gpio_config(GPIO_MCU_AP_INT, &mcu_ap_int_cfg);
+	pm8xxx_gpio_config(GPIO_MCU_AP_INT_2, &mcu_ap_int_2_cfg);
+	if (system_rev >= 5)
+		pm8xxx_gpio_config(GPIO_MCU_NRST, &ap_mcu_nrst_cfg);
+	gpio_set_value_cansleep(GPIO_MCU_NRST, 0);
+	mdelay(1);
+	pr_info("[SSP] %s done\n", __func__);
+}
+
 static int initialize_ssp_gpio(void)
 {
 	int err;
@@ -1966,6 +2008,7 @@ static int initialize_ssp_gpio(void)
 		.vin_sel = 2,
 		.function = PM_GPIO_FUNC_NORMAL,
 		.inv_int_pol = 0,
+		.out_strength = PM_GPIO_STRENGTH_HIGH,
 	};
 
 	pr_info("[SSP]%s\n", __func__);
@@ -2124,6 +2167,7 @@ static void bcm2079x_sw_i2c_config(void)
 		GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 }
 #endif
+#define GPIO_NFC_FIRMWARE_REV2	PM8921_GPIO_PM_TO_SYS(12)
 static int __init bcm2079x_init(void)
 {
 	struct pm_gpio nfc_irq_cfg = {
@@ -2149,7 +2193,10 @@ static int __init bcm2079x_init(void)
 	};
 	pm8xxx_gpio_config(GPIO_NFC_IRQ, &nfc_irq_cfg);
 	pm8xxx_gpio_config(GPIO_NFC_EN, &nfc_en_cfg);
-	pm8xxx_gpio_config(GPIO_NFC_FIRMWARE, &nfc_firmware_cfg);
+	if (system_rev > BOARD_REV07)
+		pm8xxx_gpio_config(GPIO_NFC_FIRMWARE_REV2, &nfc_firmware_cfg);
+	else
+		pm8xxx_gpio_config(GPIO_NFC_FIRMWARE, &nfc_firmware_cfg);
 #ifdef NFC_SW_I2C
 	bcm2079x_sw_i2c_config();
 #endif
@@ -2174,7 +2221,7 @@ static struct platform_device bcm2079x_i2c_gpio_device = {
 static struct bcm2079x_platform_data bcm2079x_i2c_pdata = {
 	.irq_gpio = GPIO_NFC_IRQ,
 	.en_gpio = GPIO_NFC_EN,
-	.wake_gpio = GPIO_NFC_FIRMWARE,
+	.wake_gpio = GPIO_NFC_FIRMWARE_REV2,
 };
 
 static struct i2c_board_info nfc_bcm2079x_info[] __initdata = {
@@ -5271,6 +5318,12 @@ static void __init apq8064_gpio_keys_init(void)
 	pm8xxx_gpio_config(GPIO_KEY_BACK, &param);
 }
 
+static void __init nfc_gpio_rev_init(void)
+{
+	if (system_rev < BOARD_REV08)
+		bcm2079x_i2c_pdata.wake_gpio = GPIO_NFC_FIRMWARE;
+}
+
 static void __init samsung_jf_init(void)
 {
 #ifdef CONFIG_SEC_DEBUG
@@ -5313,6 +5366,7 @@ static void __init samsung_jf_init(void)
 	msm8960_init_battery();
 #endif
 #ifdef CONFIG_SENSORS_SSP
+	clear_ssp_gpio();
 	sensor_power_on_vdd(SNS_PWR_ON, SNS_PWR_ON);
 	initialize_ssp_gpio();
 #endif
@@ -5327,6 +5381,7 @@ static void __init samsung_jf_init(void)
 #endif
 #ifdef CONFIG_BCM2079X_NFC_I2C
 	bcm2079x_init();
+	nfc_gpio_rev_init();
 #endif
 	change_memory_power = &apq8064_change_memory_power;
 

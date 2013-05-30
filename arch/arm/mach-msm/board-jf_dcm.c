@@ -1917,6 +1917,48 @@ struct pm8xxx_mpp_config_data mpp4_cfg = {
 
 #define MPP_MCU_NRST PM8921_MPP_PM_TO_SYS(4)
 
+static void clear_ssp_gpio(void)
+{
+	struct pm_gpio ap_mcu_int_cfg = {
+		.direction = PM_GPIO_DIR_IN,
+		.pull = PM_GPIO_PULL_DN,
+		.vin_sel = 2,
+		.function = PM_GPIO_FUNC_NORMAL,
+		.inv_int_pol = 0,
+	};
+	struct pm_gpio mcu_ap_int_2_cfg = {
+		.direction = PM_GPIO_DIR_IN,
+		.pull = PM_GPIO_PULL_DN,
+		.vin_sel = 2,
+		.function = PM_GPIO_FUNC_NORMAL,
+		.inv_int_pol = 0,
+	};
+	struct pm_gpio mcu_ap_int_cfg = {
+		.direction = PM_GPIO_DIR_IN,
+		.pull = PM_GPIO_PULL_DN,
+		.vin_sel = 2,
+		.function = PM_GPIO_FUNC_NORMAL,
+		.inv_int_pol = 0,
+	};
+	struct pm_gpio ap_mcu_nrst_cfg = {
+		.direction = PM_GPIO_DIR_OUT,
+		.pull = PM_GPIO_PULL_NO,
+		.vin_sel = 2,
+		.function = PM_GPIO_FUNC_NORMAL,
+		.inv_int_pol = 0,
+		.out_strength = PM_GPIO_STRENGTH_HIGH,
+	};
+
+	pm8xxx_gpio_config(GPIO_AP_MCU_INT, &ap_mcu_int_cfg);
+	pm8xxx_gpio_config(GPIO_MCU_AP_INT, &mcu_ap_int_cfg);
+	pm8xxx_gpio_config(GPIO_MCU_AP_INT_2, &mcu_ap_int_2_cfg);
+	if (system_rev >= 5)
+		pm8xxx_gpio_config(GPIO_MCU_NRST, &ap_mcu_nrst_cfg);
+	gpio_set_value_cansleep(GPIO_MCU_NRST, 0);
+	mdelay(1);
+	pr_info("[SSP] %s done\n", __func__);
+}
+
 static int initialize_ssp_gpio(void)
 {
 	int err;
@@ -1948,6 +1990,7 @@ static int initialize_ssp_gpio(void)
 		.vin_sel = 2,
 		.function = PM_GPIO_FUNC_NORMAL,
 		.inv_int_pol = 0,
+		.out_strength = PM_GPIO_STRENGTH_HIGH,
 	};
 
 	pr_info("[SSP]%s\n", __func__);
@@ -2090,6 +2133,19 @@ static void ssp_get_positions(int *acc, int *mag)
 #endif /* CONFIG_SENSORS_SSP */
 
 #ifdef CONFIG_FELICA
+static int fpga_felica_status = 0;
+
+void set_fpga_felica_flag(int on)
+{
+	fpga_felica_status = on;
+	return;
+}
+
+static int get_fpga_felica_flag(void)
+{
+	return fpga_felica_status;
+}
+
 static int __init felica_init(void)
 {
 	struct pm_gpio felica_irq_cfg = {
@@ -2394,6 +2450,7 @@ struct barcode_emul_platform_data barcode_emul_info = {
 	.ir_vdd_onoff = irda_vdd_onoff,
 	.ir_led_poweron = irda_led_poweron,
 #endif
+	.get_fpga_felica_flag = get_fpga_felica_flag,
 };
 
 static void barcode_gpio_config(void)
@@ -5535,6 +5592,7 @@ static void __init samsung_jf_init(void)
 	apq8064_init_cam();
 #endif
 #ifdef CONFIG_SENSORS_SSP
+	clear_ssp_gpio();
 	sensor_power_on_vdd(SNS_PWR_ON, SNS_PWR_ON);
 	initialize_ssp_gpio();
 #endif

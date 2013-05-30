@@ -20,6 +20,10 @@
 #include <mach/msm_bus_board.h>
 #include <mach/gpiomux.h>
 
+#if defined(CONFIG_MACH_JACTIVE_ATT)
+#include <mach/pmic.h>
+#endif
+
 #include "devices.h"
 #include "board-8064.h"
 #include <linux/spi/spi.h>
@@ -1141,9 +1145,32 @@ static struct msm_camera_csi_lane_params s5k3h5xa_csi_lane_params = {
 	.csi_lane_assign = 0xE4,
 	.csi_lane_mask = 0xF,
 };
+
+#if defined(CONFIG_MACH_JACTIVE_ATT)
+static int pmic_set_func(uint8_t pmic_gpio, uint8_t onoff)
+{
+	pmic_gpio_ctrl(PM8921_GPIO_PM_TO_SYS(pmic_gpio), onoff);
+		
+	return 0;
+}
+
+static struct msm_camera_sensor_flash_src msm_flash_src_s5k3h5xa = {
+	.flash_sr_type = MSM_CAMERA_FLASH_SRC_PMIC_GPIO,
+	._fsrc.pmic_gpio_src.led_src_1 = 24, /* flash for a short time */
+	._fsrc.pmic_gpio_src.led_src_2 = 33, /* emitting until coming LOW signal */
+	._fsrc.pmic_gpio_src.pmic_set_func = pmic_set_func
+};
+static struct msm_camera_sensor_flash_data flash_s5k3h5xa = {
+	.flash_type	= MSM_CAMERA_FLASH_LED,
+	.flash_src	= &msm_flash_src_s5k3h5xa
+};
+
+#else
 static struct msm_camera_sensor_flash_data flash_s5k3h5xa = {
 	.flash_type = MSM_CAMERA_FLASH_NONE
 };
+#endif
+
 static struct msm_camera_sensor_platform_info sensor_board_info_s5k3h5xa = {
 	.mount_angle = 90,
 	.cam_vreg = msm_8064_s5k3h5xa_vreg,
@@ -1353,7 +1380,11 @@ void __init apq8064_init_cam(void)
 	pm8xxx_gpio_config(GPIO_13M_CAM_RESET, &cam_init_out_cfg);
 	pm8xxx_gpio_config(GPIO_CAM_AF_EN, &cam_init_out_cfg);
 	pm8xxx_gpio_config(GPIO_VT_CAM_STBY, &cam_init_out_cfg);
+#if defined(CONFIG_MACH_JACTIVE_ATT)
+#else
 	pm8xxx_gpio_config(GPIO_CAM_ISP_INT, &cam_init_in_cfg);
+#endif
+
 	pm8xxx_gpio_config(GPIO_CAM_A_EN2, &cam_init_out_cfg);
 
 	/* temp: need to set low because bootloader make high signal. */

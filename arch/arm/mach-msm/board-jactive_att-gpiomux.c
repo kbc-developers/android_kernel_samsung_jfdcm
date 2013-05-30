@@ -1525,9 +1525,8 @@ void __init apq8064_init_gpiomux(void)
 		msm_gpiomux_install(mpq8064_ir_configs,
 				ARRAY_SIZE(mpq8064_ir_configs));
 
-	if (system_rev < BOARD_REV09)
-		msm_gpiomux_install(msm8064_sd_det_config,
-				ARRAY_SIZE(msm8064_sd_det_config));
+	msm_gpiomux_install(msm8064_sd_det_config,
+			ARRAY_SIZE(msm8064_sd_det_config));
 
 #if defined(CONFIG_VIDEO_MHL_V2)
 	msm_gpiomux_install(msm8960_mhl_configs,
