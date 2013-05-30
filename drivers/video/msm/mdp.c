@@ -56,11 +56,24 @@ uint32 mdp4_extn_disp;
 static struct clk *mdp_clk;
 static struct clk *mdp_pclk;
 static struct clk *mdp_lut_clk;
+
+struct res_mmu_clk {
+	char *mmu_clk_name;
+	struct clk *mmu_clk;
+};
+
+static struct res_mmu_clk mdp_sec_mmu_clks[] = {
+	{"mdp_iommu_clk"}, {"rot_iommu_clk"},
+	{"vcodec_iommu0_clk"}, {"vcodec_iommu1_clk"},
+	{"smmu_iface_clk"}
+};
+
 int mdp_rev;
 int mdp_iommu_split_domain;
 u32 mdp_max_clk = 266667000;
-u64 mdp_max_bw = 3080000000UL;
-
+u64 mdp_max_bw = 2000000000;
+u32 mdp_bw_ab_factor = MDP4_BW_AB_DEFAULT_FACTOR;
+u32 mdp_bw_ib_factor = MDP4_BW_IB_DEFAULT_FACTOR;
 static struct platform_device *mdp_init_pdev;
 static struct regulator *footswitch;
 static unsigned int mdp_footswitch_on;
@@ -198,6 +211,44 @@ uint32_t mdp_block2base(uint32_t block)
 		break;
 	}
 	return base;
+}
+int mdp_enable_iommu_clocks(void)
+{
+	int ret = 0, i;
+	for (i = 0; i < ARRAY_SIZE(mdp_sec_mmu_clks); i++) {
+		mdp_sec_mmu_clks[i].mmu_clk = clk_get(&mdp_init_pdev->dev,
+			mdp_sec_mmu_clks[i].mmu_clk_name);
+		if (IS_ERR(mdp_sec_mmu_clks[i].mmu_clk)) {
+			pr_err(" %s: Get failed for clk %s", __func__,
+				   mdp_sec_mmu_clks[i].mmu_clk_name);
+			ret = PTR_ERR(mdp_sec_mmu_clks[i].mmu_clk);
+			break;
+		}
+		ret = clk_prepare_enable(mdp_sec_mmu_clks[i].mmu_clk);
+		if (ret) {
+			clk_put(mdp_sec_mmu_clks[i].mmu_clk);
+			mdp_sec_mmu_clks[i].mmu_clk = NULL;
+		}
+	}
+	if (ret) {
+		for (i--; i >= 0; i--) {
+			clk_disable_unprepare(mdp_sec_mmu_clks[i].mmu_clk);
+			clk_put(mdp_sec_mmu_clks[i].mmu_clk);
+			mdp_sec_mmu_clks[i].mmu_clk = NULL;
+		}
+	}
+	return ret;
+}
+
+int mdp_disable_iommu_clocks(void)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(mdp_sec_mmu_clks); i++) {
+		clk_disable_unprepare(mdp_sec_mmu_clks[i].mmu_clk);
+		clk_put(mdp_sec_mmu_clks[i].mmu_clk);
+		mdp_sec_mmu_clks[i].mmu_clk = NULL;
+	}
+	return 0;
 }
 
 static uint32_t mdp_pp_block2hist_lut(uint32_t block)
@@ -2280,12 +2331,8 @@ static int mdp_off(struct platform_device *pdev)
 
 	mdp_clk_ctrl(0);
 #ifdef CONFIG_MSM_BUS_SCALING
-	
 	mdp_bus_scale_update_request(0, 0, 0, 0);
-	
 #endif
-	if (mdp_rev >= MDP_REV_41 && mfd->panel.type == MIPI_CMD_PANEL)
-		mdp_dsi_cmd_overlay_suspend(mfd);
 	pr_debug("%s:-\n", __func__);
 	return ret;
 }
@@ -2301,6 +2348,9 @@ void mdp4_hw_init(void)
 }
 
 #endif
+
+static int mdp_bus_scale_restore_request(void);
+
 static int mdp_on(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -2313,6 +2363,7 @@ static int mdp_on(struct platform_device *pdev)
 	if (mdp_rev >= MDP_REV_40) {
 		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 		mdp_clk_ctrl(1);
+		mdp_bus_scale_restore_request();
 		mdp4_hw_init();
 		outpdw(MDP_BASE + 0x0038, mdp4_display_intf);
 		if (mfd->panel.type == MIPI_CMD_PANEL) {
@@ -2406,7 +2457,7 @@ void mdp_hw_version(void)
 #ifdef CONFIG_MSM_BUS_SCALING
 
 #ifndef MDP_BUS_VECTOR_ENTRY_P0
-#define MDP_BUS_VECTOR_ENTRY_P0(ab_val, ib_val)                \
+#define MDP_BUS_VECTOR_ENTRY_P0(ab_val, ib_val)		\
 	{						\
 		.src = MSM_BUS_MASTER_MDP_PORT0,	\
 		.dst = MSM_BUS_SLAVE_EBI_CH0,		\
@@ -2415,50 +2466,48 @@ void mdp_hw_version(void)
 	}
 #endif
 #ifndef MDP_BUS_VECTOR_ENTRY_P1
-#define MDP_BUS_VECTOR_ENTRY_P1(ab_val, ib_val)                \
-       {                                               \
-               .src = MSM_BUS_MASTER_MDP_PORT1,        \
-               .dst = MSM_BUS_SLAVE_EBI_CH0,           \
-               .ab  = (ab_val),                        \
-               .ib  = (ib_val),                        \
-       }
+#define MDP_BUS_VECTOR_ENTRY_P1(ab_val, ib_val)		\
+	{						\
+		.src = MSM_BUS_MASTER_MDP_PORT1,	\
+		.dst = MSM_BUS_SLAVE_EBI_CH0,		\
+		.ab  = (ab_val),			\
+		.ib  = (ib_val),			\
+	}
 #endif
-
 
 /*
  *    Entry 0 hold 0 request
  *    Entry 1 and 2 do ping pong request
  */
 static struct msm_bus_vectors mdp_bus_init_vectors[] = {
-		MDP_BUS_VECTOR_ENTRY_P0(0, 0),
-		MDP_BUS_VECTOR_ENTRY_P1(0, 0),
+	MDP_BUS_VECTOR_ENTRY_P0(0, 0),
+	MDP_BUS_VECTOR_ENTRY_P1(0, 0),
 };
 
 static struct msm_bus_vectors mdp_bus_ping_vectors[] = {
-		MDP_BUS_VECTOR_ENTRY_P0(128000000, 160000000),
-		MDP_BUS_VECTOR_ENTRY_P1(128000000, 160000000),
+	MDP_BUS_VECTOR_ENTRY_P0(128000000, 160000000),
+	MDP_BUS_VECTOR_ENTRY_P1(128000000, 160000000),
 };
 
 static struct msm_bus_vectors mdp_bus_pong_vectors[] = {
-		MDP_BUS_VECTOR_ENTRY_P0(128000000, 160000000),
-		MDP_BUS_VECTOR_ENTRY_P1(128000000, 160000000),
+	MDP_BUS_VECTOR_ENTRY_P0(128000000, 160000000),
+	MDP_BUS_VECTOR_ENTRY_P1(128000000, 160000000),
 };
 
 static struct msm_bus_paths mdp_bus_usecases[] = {
-       {
-               ARRAY_SIZE(mdp_bus_init_vectors),
-               mdp_bus_init_vectors,
-       },
-      {
-               ARRAY_SIZE(mdp_bus_ping_vectors),
-               mdp_bus_ping_vectors,
-       },
-       {
-               ARRAY_SIZE(mdp_bus_pong_vectors),
-               mdp_bus_pong_vectors,
-       },
+	{
+		ARRAY_SIZE(mdp_bus_init_vectors),
+		mdp_bus_init_vectors,
+	},
+	{
+		ARRAY_SIZE(mdp_bus_ping_vectors),
+		mdp_bus_ping_vectors,
+	},
+	{
+		ARRAY_SIZE(mdp_bus_pong_vectors),
+		mdp_bus_pong_vectors,
+	},
 };
-
 static struct msm_bus_scale_pdata mdp_bus_scale_table = {
 	.usecase = mdp_bus_usecases,
 	.num_usecases = ARRAY_SIZE(mdp_bus_usecases),
@@ -2469,7 +2518,6 @@ static uint32_t mdp_bus_scale_handle;
 static int mdp_bus_scale_register(void)
 {
 	struct msm_bus_scale_pdata *bus_pdata = &mdp_bus_scale_table;
-
 	if (!mdp_bus_scale_handle) {
 		mdp_bus_scale_handle = msm_bus_scale_register_client(bus_pdata);
 		if (!mdp_bus_scale_handle) {									
@@ -2497,8 +2545,12 @@ int mdp_bus_scale_update_request(u64 ab_p0, u64 ib_p0, u64 ab_p1, u64 ib_p1)
 	bus_index = (bus_index > 2) ? 1 : bus_index;
 
 	mdp_bus_usecases[bus_index].vectors[0].ab = min(ab_p0, mdp_max_bw);
-   ib_p0 = max(ib_p0, ab_p0);
-   mdp_bus_usecases[bus_index].vectors[0].ib = min(ib_p0, mdp_max_bw);
+	ib_p0 = max(ib_p0, ab_p0);
+	mdp_bus_usecases[bus_index].vectors[0].ib = min(ib_p0, mdp_max_bw);
+
+	mdp_bus_usecases[bus_index].vectors[1].ab = min(ab_p1, mdp_max_bw);
+	ib_p1 = max(ib_p1, ab_p1);
+	mdp_bus_usecases[bus_index].vectors[1].ib = min(ib_p1, mdp_max_bw);
 
    mdp_bus_usecases[bus_index].vectors[1].ab = min(ab_p1, mdp_max_bw);
    ib_p1 = max(ib_p1, ab_p1);
@@ -2507,42 +2559,37 @@ int mdp_bus_scale_update_request(u64 ab_p0, u64 ib_p0, u64 ab_p1, u64 ib_p1)
 	pr_debug("%s: handle=%d index=%d ab=%llu ib=%llu\n", __func__,
 		 (u32)mdp_bus_scale_handle, bus_index,
 		 mdp_bus_usecases[bus_index].vectors[0].ab,
-		mdp_bus_usecases[bus_index].vectors[0].ib);
+		 mdp_bus_usecases[bus_index].vectors[0].ib);
+
 	pr_debug("%s: p1 handle=%d index=%d ab=%llu ib=%llu\n", __func__,
-			(u32)mdp_bus_scale_handle, bus_index,
-			mdp_bus_usecases[bus_index].vectors[1].ab,
-			mdp_bus_usecases[bus_index].vectors[1].ib);
-	
+		 (u32)mdp_bus_scale_handle, bus_index,
+		 mdp_bus_usecases[bus_index].vectors[1].ab,
+		 mdp_bus_usecases[bus_index].vectors[1].ib);
 
 	return msm_bus_scale_client_update_request
 		(mdp_bus_scale_handle, bus_index);
 }
 
-int mdp_bus_scale_restore_request(void) 
-{ 
-	u64 ab, ib; 
-	if (!bus_index || 
-		!mdp_bus_usecases[bus_index].vectors[0].ab) { 
-		ab = mdp_max_bw; 
-		ib = mdp_max_bw; 
-	} else { 
-		ab = mdp_bus_usecases[bus_index].vectors[0].ab; 
-		ib = mdp_bus_usecases[bus_index].vectors[0].ib; 
-	} 
-	pr_info("%s: ab=%llu ib=%llu\n", __func__, ab, ib); 
-	
+static int mdp_bus_scale_restore_request(void)
+{
 	pr_debug("%s: index=%d ab_p0=%llu ib_p0=%llu\n", __func__, bus_index,
-					 mdp_bus_usecases[bus_index].vectors[0].ab,
-					 mdp_bus_usecases[bus_index].vectors[0].ib);
+		 mdp_bus_usecases[bus_index].vectors[0].ab,
+		 mdp_bus_usecases[bus_index].vectors[0].ib);
 	pr_debug("%s: index=%d ab_p1=%llu ib_p1=%llu\n", __func__, bus_index,
-					 mdp_bus_usecases[bus_index].vectors[1].ab,
-					 mdp_bus_usecases[bus_index].vectors[1].ib);
-	
-	return mdp_bus_scale_update_request(ab, ib,
-		mdp_bus_usecases[bus_index].vectors[1].ab,
-		mdp_bus_usecases[bus_index].vectors[1].ib); 
-} 
+		 mdp_bus_usecases[bus_index].vectors[1].ab,
+		 mdp_bus_usecases[bus_index].vectors[1].ib);
 
+	return mdp_bus_scale_update_request
+		(mdp_bus_usecases[bus_index].vectors[0].ab,
+		 mdp_bus_usecases[bus_index].vectors[0].ib,
+		 mdp_bus_usecases[bus_index].vectors[1].ab,
+		 mdp_bus_usecases[bus_index].vectors[1].ib);
+}
+#else
+static int mdp_bus_scale_restore_request(void)
+{
+	return 0;
+}
 #endif
 DEFINE_MUTEX(mdp_clk_lock);
 int mdp_set_core_clk(u32 rate)
@@ -2691,6 +2738,13 @@ static int mdp_probe(struct platform_device *pdev)
 			pr_err("mdp: can not get mdp irq\n");
 			return -ENOMEM;
 		}
+
+		if (mdp_pdata->mdp_max_bw)
+			mdp_max_bw = mdp_pdata->mdp_max_bw;
+		if (mdp_pdata->mdp_bw_ab_factor)
+			mdp_bw_ab_factor = mdp_pdata->mdp_bw_ab_factor;
+		if (mdp_pdata->mdp_bw_ib_factor)
+			mdp_bw_ib_factor = mdp_pdata->mdp_bw_ib_factor;
 
 		mdp_rev = mdp_pdata->mdp_rev;
 
@@ -3079,8 +3133,10 @@ static int mdp_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	/* req bus bandwidth immediately */
-	if (!(mfd->cont_splash_done))
-		mdp_bus_scale_update_request(mdp_max_bw, mdp_max_bw,mdp_max_bw,mdp_max_bw);
+	mdp_bus_scale_update_request(mdp_max_bw,
+				     mdp_max_bw,
+				     mdp_max_bw,
+				     mdp_max_bw);
 #endif
 
 	/* set driver data */

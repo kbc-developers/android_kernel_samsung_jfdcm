@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -835,17 +835,14 @@ unsigned long mdp_get_core_clk(void);
 
 #ifdef CONFIG_MSM_BUS_SCALING
 int mdp_bus_scale_update_request(u64 ab_p0, u64 ib_p0, u64 ab_p1, u64 ib_p1);
-
-int mdp_bus_scale_restore_request(void);
 #else
 static inline int mdp_bus_scale_update_request(u64 ab_p0,
-                                              u64 ib_p0,
-                                              u64 ab_p1,
-                                              u64 ib_p1)
- {
-        return 0;
- }
-
+					       u64 ib_p0,
+					       u64 ab_p1,
+					       u64 ib_p1)
+{
+	return 0;
+}
  
 static int mdp_bus_scale_restore_request(void) 
 { 
@@ -886,6 +883,8 @@ void mdp_histogram_handle_isr(struct mdp_hist_mgmt *mgmt);
 void __mdp_histogram_kickoff(struct mdp_hist_mgmt *mgmt);
 void __mdp_histogram_reset(struct mdp_hist_mgmt *mgmt);
 void mdp_footswitch_ctrl(boolean on);
+int mdp_enable_iommu_clocks(void);
+int mdp_disable_iommu_clocks(void);
 
 #ifdef CONFIG_FB_MSM_MDP303
 static inline void mdp4_dsi_cmd_dma_busy_wait(struct msm_fb_data_type *mfd)
