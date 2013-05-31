@@ -44,6 +44,14 @@ if [ "$USE_LOKI" = 'y' ]; then
   make_loki_image
 fi
 
+#check image size
+img_size=`wc -c $BIN_DIR/$IMAGE_NAME.img | awk '{print $1}'`
+if [ $img_size -gt $IMG_MAX_SIZE ]; then
+    echo "FATAL: $IMAGE_NAME image size over. image size = $img_size > $IMG_MAX_SIZE byte"
+    rm $BIN_DIR/$IMAGE_NAME.img
+    exit -1
+fi
+
 # create odin image
 cd $BIN_DIR
 make_odin3_image
