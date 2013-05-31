@@ -40,6 +40,10 @@ cp ./release-tools/$TARGET_DEVICE/stock-img/recovery.img-kernel.gz $BIN_DIR/kern
 # create boot image
 make_boot_image
 
+if [ "$USE_LOKI" = 'y' ]; then
+  make_loki_image
+fi
+
 # create odin image
 cd $BIN_DIR
 make_odin3_image
