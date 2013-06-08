@@ -22,6 +22,7 @@
 
 #if defined(CONFIG_MACH_JACTIVE_ATT)
 #include <mach/pmic.h>
+#include "devices-msm8x60.h"
 #endif
 
 #include "devices.h"
@@ -57,6 +58,10 @@
 #else
 #define GPIO_VT_CAM_SDA	84
 #define GPIO_VT_CAM_SCL	85
+#endif
+#ifdef CONFIG_CAMERA_SW_I2C_ACT
+#define GPIO_CAM_AF_SCL	70
+#define GPIO_CAM_AF_SDA	71
 #endif
 
 
@@ -237,6 +242,22 @@ static struct msm_gpiomux_config apq8064_cam_common_configs[] = {
 			[GPIOMUX_SUSPENDED] = &cam_settings[15],
 		},
 	},
+#endif
+#if defined (CONFIG_CAMERA_SW_I2C_ACT)
+	{
+		.gpio = GPIO_CAM_AF_SDA, // 71
+		.settings = {
+			[GPIOMUX_ACTIVE]	= &cam_settings[2],
+			[GPIOMUX_SUSPENDED] = &cam_settings[0],
+		},
+	},
+	{
+		.gpio = GPIO_CAM_AF_SCL, // 70
+		.settings = {
+			[GPIOMUX_ACTIVE]	= &cam_settings[2],
+			[GPIOMUX_SUSPENDED] = &cam_settings[0],
+		},
+	}
 #endif
 };
 
@@ -517,10 +538,8 @@ static void cam_ldo_power_off(void)
 {
 	int ret = 0;
 	printk(KERN_DEBUG "[Fortius] %s: In\n", __func__);
-	gpio_set_value_cansleep(GPIO_CAM_AF_EN, 0);
-	ret = gpio_get_value(GPIO_CAM_AF_EN);
-	if (ret)
-		printk("check GPIO_CAM_AF_EN : %d\n", ret);
+	pmic_gpio_ctrl(GPIO_CAM_AF_EN, 0);
+
 	udelay(1000);
 	if(l28){ 
 		ret = regulator_disable(l28);
@@ -1025,6 +1044,18 @@ static struct msm_actuator_info msm_act_main_cam_1_info = {
 	.vcm_enable     = 0,
 };
 
+#if defined(CONFIG_MACH_JACTIVE_ATT)
+static struct i2c_board_info msm_act_main_cam2_i2c_info = {
+	I2C_BOARD_INFO("msm_actuator", 0x50),
+};
+static struct msm_actuator_info msm_act_main_cam_2_info = {
+	.board_info     = &msm_act_main_cam2_i2c_info,
+	.cam_name       = MSM_ACTUATOR_MAIN_CAM_2,
+	.bus_id			= MSM_CAMERA_SW_I2C_BUS_ID, // 27
+	.vcm_pwd        = 0,
+	.vcm_enable     = 0,
+};
+#endif
 static struct msm_camera_i2c_conf apq8064_front_cam_i2c_conf = {
 	.use_i2c_mux = 0,
 };
@@ -1141,6 +1172,11 @@ static struct camera_vreg_t msm_8064_s5k3h5xa_vreg[] = {
 	{"cam_vana", REG_LDO, 2800000, 2850000, 85600},
 	{"cam_vaf", REG_LDO, 2800000, 2800000, 300000},
 };
+#if defined(CONFIG_MACH_JACTIVE_ATT)
+static struct msm_eeprom_info imx175_eeprom_info = {
+        .type = MSM_EEPROM_SPI,
+};
+#endif
 static struct msm_camera_csi_lane_params s5k3h5xa_csi_lane_params = {
 	.csi_lane_assign = 0xE4,
 	.csi_lane_mask = 0xF,
@@ -1156,8 +1192,8 @@ static int pmic_set_func(uint8_t pmic_gpio, uint8_t onoff)
 
 static struct msm_camera_sensor_flash_src msm_flash_src_s5k3h5xa = {
 	.flash_sr_type = MSM_CAMERA_FLASH_SRC_PMIC_GPIO,
-	._fsrc.pmic_gpio_src.led_src_1 = 24, /* flash for a short time */
-	._fsrc.pmic_gpio_src.led_src_2 = 33, /* emitting until coming LOW signal */
+	._fsrc.pmic_gpio_src.led_src_1 = 33, /* emitting until coming LOW signal */
+	._fsrc.pmic_gpio_src.led_src_2 = 24, /* flash for a short time */
 	._fsrc.pmic_gpio_src.pmic_set_func = pmic_set_func
 };
 static struct msm_camera_sensor_flash_data flash_s5k3h5xa = {
@@ -1195,6 +1231,10 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k3h5xa_data = {
 	.csi_if = 1,
 	.camera_type = BACK_CAMERA_2D,
 	.sensor_type = BAYER_SENSOR,
+#if defined(CONFIG_MACH_JACTIVE_ATT)	
+	.actuator_info = &msm_act_main_cam_2_info,
+	.eeprom_info = &imx175_eeprom_info,
+#endif	
 };
 
 static struct msm_camera_sensor_flash_data flash_mt9m114 = {
