@@ -3376,9 +3376,8 @@ static int jc_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 			return -ENOSYS;
 		}
 	}
-#if 0 //remove for ged
-start:
-#endif
+
+//start:
 	cam_info("nv12 output setting\n");
 	err = jc_writeb(JC_CATEGORY_CAPCTRL,
 			0x0, 0x0f);
