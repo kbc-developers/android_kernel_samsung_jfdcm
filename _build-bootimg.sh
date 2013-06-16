@@ -68,9 +68,9 @@ if [ "$COMPILE_ERROR" ]; then
 fi
 
 # *.ko replace
-#echo ""
-#echo "=====> INSTALL KERNEL MODULES"
-#find -name '*.ko' -exec cp -av {} $RAMDISK_TMP_DIR/lib/modules/ \;
+echo ""
+echo "=====> INSTALL KERNEL MODULES"
+find -name '*.ko' -exec cp -av {} $RAMDISK_TMP_DIR/lib/modules/ \;
 
 echo ""
 echo "=====> CREATE RELEASE IMAGE"
