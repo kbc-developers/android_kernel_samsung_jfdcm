@@ -374,11 +374,24 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks
+ifeq ($(USE_CFLAGS_OPTION),y)
+MODFLAGS  = -fgcse-lm -fgcse-sm -fsched-spec-load -fforce-addr -ffast-math \
+            -fsingle-precision-constant -mtune=cortex-a15 -marm -march=armv7-a \
+            -mfpu=neon -ftree-vectorize -mvectorize-with-neon-quad -funroll-loops
+endif
 KBUILD_AFLAGS_KERNEL :=
+ifeq ($(USE_CFLAGS_OPTION),y)
+KBUILD_CFLAGS_KERNEL := $(MODFLAGS)
+else
 KBUILD_CFLAGS_KERNEL :=
+endif
 KBUILD_AFLAGS   := -D__ASSEMBLY__
 KBUILD_AFLAGS_MODULE  := -DMODULE
+ifeq ($(USE_CFLAGS_OPTION),y)
+KBUILD_CFLAGS_MODULE  := -DMODULE $(MODFLAGS)
+else
 KBUILD_CFLAGS_MODULE  := -DMODULE
+endif
 KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
 
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)

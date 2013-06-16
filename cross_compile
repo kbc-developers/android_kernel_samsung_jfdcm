@@ -42,5 +42,5 @@ export BUILD_CROSS_COMPILE=`check_and_get_linaro arm-linux-gnueabihf 4.7 2013.04
 # export BUILD_CROSS_COMPILE=`check_and_get_aosp_prebuild arm-eabi 4.6`
 
 # export compiler option
-# export USE_CFLAGS_OPTION=y
+export USE_CFLAGS_OPTION=y
 
