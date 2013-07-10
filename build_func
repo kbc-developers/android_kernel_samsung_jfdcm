@@ -10,6 +10,10 @@ copy_ramdisk()
     rm -rf $RAMDISK_TMP_DIR/.git
     find $RAMDISK_TMP_DIR -name .gitkeep | xargs rm --force
     find $RAMDISK_TMP_DIR -name .gitignore | xargs rm --force
+
+    if [ -f $RAMDISK_TMP_DIR/recovery_version ]; then
+        rm -f $RAMDISK_TMP_DIR/recovery_version
+    fi
 }
 
 make_boot_image()
