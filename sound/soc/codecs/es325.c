@@ -130,12 +130,15 @@ struct es325_slim_ch {
 #define FIRMWARE_NAME "audience-es325-fw-jactive-eur.bin"
 #elif defined(CONFIG_MACH_JACTIVE_ATT)
 #define FIRMWARE_NAME "audience-es325-fw-jactive_att.bin"
+#define FIRMWARE_NAME_REV02 "audience-es325-fw-jactive_att_rev02.bin"
 #elif defined(CONFIG_MACH_JF_SKT) || defined(CONFIG_MACH_JF_KTT)\
 	|| defined(CONFIG_MACH_JF_LGT)
 #define FIRMWARE_NAME "audience-es325-fw-kor.bin"
 #else
 #define FIRMWARE_NAME "audience-es325-fw.bin"
 #endif
+
+extern unsigned int system_rev;
 
 #define ES325_MAX_INVALID_VEQ 0xFFFF
 #define ES325_MAX_INVALID_BWE 0xFFFF
@@ -242,12 +245,21 @@ static u8 es325_internal_route_1mic_speaker_WB[10] = {
 	0xff		/* terminate */
 };
 
+#if defined(CONFIG_MACH_JACTIVE_ATT)
+/* 1-mic Speaker NB (1-mic FT)(NS off)(SW bypss) - JACTIVE doesn't use 2-mic for SPK */
+static u8 es325_internal_route_2mic_speaker[10] = {
+	0x90, 0x31, 0x00, 0x0d, /* 1 Mic 1 FEOUT */
+	0x90, 0x31, 0x00, 0x82, /* Algo Preset: 1-mic CT NB */
+	0xff		/* terminate */
+};
+#else
 /* 2-mic Speaker NB (2-mic FT)(NS on) */
 static u8 es325_internal_route_2mic_speaker[10] = {	
 	0x90, 0x31, 0x00, 0x02, /* 2 Mic 1 FEOUT w UITone CT */
 	0x90, 0x31, 0x00, 0x16, /* Algo Preset for 2 Mic FT NB */
 	0xff		/* terminate */
 };
+#endif
 
 /* 2-mic Speaker WB (2-mic FT)(NS off) */
 static u8 es325_internal_route_2mic_speaker_WB[10] = {		
@@ -1221,6 +1233,8 @@ static int es325_slim_write(struct es325_priv *es325, unsigned int offset,
 	if (bus_order)
 		msg_to_bus_order(buf, len);
 	rc = slim_change_val_element(sbdev, &msg, buf, len);
+	if (rc != 0)
+		pr_info("%s: rc=%d\n", __func__, rc);
 	return rc;
 }
 #endif
@@ -1720,7 +1734,7 @@ static void es325_switch_route(void)
 			es325->new_internal_route_config < 3 + NETWORK_OFFSET)) {
 			
 			es325->new_internal_route_config += NS_OFFSET;
-			pr_info("=[ES325]=%s() adjust 2mic_enable offset\n", __func__);
+			pr_info("=[ES325]=%s() adjust 2mic_enable offset, es325_2mic_enable=%d\n", __func__, es325_2mic_enable);
 		}
 	} else {
 		if ((es325->new_internal_route_config >= 1 + NS_OFFSET &&
@@ -1729,7 +1743,7 @@ static void es325_switch_route(void)
 			es325->new_internal_route_config < 3 + NETWORK_OFFSET + NS_OFFSET)) {
 			
 			es325->new_internal_route_config -= NS_OFFSET;
-			pr_info("=[ES325]=%s() adjust 2mic_enable offset\n", __func__);
+			pr_info("=[ES325]=%s() adjust 2mic_enable offset, es325_2mic_enable=%d\n", __func__, es325_2mic_enable);
 		}
 	}
 
@@ -2226,6 +2240,10 @@ es325_firmware_store(struct device *dev, struct device_attribute *attr,
     unsigned long val;
     int err;
 	const char *name = FIRMWARE_NAME;
+#if defined(CONFIG_MACH_JACTIVE_ATT)
+	if (system_rev >= 12) /* HW REV02 */
+		name = FIRMWARE_NAME_REV02;
+#endif
 
     err = kstrtoul(buf, 10, &val);
     if (err) {
@@ -2286,7 +2304,7 @@ LOOP:
 	rc = ES325_BUS_WRITE(es325, ES325_WRITE_VE_OFFSET,
 			     ES325_WRITE_VE_WIDTH, pwr_cmd, 4, 1);
 	if (rc < 0) {
-		if (-remain > 0) {
+		if (--remain > 0) {
 			pr_info("=[ES325]= wrapper %s sleep command failed remain count %d\n",
 				__func__, remain);
 			usleep_range(1000, 1100);
@@ -4894,6 +4912,10 @@ static int es325_slim_probe(struct slim_device *sbdev)
 	static int clk_count;
 	struct task_struct *thread = NULL;
 
+#if defined(CONFIG_MACH_JACTIVE_ATT)
+	if (system_rev >= 12) /* HW REV02 */
+		filename = FIRMWARE_NAME_REV02;
+#endif
 	dev_dbg(&sbdev->dev, "%s(): entry\n", __func__);
 	dev_dbg(&sbdev->dev, "%s(): sbdev->name = %s\n", __func__, sbdev->name);
 	dev_dbg(&sbdev->dev, "%s(): es325_priv = 0x%08x\n", __func__,
@@ -5030,6 +5052,7 @@ static int es325_slim_probe(struct slim_device *sbdev)
 	es325_priv.internal_route_config =  ES325_INTERNAL_ROUTE_MAX;
 	es325_priv.new_internal_route_config = ES325_INTERNAL_ROUTE_MAX;
 #endif
+	pr_info("%s: system_rev=%d, firmware=%s\n", __func__, system_rev, filename);
 	rc = request_firmware((const struct firmware **)&es325_priv.fw,
 			      filename, &sbdev->dev);
 	if (rc) {
@@ -5357,3 +5380,6 @@ MODULE_AUTHOR("Greg Clemson <gclemson@audience.com>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:es325-codec");
 MODULE_FIRMWARE(FIRMWARE_NAME);
+#if defined(CONFIG_MACH_JACTIVE_ATT)
+MODULE_FIRMWARE(FIRMWARE_NAME_REV02);
+#endif

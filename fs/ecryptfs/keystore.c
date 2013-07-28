@@ -1204,6 +1204,10 @@ decrypt_pki_encrypted_session_key(struct ecryptfs_auth_tok *auth_tok,
 out:
 	if (msg)
 		kfree(msg);
+	if (auth_tok_sig)
+        kfree(auth_tok_sig);
+	if (payload)
+        kfree(payload);
 	return rc;
 }
 
@@ -2184,7 +2188,7 @@ write_tag_3_packet(char *dest, size_t *remaining_bytes,
 {
 	size_t i;
 	size_t encrypted_session_key_valid = 0;
-	char session_key_encryption_key[ECRYPTFS_MAX_KEY_BYTES];
+	char session_key_encryption_key[ECRYPTFS_MAX_KEY_BYTES] = {0, };
 	struct scatterlist dst_sg[2];
 	struct scatterlist src_sg[2];
 	struct mutex *tfm_mutex = NULL;
