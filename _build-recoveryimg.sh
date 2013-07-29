@@ -48,6 +48,14 @@ else
 fi
 # make start
 if [ "$BUILD_SELECT" != 'image' -a "$BUILD_SELECT" != 'i' ]; then
+	# set build env
+	. mod_version
+	. cross_compile
+	export ARCH=arm
+	export CROSS_COMPILE=$BUILD_CROSS_COMPILE
+	export LOCALVERSION="-$BUILD_LOCALVERSION"
+
+
 	if [ "$BUILD_SELECT" = 'kernel' -o "$BUILD_SELECT" = 'k' ]; then
 	  KERNEL_DEFCONFIG=kbc_sc04e_aosp_defconfig
 	  echo ""
@@ -80,6 +88,10 @@ if [ "$BUILD_SELECT" != 'image' -a "$BUILD_SELECT" != 'i' ]; then
 #	find -name '*.ko' -exec cp -av {} $RAMDISK_TMP_DIR/lib/modules/ \;
 
   cp $OBJ_DIR/arch/arm/boot/zImage ./release-tools/$TARGET_DEVICE/stock-img/recovery.img-kernel.gz
+
+
+  #reset VERSION String
+  BUILD_LOCALVERSION=$BUILD_RECOVERYVERSION
 fi
 
 # copy zImage -> kernel
