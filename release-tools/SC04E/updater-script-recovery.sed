@@ -3,6 +3,8 @@ ui_print("");
 ui_print("------------------------------------------------");
 ui_print("@VERSION");
 ui_print("  KBC Developers:");
+ui_print("    HomuHomu");
+ui_print("    ma34s3");
 ui_print("    sakuramilk");
 ui_print("------------------------------------------------");
 ui_print("");
