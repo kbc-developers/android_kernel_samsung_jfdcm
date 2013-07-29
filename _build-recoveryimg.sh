@@ -39,6 +39,49 @@ if [ `find $BIN_DIR -type f | wc -l` -gt 0 ]; then
 fi
 mkdir -p $BIN_DIR
 
+BUILD_SELECT="i"
+if [ ! -n "$1" ]; then
+  echo ""
+  read -p "select build? [(i)mage/(k)ernel/(u)pdate default:image] " BUILD_SELECT
+else
+  BUILD_SELECT=$1
+fi
+# make start
+if [ "$BUILD_SELECT" != 'image' -a "$BUILD_SELECT" != 'i' ]; then
+	if [ "$BUILD_SELECT" = 'kernel' -o "$BUILD_SELECT" = 'k' ]; then
+	  KERNEL_DEFCONFIG=kbc_sc04e_aosp_defconfig
+	  echo ""
+	  echo "=====> CLEANING..."
+	  make clean
+	  cp -f ./arch/arm/configs/$KERNEL_DEFCONFIG $OBJ_DIR/.config
+	  make -C $PWD O=$OBJ_DIR oldconfig || exit -1
+	fi
+
+	echo ""
+	echo "=====> BUILDING..."
+	if [ -e make.log ]; then
+	mv make.log make_old.log
+	fi
+	nice -n 10 make O=$OBJ_DIR -j12 2>&1 | tee make.log
+
+
+	# check compile error
+	COMPILE_ERROR=`grep 'error:' ./make.log`
+	if [ "$COMPILE_ERROR" ]; then
+	  echo ""
+	  echo "=====> ERROR"
+	  grep 'error:' ./make.log
+	  exit -1
+	fi
+
+	# *.ko replace
+#	echo ""
+#	echo "=====> INSTALL KERNEL MODULES"
+#	find -name '*.ko' -exec cp -av {} $RAMDISK_TMP_DIR/lib/modules/ \;
+
+  cp $OBJ_DIR/arch/arm/boot/zImage ./release-tools/$TARGET_DEVICE/stock-img/recovery.img-kernel.gz
+fi
+
 # copy zImage -> kernel
 cp ./release-tools/$TARGET_DEVICE/stock-img/recovery.img-kernel.gz $BIN_DIR/kernel
 
