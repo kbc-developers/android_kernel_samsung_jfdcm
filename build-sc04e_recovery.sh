@@ -3,4 +3,4 @@
 export BUILD_TARGET=RECO
 . sc04e.config
 
-time ./_build-recoveryimg.sh
+time ./_build-recoveryimg.sh $1
