@@ -214,7 +214,9 @@ static int system_suspend_handler(struct notifier_block *nb,
 	switch (val) {
 	case PM_POST_HIBERNATION:
 	case PM_POST_SUSPEND:
+	case PM_POST_RESTORE:
 		rq_info.hotplug_disabled = 0;
+		break;
 	case PM_HIBERNATION_PREPARE:
 	case PM_SUSPEND_PREPARE:
 		rq_info.hotplug_disabled = 1;
@@ -415,10 +417,6 @@ static int __init msm_rq_stats_init(void)
 		mutex_init(&pcpu->cpu_load_mutex);
 		cpufreq_get_policy(&cpu_policy, i);
 		pcpu->policy_max = cpu_policy.cpuinfo.max_freq;
-#ifdef CONFIG_MACH_JF
-		/* This is initial frequency */
-		pcpu->cur_freq = 1566000;
-#endif
 		if (cpu_online(i))
 			pcpu->cur_freq = acpuclk_get_rate(i);
 		cpumask_copy(pcpu->related_cpus, cpu_policy.cpus);
