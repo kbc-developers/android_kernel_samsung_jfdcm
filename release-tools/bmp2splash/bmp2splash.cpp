@@ -29,8 +29,22 @@
 
 //#define _DEBUG
 
-#define IMAGE_WIDTH	(720)
-#define IMAGE_HEIGHT	(1280)
+//#define BITMAP_FORMAT_RGB
+#define BITMAP_FORMAT_BRG
+//#define BITMAP_FORMAT_BGR
+
+struct tg_SupportedSize
+{
+	unsigned short width;
+	unsigned short height;
+}SupportedSize[] = 
+{
+	{ 480, 800,},
+	{ 720,1280,},
+	{ 800,1280,},
+	{1080,1920,},
+};
+
 
 #ifdef _DEBUG
 #define PRINT_VAL(val) printf(#val " = %d(0x%08x)\n", (unsigned int)val, (unsigned int)val)
@@ -86,9 +100,50 @@ static inline uint32_t read_4byte(uint8_t* &pData) {
 }
 
 static inline uint16_t rgb888to565(uint8_t r, uint8_t g, uint8_t b) {
+#if defined(BITMAP_FORMAT_RGB)
     return ((((r) >> 3) << 11) | (((g) >> 2) << 5) | ((b) >> 3));
+#elif defined(BITMAP_FORMAT_BRG)
+    return ((((g) >> 3) << 11) | (((r) >> 2) << 5) | ((b) >> 3));
+#elif defined(BITMAP_FORMAT_BGR)
+    return ((((b) >> 3) << 11) | (((g) >> 2) << 5) | ((r) >> 3));
+#endif
 }
 
+
+int checkImageSize( struct BITMAPINFOHEADER* pBmpInfoHeader )
+{
+	int lp;
+	int ret = -1;
+	fprintf(stderr, "Input Image is %dx%d %dbit.\n", pBmpInfoHeader->biWidth, pBmpInfoHeader->biHeight,pBmpInfoHeader->biBitCount);
+
+	if(pBmpInfoHeader->biBitCount != 24) {
+		fprintf(stderr, "error: not 24bit bitmap format.\n");
+	}
+	else
+	{
+		for(lp=0;lp< (sizeof(SupportedSize)/sizeof(struct tg_SupportedSize));lp++)
+		{
+			if((pBmpInfoHeader->biWidth == SupportedSize[lp].width && 
+				 pBmpInfoHeader->biHeight == SupportedSize[lp].height) )
+			{
+				ret = 0;
+				break;
+			}
+		}
+	}
+	return ret;
+}
+
+void printSupportedFormat()
+{
+	int lp;
+	fprintf(stderr, "error: bitmap format is not supported.\n");
+	fprintf(stderr, "       supported format is \n");
+	for(lp=0;lp< (sizeof(SupportedSize)/sizeof(struct tg_SupportedSize));lp++)
+	{
+		fprintf(stderr, "       %dx%d 24bit.\n", SupportedSize[lp].width, SupportedSize[lp].height);
+	}
+}
 
 int main(int argc, char** argv)
 {
@@ -101,6 +156,7 @@ int main(int argc, char** argv)
     struct BITMAPFILEHEADER bmpFileHeader;
     struct BITMAPINFOHEADER bmpInfoHeader;
     uint16_t count = 0, total = 0;
+
 
     if (argc != 2) {
         fprintf(stderr, "Usage: bmp2splash [24bit bmp file]\n");
@@ -168,12 +224,10 @@ int main(int argc, char** argv)
     PRINT_VAL(bmpInfoHeader.biClrUsed);
     PRINT_VAL(bmpInfoHeader.biClrImporant);
 
-
-    if (bmpInfoHeader.biWidth != IMAGE_WIDTH
-    ||  bmpInfoHeader.biHeight != IMAGE_HEIGHT
-    ||  bmpInfoHeader.biBitCount != 24) {
-        fprintf(stderr, "error: bitmap format is not %dx%d 24bit.\n", IMAGE_WIDTH, IMAGE_HEIGHT);
-        ret = -1;
+	ret = checkImageSize(&bmpInfoHeader);
+    if ( ret != 0 )
+	{
+		printSupportedFormat();
         goto exit;
     }
 
