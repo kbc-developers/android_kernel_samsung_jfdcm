@@ -676,6 +676,11 @@ ifeq ($(TIMA_ENABLED),1)
        KBUILD_AFLAGS += -DTIMA_LKM_AUTH_ENABLED
 endif
 
+
+ifeq ($(USER_BOOT_SPLASH),y)
+	KBUILD_CFLAGS	+= -DFB_MSM_LOGO
+endif
+
 # Add user supplied CPPFLAGS, AFLAGS and CFLAGS as the last assignments
 # But warn user when we do so
 warn-assign = \
