@@ -39,6 +39,10 @@ echo ""
 echo "=====> COPY RAMDISK"
 copy_ramdisk
 
+# boot splash header
+if [ -f $RAMDISK_TMP_DIR/initlogo.rle ]; then
+  export USER_BOOT_SPLASH=y
+fi
 
 # make start
 if [ "$BUILD_SELECT" = 'all' -o "$BUILD_SELECT" = 'a' ]; then
