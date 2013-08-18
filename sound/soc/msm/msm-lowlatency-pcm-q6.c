@@ -33,7 +33,13 @@
 #include "msm-pcm-routing.h"
 
 static struct audio_locks the_locks;
-
+#define ENABLE_QOS
+#ifdef ENABLE_QOS
+#define LOW_LATENCY_QOS_SETTING_USECS 1000
+/* FIXME move this to private structure */
+static struct pm_qos_request lpm_qos_req;
+static bool first_time = true;
+#endif
 struct snd_msm {
 	struct snd_card *card;
 	struct snd_pcm *pcm;
@@ -46,7 +52,7 @@ struct snd_msm_volume {
 
 #define PLAYBACK_NUM_PERIODS		2
 #define PLAYBACK_MAX_PERIOD_SIZE	4096
-#define PLAYBACK_MIN_PERIOD_SIZE	512
+#define PLAYBACK_MIN_PERIOD_SIZE	128
 #define CAPTURE_NUM_PERIODS		2
 #define CAPTURE_MIN_PERIOD_SIZE		128
 #define CAPTURE_MAX_PERIOD_SIZE		1024
@@ -331,6 +337,10 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
 			kfree(prtd);
 			return -ENOMEM;
 		}
+#ifdef ENABLE_QOS
+		first_time = true;
+		pr_debug("going to enable pm_qos low latency\n");
+#endif
 	}
 	/* Capture path */
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
@@ -408,13 +418,22 @@ static int msm_pcm_playback_copy(struct snd_pcm_substream *substream, int a,
 
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct msm_audio *prtd = runtime->private_data;
+#ifdef ENABLE_QOS
+	if (first_time) {
+		int usecs = LOW_LATENCY_QOS_SETTING_USECS;
+		pr_info("setting pm_qos in %s with %d\n", __func__, usecs);
+		pm_qos_update_request(&lpm_qos_req, usecs);
+		pr_info("done setting pm_qos in %s\n", __func__);
+		first_time = false;
+	}
+#endif
 
 	fbytes = frames_to_bytes(runtime, frames);
 	pr_debug("%s: prtd->out_count = %d\n",
 				__func__, atomic_read(&prtd->out_count));
 	ret = wait_event_timeout(the_locks.write_wait,
 			(atomic_read(&prtd->out_count)), 5 * HZ);
-	if (ret < 0) {
+	if (!ret) {
 		pr_err("%s: wait_event_timeout failed\n", __func__);
 		goto fail;
 	}
@@ -463,11 +482,19 @@ static int msm_pcm_playback_close(struct snd_pcm_substream *substream)
 	int ret = 0;
 
 	pr_debug("%s\n", __func__);
+#ifdef ENABLE_QOS
+	{
+		int usecs = PM_QOS_DEFAULT_VALUE;
+		pr_info("updating pm_qos value to default %s\n", __func__);
+		pm_qos_update_request(&lpm_qos_req, usecs);
+		pr_info("done updating pm_qos value to default %s\n", __func__);
+	}
+#endif
 
 	dir = IN;
 	ret = wait_event_timeout(the_locks.eos_wait,
 				prtd->cmd_ack, 5 * HZ);
-	if (ret < 0)
+	if (!ret)
 		pr_err("%s: CMD_EOS failed\n", __func__);
 	q6asm_cmd(prtd->audio_client, CMD_CLOSE);
 	q6asm_audio_client_buf_free_contiguous(dir,
@@ -505,7 +532,7 @@ static int msm_pcm_capture_copy(struct snd_pcm_substream *substream,
 
 	ret = wait_event_timeout(the_locks.read_wait,
 			(atomic_read(&prtd->in_count)), 5 * HZ);
-	if (ret < 0) {
+	if (!ret) {
 		pr_debug("%s: wait_event_timeout failed\n", __func__);
 		goto fail;
 	}
@@ -716,12 +743,23 @@ static struct snd_soc_platform_driver msm_soc_platform = {
 static __devinit int msm_pcm_probe(struct platform_device *pdev)
 {
 	pr_info("%s: dev name %s\n", __func__, dev_name(&pdev->dev));
+#ifdef ENABLE_QOS
+	pr_info("adding pm_qos request in low latency driver\n");
+	pm_qos_add_request(&lpm_qos_req, PM_QOS_CPU_DMA_LATENCY,
+			PM_QOS_DEFAULT_VALUE);
+	pr_info("done adding pm_qos request in low latency driver\n");
+#endif
 	return snd_soc_register_platform(&pdev->dev,
 				   &msm_soc_platform);
 }
 
 static int msm_pcm_remove(struct platform_device *pdev)
 {
+#ifdef ENABLE_QOS
+	pr_info("removing request from low latency driver\n");
+	pm_qos_remove_request(&lpm_qos_req);
+	pr_info("done removing request from low latency driver\n");
+#endif
 	snd_soc_unregister_platform(&pdev->dev);
 	return 0;
 }

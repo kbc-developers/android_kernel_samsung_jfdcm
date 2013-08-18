@@ -594,7 +594,7 @@ static int adreno_setup_pt(struct kgsl_device *device,
 		device->mh.mpu_range = device->mmu.setstate_memory.gpuaddr +
 				device->mmu.setstate_memory.size;
 	}
-	return result;
+    return result;
 
 unmap_setstate_desc:
 	kgsl_mmu_unmap(pagetable, &device->mmu.setstate_memory);
@@ -662,10 +662,8 @@ static void adreno_iommu_setstate(struct kgsl_device *device,
 
 	cmds += adreno_add_idle_cmds(adreno_dev, cmds);
 
-	if (!adreno_is_a2xx(adreno_dev)) {
-		/* Acquire GPU-CPU sync Lock here */
-		cmds += kgsl_mmu_sync_lock(&device->mmu, cmds);
-	}
+	/* Acquire GPU-CPU sync Lock here */
+	cmds += kgsl_mmu_sync_lock(&device->mmu, cmds);
 
 	pt_val = kgsl_mmu_get_pt_base_addr(&device->mmu,
 					device->mmu.hwpagetable);
@@ -728,10 +726,8 @@ static void adreno_iommu_setstate(struct kgsl_device *device,
 		}
 	}
 
-	if (!adreno_is_a2xx(adreno_dev)) {
-		/* Release GPU-CPU sync Lock here */
-		cmds += kgsl_mmu_sync_unlock(&device->mmu, cmds);
-	}
+	/* Release GPU-CPU sync Lock here */
+	cmds += kgsl_mmu_sync_unlock(&device->mmu, cmds);
 
 	if (cpu_is_msm8960())
 		cmds += adreno_add_change_mh_phys_limit_cmds(cmds,
@@ -2701,7 +2697,7 @@ static int adreno_ringbuffer_drain(struct kgsl_device *device,
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
 	unsigned long wait;
-	unsigned long timeout = jiffies + ADRENO_IDLE_TIMEOUT;
+	unsigned long timeout = jiffies + msecs_to_jiffies(ADRENO_IDLE_TIMEOUT);
 
 	/*
 	 * The first time into the loop, wait for 100 msecs and kick wptr again
@@ -2782,7 +2778,7 @@ err:
 	KGSL_DRV_ERR(device, "spun too long waiting for RB to idle\n");
 	if (KGSL_STATE_DUMP_AND_FT != device->state &&
 		!adreno_dump_and_exec_ft(device)) {
-		wait_time = jiffies + msecs_to_jiffies(ADRENO_IDLE_TIMEOUT);
+		wait_time = jiffies + ADRENO_IDLE_TIMEOUT;
 		goto retry;
 	}
 	return -ETIMEDOUT;
