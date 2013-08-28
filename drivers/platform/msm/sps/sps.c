@@ -1328,10 +1328,7 @@ int sps_transfer(struct sps_pipe *h, struct sps_transfer *transfer)
 	for (i = 0; i < transfer->iovec_count; i++) {
 		u32 flags = iovec->flags;
 
-		if (iovec->addr == 0) {
-			SPS_ERR("sps:%s:iovec address is invalid.\n", __func__);
-			return SPS_ERROR;
-		} else if (iovec->size > SPS_IOVEC_MAX_SIZE) {
+		if (iovec->size > SPS_IOVEC_MAX_SIZE) {
 			SPS_ERR("sps:%s:iovec size is invalid.\n", __func__);
 			return SPS_ERROR;
 		}
@@ -1733,6 +1730,35 @@ int sps_get_unused_desc_num(struct sps_pipe *h, u32 *desc_num)
 EXPORT_SYMBOL(sps_get_unused_desc_num);
 
 /**
+ * Vote for or relinquish BAM DMA clock
+ *
+ */
+int sps_ctrl_bam_dma_clk(bool clk_on)
+{
+	int ret;
+
+	SPS_DBG("sps:%s.", __func__);
+
+	if (!sps->is_ready)
+		return -EPROBE_DEFER;
+
+	if (clk_on == true) {
+		SPS_DBG("sps:vote for bam dma clk.\n");
+		ret = clk_prepare_enable(sps->bamdma_clk);
+		if (ret) {
+			SPS_ERR("sps:fail to enable bamdma_clk:ret=%d\n", ret);
+			return ret;
+		}
+	} else {
+		SPS_DBG("sps:relinquish bam dma clk.\n");
+		clk_disable_unprepare(sps->bamdma_clk);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(sps_ctrl_bam_dma_clk);
+
+/**
  * Register a BAM device
  *
  */
@@ -1990,8 +2016,7 @@ int sps_timer_ctrl(struct sps_pipe *h,
 		SPS_ERR("sps:%s:timer_ctrl pointer is NULL.\n", __func__);
 		return SPS_ERROR;
 	} else if (timer_result == NULL) {
-		SPS_ERR("sps:%s:result pointer is NULL.\n", __func__);
-		return SPS_ERROR;
+		SPS_DBG("sps:%s:no result to return.\n", __func__);
 	}
 
 	bam = sps_bam_lock(pipe);
@@ -2192,7 +2217,7 @@ static int get_device_tree_data(struct platform_device *pdev)
 
 static int __devinit msm_sps_probe(struct platform_device *pdev)
 {
-	int ret;
+	int ret = -ENODEV;
 
 	SPS_DBG2("sps:%s.", __func__);
 
@@ -2229,7 +2254,10 @@ static int __devinit msm_sps_probe(struct platform_device *pdev)
 
 	sps->dfab_clk = clk_get(sps->dev, "dfab_clk");
 	if (IS_ERR(sps->dfab_clk)) {
-		SPS_ERR("sps:fail to get dfab_clk.");
+		if (IS_ERR(sps->dfab_clk) == -EPROBE_DEFER)
+			ret = -EPROBE_DEFER;
+		else
+			SPS_ERR("sps:fail to get dfab_clk.");
 		goto clk_err;
 	} else {
 		ret = clk_set_rate(sps->dfab_clk, 64000000);
@@ -2243,7 +2271,10 @@ static int __devinit msm_sps_probe(struct platform_device *pdev)
 	if (!d_type) {
 		sps->pmem_clk = clk_get(sps->dev, "mem_clk");
 		if (IS_ERR(sps->pmem_clk)) {
-			SPS_ERR("sps:fail to get pmem_clk.");
+			if (IS_ERR(sps->pmem_clk) == -EPROBE_DEFER)
+				ret = -EPROBE_DEFER;
+			else
+				SPS_ERR("sps:fail to get pmem_clk.");
 			goto clk_err;
 		} else {
 			ret = clk_prepare_enable(sps->pmem_clk);
@@ -2257,7 +2288,10 @@ static int __devinit msm_sps_probe(struct platform_device *pdev)
 #ifdef CONFIG_SPS_SUPPORT_BAMDMA
 	sps->bamdma_clk = clk_get(sps->dev, "dma_bam_pclk");
 	if (IS_ERR(sps->bamdma_clk)) {
-		SPS_ERR("sps:fail to get bamdma_clk.");
+		if (IS_ERR(sps->bamdma_clk) == -EPROBE_DEFER)
+			ret = -EPROBE_DEFER;
+		else
+			SPS_ERR("sps:fail to get bamdma_clk.");
 		goto clk_err;
 	} else {
 		ret = clk_prepare_enable(sps->bamdma_clk);
@@ -2278,11 +2312,13 @@ static int __devinit msm_sps_probe(struct platform_device *pdev)
 		SPS_ERR("sps:sps_device_init err.");
 #ifdef CONFIG_SPS_SUPPORT_BAMDMA
 		clk_disable_unprepare(sps->dfab_clk);
+		clk_disable_unprepare(sps->bamdma_clk);
 #endif
 		goto sps_device_init_err;
 	}
 #ifdef CONFIG_SPS_SUPPORT_BAMDMA
 	clk_disable_unprepare(sps->dfab_clk);
+	clk_disable_unprepare(sps->bamdma_clk);
 #endif
 	sps->is_ready = true;
 
@@ -2297,7 +2333,7 @@ device_create_err:
 alloc_chrdev_region_err:
 	class_destroy(sps->dev_class);
 
-	return -ENODEV;
+	return ret;
 }
 
 static int __devexit msm_sps_remove(struct platform_device *pdev)

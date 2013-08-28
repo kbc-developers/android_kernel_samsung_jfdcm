@@ -34,6 +34,8 @@
 #include <linux/debugfs.h>
 #include <linux/dma-buf.h>
 #include <linux/msm_ion.h>
+#include <trace/events/kmem.h>
+
 
 #include <mach/iommu_domains.h>
 #include "ion_priv.h"
@@ -433,9 +435,16 @@ struct ion_handle *ion_alloc(struct ion_client *client, size_t len,
 		if (secure_allocation &&
 			(heap->type != (enum ion_heap_type) ION_HEAP_TYPE_CP))
 			continue;
+		trace_ion_alloc_buffer_start(client->name, heap->name, len,
+					     heap_mask, flags);
 		buffer = ion_buffer_create(heap, dev, len, align, flags);
+		trace_ion_alloc_buffer_end(client->name, heap->name, len,
+					   heap_mask, flags);
 		if (!IS_ERR_OR_NULL(buffer))
 			break;
+
+		trace_ion_alloc_buffer_fallback(client->name, heap->name, len,
+					    heap_mask, flags, PTR_ERR(buffer));
 		if (dbg_str_idx < MAX_DBG_STR_LEN) {
 			unsigned int len_left = MAX_DBG_STR_LEN-dbg_str_idx-1;
 			int ret_value = snprintf(&dbg_str[dbg_str_idx],
@@ -454,10 +463,15 @@ struct ion_handle *ion_alloc(struct ion_client *client, size_t len,
 	}
 	mutex_unlock(&dev->lock);
 
-	if (buffer == NULL)
+	if (buffer == NULL) {
+		trace_ion_alloc_buffer_fail(client->name, dbg_str, len,
+					    heap_mask, flags, -ENODEV);
 		return ERR_PTR(-ENODEV);
+	}
 
 	if (IS_ERR(buffer)) {
+		trace_ion_alloc_buffer_fail(client->name, dbg_str, len,
+					    heap_mask, flags, PTR_ERR(buffer));
 		pr_debug("ION is unable to allocate 0x%x bytes (alignment: "
 			 "0x%x) from heap(s) %sfor client %s with heap "
 			 "mask 0x%x\n",
@@ -1572,6 +1586,10 @@ void ion_debug_mem_map_create(struct seq_file *s, struct ion_heap *heap,
 {
 	struct ion_device *dev = heap->dev;
 	struct rb_node *n;
+	size_t size;
+
+	if (!heap->ops->phys)
+		return;
 
 	for (n = rb_first(&dev->buffers); n; n = rb_next(n)) {
 		struct ion_buffer *buffer =
@@ -1584,9 +1602,11 @@ void ion_debug_mem_map_create(struct seq_file *s, struct ion_heap *heap,
 					   "Part of memory map will not be logged\n");
 				break;
 			}
-			data->addr = buffer->priv_phys;
-			data->addr_end = buffer->priv_phys + buffer->size-1;
-			data->size = buffer->size;
+
+			buffer->heap->ops->phys(buffer->heap, buffer,
+						&(data->addr), &size);
+			data->size = (unsigned long) size;
+			data->addr_end = data->addr + data->size - 1;
 			data->client_name = ion_debug_locate_owner(dev, buffer);
 			ion_debug_mem_map_add(mem_map, data);
 		}

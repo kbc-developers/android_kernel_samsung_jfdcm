@@ -588,9 +588,6 @@ config CPU_TLB_V6
 config CPU_TLB_V7
 	bool
 
-config EMULATE_DOMAIN_MANAGER_V7
-	bool
-
 config VERIFY_PERMISSION_FAULT
 	bool
 endif
@@ -934,21 +931,6 @@ config ARCH_HAS_BARRIERS
 	help
 	  This option allows the use of custom mandatory barriers
 	  included via the mach/barriers.h file.
-
-config VCM_MM
-	bool
-
-config VCM
-	bool "Virtual Contiguous Memory (VCM) Layer"
-	depends on MMU
-	select GENERIC_ALLOCATOR
-	select VCM_MM
-	default n
-	help
-	  Virtual Contiguous Memory layer. This is the layer that is intended to
-	  replace PMEM.
-
-	  If you don't know what this is, say N here.
 
 config STRICT_MEMORY_RWX
 	bool "restrict kernel memory permissions as much as possible"

@@ -678,6 +678,12 @@ void cont_splash_clk_ctrl(int enable)
 {
 	static int cont_splash_clks_enabled;
 	if (enable && !cont_splash_clks_enabled) {
+		if (clk_set_rate(dsi_byte_div_clk, 1) < 0)      /* divided by 1 */
+			pr_err("%s: dsi_byte_div_clk - "
+				"clk_set_rate failed\n", __func__);
+		if (clk_set_rate(dsi_esc_clk, esc_byte_ratio) < 0) /* divided by esc */
+			pr_err("%s: dsi_esc_clk - "                      /* clk ratio */
+				"clk_set_rate failed\n", __func__);
 			clk_prepare_enable(dsi_byte_div_clk);
 			clk_prepare_enable(dsi_esc_clk);
 			cont_splash_clks_enabled = 1;
@@ -688,24 +694,24 @@ void cont_splash_clk_ctrl(int enable)
 	}
 }
 
-void mipi_dsi_prepare_clocks(void)
+void mipi_dsi_prepare_ahb_clocks(void)
 {
 	clk_prepare(amp_pclk);
 	clk_prepare(dsi_m_pclk);
 	clk_prepare(dsi_s_pclk);
-	clk_set_rate(dsi_byte_div_clk, 1);
-	clk_set_rate(dsi_esc_clk, 1);
-	clk_prepare(dsi_byte_div_clk);
-	clk_prepare(dsi_esc_clk);
+}
+
+void mipi_dsi_unprepare_ahb_clocks(void)
+{
+	clk_unprepare(dsi_m_pclk);
+	clk_unprepare(dsi_s_pclk);
+	clk_unprepare(amp_pclk);
 }
 
 void mipi_dsi_unprepare_clocks(void)
 {
 	clk_unprepare(dsi_esc_clk);
 	clk_unprepare(dsi_byte_div_clk);
-	clk_unprepare(dsi_m_pclk);
-	clk_unprepare(dsi_s_pclk);
-	clk_unprepare(amp_pclk);
 }
 
 void mipi_dsi_ahb_ctrl(u32 enable)
@@ -744,16 +750,16 @@ void mipi_dsi_clk_enable(void)
 	MIPI_OUTP(MIPI_DSI_BASE + 0x0200, pll_ctrl | 0x01);
 	mipi_dsi_phy_rdy_poll();
 
-	if (clk_set_rate(dsi_byte_div_clk, 1) < 0)	/* divided by 1 */
+	if (clk_set_rate(dsi_byte_div_clk, 1) < 0)      /* divided by 1 */
 		pr_err("%s: dsi_byte_div_clk - "
 			"clk_set_rate failed\n", __func__);
 	if (clk_set_rate(dsi_esc_clk, esc_byte_ratio) < 0) /* divided by esc */
-		pr_err("%s: dsi_esc_clk - "			 /* clk ratio */
+		pr_err("%s: dsi_esc_clk - "                      /* clk ratio */
 			"clk_set_rate failed\n", __func__);
 	mipi_dsi_pclk_ctrl(&dsi_pclk, 1);
 	mipi_dsi_clk_ctrl(&dsicore_clk, 1);
-	clk_enable(dsi_byte_div_clk);
-	clk_enable(dsi_esc_clk);
+	clk_prepare_enable(dsi_byte_div_clk);
+	clk_prepare_enable(dsi_esc_clk);
 	mipi_dsi_clk_on = 1;
 	mdp4_stat.dsi_clk_on++;
 }
@@ -845,11 +851,20 @@ void hdmi_msm_reset_core(void)
 void hdmi_msm_init_phy(int video_format)
 {
 	uint32 offset;
+
 	pr_err("Video format is : %u\n", video_format);
 
 	HDMI_OUTP(HDMI_PHY_REG_0, 0x1B);
-	HDMI_OUTP(HDMI_PHY_REG_1, 0xf2);
+	HDMI_OUTP(HDMI_PHY_REG_1, 0xF2);
 
+	/* Set HDMI_PHY_REG1 based on chip source id[30:28] and PTE_HDMI[31] bit
+	 * of QFPROM_RAW_PTE_ROW1_LSB */
+	 if (hdmi_msm_state->pd->source) {
+		if ((hdmi_msm_state->pd->source()) &&
+			(((inpdw(QFPROM_BASE + 0x00c0) & 0xF0000000) >> 28) ==
+									0x1))
+			HDMI_OUTP(HDMI_PHY_REG_1, 0xF1);
+	}
 	offset = HDMI_PHY_REG_4;
 	while (offset <= HDMI_PHY_REG_11) {
 		HDMI_OUTP(offset, 0x0);
