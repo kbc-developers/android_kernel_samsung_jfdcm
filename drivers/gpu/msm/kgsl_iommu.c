@@ -282,7 +282,7 @@ static void _check_if_freed(struct kgsl_iommu_device *iommu_dev,
 }
 
 static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
-	struct device *dev, unsigned long addr, int flags)
+	struct device *dev, unsigned long addr, int flags, void *token)
 {
 	int ret = 0;
 	struct kgsl_mmu *mmu;
@@ -609,8 +609,10 @@ static void kgsl_iommu_destroy_pagetable(void *mmu_specific_pt)
 {
 	struct kgsl_iommu_pt *iommu_pt = mmu_specific_pt;
 	if (iommu_pt->domain)
-		iommu_domain_free(iommu_pt->domain);
+		msm_unregister_domain(iommu_pt->domain);
+
 	kfree(iommu_pt);
+	iommu_pt = NULL;
 }
 
 /*
@@ -643,7 +645,7 @@ void *kgsl_iommu_create_pagetable(void)
 		return NULL;
 	} else {
 		iommu_set_fault_handler(iommu_pt->domain,
-			kgsl_iommu_fault_handler);
+			kgsl_iommu_fault_handler, NULL);
 	}
 
 	return iommu_pt;

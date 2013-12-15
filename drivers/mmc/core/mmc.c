@@ -900,9 +900,12 @@ static int mmc_change_bus_speed(struct mmc_host *host, unsigned long *freq)
 				MMC_SEND_TUNING_BLOCK_HS200);
 		mmc_host_clk_release(card->host);
 
-		if (err)
-			pr_warn("%s: %s: tuning execution failed %d\n",
-				   mmc_hostname(card->host), __func__, err);
+		if (err) {
+			pr_warn("%s: %s: tuning execution failed %d. Restoring to previous clock %lu\n",
+				   mmc_hostname(card->host), __func__, err,
+				   host->clk_scaling.curr_freq);
+			mmc_set_clock(host, host->clk_scaling.curr_freq);
+		}
 	}
 out:
 	mmc_release_host(host);
@@ -1407,8 +1410,6 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		if (card->ext_csd.bkops_en) {
 			INIT_DELAYED_WORK(&card->bkops_info.dw,
 					  mmc_start_idle_time_bkops);
-			INIT_WORK(&card->bkops_info.poll_for_completion,
-				  mmc_bkops_completion_polling);
 
 			/*
 			 * Calculate the time to start the BKOPs checking.
