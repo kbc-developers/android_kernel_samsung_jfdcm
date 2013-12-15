@@ -678,7 +678,7 @@ endif
 
 
 ifeq ($(USER_BOOT_SPLASH),y)
-	KBUILD_CFLAGS	+= -DFB_MSM_LOGO
+	KBUILD_CFLAGS	+= -DCONFIG_FB_MSM_LOGO
 endif
 
 # Add user supplied CPPFLAGS, AFLAGS and CFLAGS as the last assignments

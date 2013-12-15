@@ -41,6 +41,8 @@ copy_ramdisk
 
 # boot splash header
 if [ -f $RAMDISK_TMP_DIR/initlogo.rle ]; then
+  echo ""
+  echo "=====> ENABLE USER_BOOT_SPLASH..."
   export USER_BOOT_SPLASH=y
 fi
 
