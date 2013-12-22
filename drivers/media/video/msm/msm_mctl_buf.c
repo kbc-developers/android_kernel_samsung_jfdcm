@@ -386,6 +386,35 @@ void msm_mctl_gettimeofday(struct timeval *tv)
 	tv->tv_usec = ts.tv_nsec/1000;
 }
 
+void msm_mctl_getAVTimer(struct msm_cam_v4l2_dev_inst *pcam_inst, struct timeval *tv)
+{
+   uint32_t avtimer_msw_1st = 0, avtimer_lsw = 0;
+   uint32_t avtimer_msw_2nd = 0;
+   uint8_t iter = 0;
+   tv->tv_sec = 0; tv->tv_usec = 0;
+
+   if (!(pcam_inst->p_avtimer_lsw) || !(pcam_inst->p_avtimer_msw)) {
+       pr_err("%s: ioremap failed\n", __func__);
+       return;
+   }
+
+   do {
+       avtimer_msw_1st = msm_camera_io_r(pcam_inst->p_avtimer_msw);
+       avtimer_lsw = msm_camera_io_r(pcam_inst->p_avtimer_lsw);
+       avtimer_msw_2nd = msm_camera_io_r(pcam_inst->p_avtimer_msw);
+   } while ((avtimer_msw_1st != avtimer_msw_2nd) && (iter++ < AVTIMER_ITERATION_CTR));
+
+   /*Just return if the MSW TimeStamps don't converge after a few iterations
+      Application needs to handle the zero TS values*/
+   if(iter >= AVTIMER_ITERATION_CTR){
+       pr_err("%s: AVTimer MSW TS did not converge !!!\n", __func__);
+       return;
+   }
+
+   tv->tv_sec = avtimer_msw_1st;
+   tv->tv_usec = avtimer_lsw;
+}
+
 struct msm_frame_buffer *msm_mctl_buf_find(
 	struct msm_cam_media_controller *pmctl,
 	struct msm_cam_v4l2_dev_inst *pcam_inst, int del_buf,
@@ -460,8 +489,8 @@ int msm_mctl_buf_done_proc(
 		buf->vidbuf.v4l2_buf.timestamp = cam_ts->timestamp;
 		buf->vidbuf.v4l2_buf.sequence = cam_ts->frame_id;
 	}
-	D("%s Notify user about buffer %d image_mode %d frame_id %d\n",
-		__func__,
+	pcam_inst->sequence = buf->vidbuf.v4l2_buf.sequence;
+	D("%s Notify user about buffer %d image_mode %d frame_id %d", __func__,
 		buf->vidbuf.v4l2_buf.index, pcam_inst->image_mode,
 		buf->vidbuf.v4l2_buf.sequence);
 	vb2_buffer_done(&buf->vidbuf, VB2_BUF_STATE_DONE);
@@ -648,13 +677,25 @@ struct msm_cam_v4l2_dev_inst *msm_mctl_get_pcam_inst(
 	 *    video instance.
 	 */
 	if (buf_handle->buf_lookup_type == BUF_LOOKUP_BY_INST_HANDLE) {
-		idx = GET_MCTLPP_INST_IDX(buf_handle->inst_handle);
-		if (idx > MSM_DEV_INST_MAX) {
-			idx = GET_VIDEO_INST_IDX(buf_handle->inst_handle);
-			BUG_ON(idx > MSM_DEV_INST_MAX);
-			pcam_inst = pcam->dev_inst[idx];
+		if (buf_handle->inst_handle == 0) {
+			pr_err("%sBuffer instance handle not initialised",
+				 __func__);
+			return pcam_inst;
 		} else {
-			pcam_inst = pcam->mctl_node.dev_inst[idx];
+			idx = GET_MCTLPP_INST_IDX(buf_handle->inst_handle);
+			if (idx > MSM_DEV_INST_MAX) {
+				idx = GET_VIDEO_INST_IDX(
+					buf_handle->inst_handle);
+				if (idx > MSM_DEV_INST_MAX) {
+					pr_err("%s Invalid video inst idx %d",
+						__func__, idx);
+					return pcam_inst;
+				} else {
+					pcam_inst = pcam->dev_inst[idx];
+				}
+			} else {
+				pcam_inst = pcam->mctl_node.dev_inst[idx];
+			}
 		}
 	} else if ((buf_handle->buf_lookup_type == BUF_LOOKUP_BY_IMG_MODE)
 		&& (buf_handle->image_mode >= 0 &&
@@ -866,8 +907,8 @@ int msm_mctl_buf_done_pp(struct msm_cam_media_controller *pmctl,
 		__func__, pcam_inst, frame->ch_paddr[0], ret_frame->dirty);
 	cam_ts.present = 1;
 	cam_ts.timestamp = ret_frame->timestamp;
-	cam_ts.frame_id  = ret_frame->frame_id;
-	if (ret_frame->dirty)
+	cam_ts.frame_id   = ret_frame->frame_id;
+	if (ret_frame->dirty || (ret_frame->frame_id < pcam_inst->sequence))
 		/* the frame is dirty, not going to disptach to app */
 		rc = msm_mctl_release_free_buf(pmctl, pcam_inst, frame);
 	else
