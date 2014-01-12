@@ -100,8 +100,11 @@ struct mipi_panel_data {
 	struct mipi_samsung_driver_data *msd;
 
 	int (*backlight_control)(int bl_level);
+
+	int siop_status;
 };
 
+int mipi_samsung_cabc_onoff ( int enable );
 int mipi_samsung_tft_device_register(struct msm_panel_info *pinfo,
 					u32 channel, u32 panel,
 					struct mipi_panel_data *mpd);

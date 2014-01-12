@@ -68,7 +68,7 @@ static int32_t vibe_set_pwm_freq(int nForce)
 #if defined(CONFIG_MACH_JF_DCM)
 		g_nforce_32 = ((nForce * g_nlra_gp_clk_pwm_mul) >> 8) + 22;
 #else
-		g_nforce_32 = ((nForce * g_nlra_gp_clk_pwm_mul) >> 8) + 14;
+		g_nforce_32 = ((nForce * g_nlra_gp_clk_pwm_mul) >> 8) + 10;
 #endif
 #else
 		g_nforce_32 = ((nForce * g_nlra_gp_clk_pwm_mul) >> 8) + 1;

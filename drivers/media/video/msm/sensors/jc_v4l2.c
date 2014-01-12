@@ -146,6 +146,7 @@ struct jc_ctrl_t {
 	bool isp_null_read_sensor_fw;
 	bool samsung_app;
 	bool factory_bin;
+	int fw_retry_cnt;
 };
 
 static struct jc_ctrl_t *jc_ctrl;
@@ -835,9 +836,11 @@ static int jc_check_sum(void)
 		err = jc_readw(JC_CATEGORY_FLASH, 0x0A, &factarea_val);
 		cam_err("FactArea Checksum : %x", factarea_val);
 		cam_err("ISP - FactArea Checksum : %x", isp_val-factarea_val);
+
+		return isp_val-factarea_val;
 	}
 
-	return 0;
+	return isp_val;
 }
 
 static int jc_phone_fw_to_isp(void)
@@ -847,6 +850,7 @@ static int jc_phone_fw_to_isp(void)
 	int val;
 	int chip_erase;
 
+retry:
 	/* Set SIO receive mode : 0x4C, rising edge*/
 	err = jc_writeb(JC_CATEGORY_FLASH, 0x4B, 0x4C);
 	cam_err("err : %d", err);
@@ -895,7 +899,13 @@ static int jc_phone_fw_to_isp(void)
 			0x07, &val);
 	} while (val == 0x01 && retries++ < JC_I2C_VERIFY);
 
-	jc_check_sum();
+	err = jc_check_sum();
+
+	if (err != 0 && jc_ctrl->fw_retry_cnt < 2) {
+		cam_err("checksum error!! retry fw write!!: %d", jc_ctrl->fw_retry_cnt);
+		jc_ctrl->fw_retry_cnt++;
+		goto retry;
+	}
 
 	return 0;
 }
@@ -907,6 +917,7 @@ static int jc_read_from_sensor_fw(void)
 	int val = 0;
 	int chip_erase;
 
+retry:
 	/* Read Sensor Flash */
 	err = jc_writeb(JC_CATEGORY_FLASH, 0x63, 0x01);
 	retries = 0;
@@ -939,7 +950,13 @@ static int jc_read_from_sensor_fw(void)
 			0x07, &val);
 	} while (val == 0x01 && retries++ < JC_I2C_VERIFY);
 
-	jc_check_sum();
+	err = jc_check_sum();
+
+	if (err != 0 && jc_ctrl->fw_retry_cnt < 2) {
+		cam_err("checksum error!! retry fw write!!: %d", jc_ctrl->fw_retry_cnt);
+		jc_ctrl->fw_retry_cnt++;
+		goto retry;
+	}
 
 	return 0;
 }
@@ -2099,8 +2116,9 @@ static int jc_set_touch_af_pos(int x, int y)
 
 	cam_info("Entered, touch af pos (%x, %x)\n", x, y);
 
-	if (jc_ctrl->af_mode >=	3
-		&& jc_ctrl->af_mode <=6) {
+	if ((jc_ctrl->af_mode >= 3
+		&& jc_ctrl->af_mode <=6)
+		&& jc_ctrl->touch_af_mode == true) {
 		cam_info("Now CAF mode. Return touch position setting!\n");
 		return rc;
 	}
@@ -2426,11 +2444,15 @@ static int jc_set_movie_mode(int mode)
 		jc_ctrl->movie_mode = false;
 		jc_writeb(JC_CATEGORY_PARM,
 				JC_PARM_MON_MOVIE_SELECT, 0x00);
+		cam_info("Zsl mode\n");
+		jc_writeb(0x02, 0xCF, 0x01);	/*zsl mode*/
 	} else if (mode == 1) {
 		cam_info("Movie mode\n");
 		jc_ctrl->movie_mode = true;
 		jc_writeb(JC_CATEGORY_PARM,
 				JC_PARM_MON_MOVIE_SELECT, 0x01);
+		cam_info("Non zsl mode\n");
+		jc_writeb(0x02, 0xCF, 0x00);	/*non-zsl mode*/
 	}
 	return rc;
 }
@@ -2504,6 +2526,91 @@ static int jc_set_shot_mode(int mode)
 	return rc;
 }
 
+static int jc_set_scene_mode(int mode)
+{
+	int32_t rc = 0;
+	u32 isp_mode;
+
+	jc_readb(JC_CATEGORY_SYS, JC_SYS_MODE, &isp_mode);
+
+	cam_info("Entered, scene mode %d / %d\n", mode, isp_mode);
+
+	if (isp_mode == JC_MONITOR_MODE) {
+		cam_info("monitor mode\n");
+
+		jc_set_mode(JC_PARMSET_MODE);
+
+		if (mode == 0) {
+			cam_info("auto scene\n");
+			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x01);
+		} else if (mode == 5) {
+			cam_info("party scene\n");
+			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x15);
+		} else if (mode == 7) {
+			cam_info("sunset scene\n");
+			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x16);
+		} else if (mode == 10) {
+			cam_info("night scene\n");
+			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x17);
+		} else if (mode == 20) {
+			cam_info("action scene\n");
+			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x11);
+		}
+
+		jc_set_mode(JC_MONITOR_MODE);
+
+		cam_info("Restart auto focus\n");
+		if (jc_ctrl->af_mode == 3) {
+			cam_info("start CAF\n");
+			jc_writeb(JC_CATEGORY_LENS,
+					0x01, 0x03);
+			jc_writeb(JC_CATEGORY_LENS,
+					0x02, 0x01);
+		} else if (jc_ctrl->af_mode == 4) {
+			cam_info("start macro CAF\n");
+			jc_writeb(JC_CATEGORY_LENS,
+					0x01, 0x07);
+			jc_writeb(JC_CATEGORY_LENS,
+					0x02, 0x01);
+		} else if (jc_ctrl->af_mode == 5) {
+			msleep(50);
+			cam_info("start Movie CAF\n");
+			jc_writeb(JC_CATEGORY_LENS,
+					0x01, 0x04);
+			jc_writeb(JC_CATEGORY_LENS,
+					0x02, 0x01);
+		} else if (jc_ctrl->af_mode == 6) {
+			msleep(50);
+			cam_info("FD CAF\n");
+			jc_writeb(JC_CATEGORY_LENS,
+					0x01, 0x05);
+			jc_writeb(JC_CATEGORY_LENS,
+					0x02, 0x01);
+		}
+	} else {
+		cam_info("parameter mode\n");
+
+		if (mode == 0) {
+			cam_info("auto scene\n");
+			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x01);
+		} else if (mode == 5) {
+			cam_info("party scene\n");
+			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x15);
+		} else if (mode == 7) {
+			cam_info("sunset scene\n");
+			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x16);
+		} else if (mode == 10) {
+			cam_info("night scene\n");
+			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x17);
+		} else if (mode == 20) {
+			cam_info("action scene\n");
+			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x11);
+		}
+	}
+
+	return rc;
+}
+
 static int jc_set_ocr_focus_mode(int mode)
 {
 	int32_t rc = 0;
@@ -2511,6 +2618,20 @@ static int jc_set_ocr_focus_mode(int mode)
 	cam_info("Entered, ocr focus mode %d\n", mode);
 
 	jc_writeb(JC_CATEGORY_LENS, 0x18, mode);
+
+	return rc;
+}
+
+static int jc_set_different_ratio_capture(int mode)
+{
+	int32_t rc = 0;
+
+	cam_info("Entered, different ratio capture mode %d\n", mode);
+
+	if (mode == 1)
+		jc_writeb(JC_CATEGORY_CAPPARM, 0x77, 0x1);
+	else
+		jc_writeb(JC_CATEGORY_CAPPARM, 0x77, 0x0);
 
 	return rc;
 }
@@ -2765,13 +2886,27 @@ void sensor_native_control(void __user *arg)
 		if (ctrl_info.value_1 == CAM_FW_MODE_DUMP) {
 			jc_sensor_power_reset(&jc_s_ctrl);
 #if JC_DUMP_FW
-	jc_dump_fw();
+			jc_dump_fw();
 #endif
 			jc_sensor_power_down(&jc_s_ctrl);
 		} else if (ctrl_info.value_1 == CAM_FW_MODE_UPDATE) {
 			jc_sensor_power_reset(&jc_s_ctrl);
-			jc_load_fw_main();
-			jc_s_ctrl.func_tbl->sensor_power_up(&jc_s_ctrl);
+			cam_info("ISP FW Force Write!\n");
+			jc_get_phone_version();
+			jc_load_SIO_fw();
+			jc_phone_fw_to_isp();
+			jc_sensor_power_reset(&jc_s_ctrl);
+			jc_get_isp_version();
+			jc_isp_boot();
+
+			cam_info("nv12 output setting\n");
+			jc_writeb(JC_CATEGORY_CAPCTRL,
+					0x0, 0x0f);
+
+			cam_info("Sensor version : %s\n", sysfs_sensor_fw_str);
+			cam_info("ISP version : %s\n", sysfs_isp_fw_str);
+			cam_info("Phone version : %s\n", sysfs_phone_fw_str);
+			cam_info("ISP FW Force Write Done!\n");
 		}
 		break;
 
@@ -2900,6 +3035,10 @@ void sensor_native_control(void __user *arg)
 		jc_set_ocr_focus_mode(ctrl_info.value_1);
 		break;
 
+	case EXT_CAM_SET_AF_WINDOW:
+		jc_set_af_window(ctrl_info.value_1);
+		break;
+
 	case EXT_CAM_SET_FACTORY_BIN:
 		cam_info(" factory binary: %d", ctrl_info.value_1);
 		if (ctrl_info.value_1 == 1)
@@ -2908,8 +3047,8 @@ void sensor_native_control(void __user *arg)
 			jc_ctrl->factory_bin = false;
 		break;
 
-	case EXT_CAM_SET_AF_WINDOW:
-		jc_set_af_window(ctrl_info.value_1);
+	case EXT_CAM_SCENEMODE:
+		jc_set_scene_mode(ctrl_info.value_1);
 		break;
 
 	default:
@@ -3054,6 +3193,8 @@ static int jc_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	jc_ctrl->need_restart_caf = false;
 	jc_ctrl->is_isp_null = false;
 	jc_ctrl->isp_null_read_sensor_fw = false;
+	jc_ctrl->touch_af_mode = false;
+	jc_ctrl->fw_retry_cnt = 0;
 
 	rc = msm_camera_request_gpio_table(data, 1);
 	if (rc < 0)
@@ -3108,11 +3249,12 @@ static int jc_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		cam_info("isp_ret: %d, samsung app: %d, factory bin: %d\n",
 		    isp_ret, jc_ctrl->samsung_app, jc_ctrl->factory_bin);
 
+#if 0 //remove for ged
 		if (isp_ret == 0 && jc_ctrl->samsung_app == false && jc_ctrl->factory_bin == false) {
 		    cam_err("3rd party app. skip ISP FW update\n");
 		    goto start;
 		}
-
+#endif
 		jc_ctrl->fw_update = false;
 
 		if (firmware_update_sdcard == true) {
@@ -3200,11 +3342,17 @@ static int jc_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 			return -ENOSYS;
 		}
 	}
-
+#if 0 //remove for ged
 start:
+#endif
 	cam_info("nv12 output setting\n");
 	err = jc_writeb(JC_CATEGORY_CAPCTRL,
 			0x0, 0x0f);
+
+	if (jc_ctrl->samsung_app != 1) {
+		cam_info("Set different ratio capture mode\n");
+		jc_set_different_ratio_capture(1);
+	}
 
 	err = jc_readb(0x01, 0x3F, &isp_revision);
 	cam_info("isp revision : 0x%x\n", isp_revision);

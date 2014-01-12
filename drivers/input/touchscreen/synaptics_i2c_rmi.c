@@ -841,7 +841,7 @@ static int synaptics_rmi4_glove_mode_set(struct synaptics_rmi4_data *rmi4_data,
 	int retval = 0;
 	unsigned char glove_enable = 0;
 
-#if !defined(CONFIG_MACH_JACTIVE_EUR)
+#if !defined(CONFIG_MACH_JACTIVE_EUR) && !defined(CONFIG_MACH_JACTIVE_ATT)
 	if (rmi4_data->panel_revision < OCTA_PANEL_REVISION_43) {
 		dev_info(&rmi4_data->i2c_client->dev,
 					"%s: do not support this FPCB version.\n", __func__);
@@ -1665,7 +1665,7 @@ static int synaptics_rmi4_f51_edge_swipe(struct synaptics_rmi4_data *rmi4_data,
 		f51->surface_data.angle = data->edge_swipe_dg - 180;
 #endif
 	else if (data->edge_swipe_dg < 90)
-#if defined(CONFIG_MACH_JACTIVE_EUR)
+#if defined(CONFIG_MACH_JACTIVE_EUR) || defined(CONFIG_MACH_JACTIVE_ATT)
 		f51->surface_data.angle = 90 - data->edge_swipe_dg;
 #else
 		f51->surface_data.angle = data->edge_swipe_dg;
@@ -1758,6 +1758,16 @@ static void synaptics_rmi4_f51_report(struct synaptics_rmi4_data *rmi4_data,
 		input_mt_sync(rmi4_data->input_dev);
 #endif
 		input_sync(rmi4_data->input_dev);
+
+#if defined(CONFIG_TOUCHSCREEN_FACTORY_PLATFORM)
+		if (!rmi4_data->hover.state) {
+			dev_info(&rmi4_data->i2c_client->dev,
+				"%s: Hover pressed.\n", __func__);
+			rmi4_data->hover.state = 1;
+		} else {
+			rmi4_data->hover.mcount++;
+		}
+#endif
 /*
 		dev_info(&rmi4_data->i2c_client->dev,
 				"%s: Hover finger: x = %d, y = %d, z = %d\n" ,__func__, x, y, z);
@@ -3269,6 +3279,49 @@ err_input_device:
 	return retval;
 }
 
+#ifdef CONFIG_TOUCHSCREEN_FACTORY_PLATFORM
+#include <asm/uaccess.h>
+#define LCD_LDI_FILE_PATH	"/sys/class/lcd/panel/window_type"
+static int synaptics_rmi4_open_lcd_ldi(struct synaptics_rmi4_data *rmi4_data)
+{
+	int iRet = 0;
+	mm_segment_t old_fs;
+	struct file *window_type;
+	unsigned char lcdtype[4] = {0,};
+
+	old_fs = get_fs();
+	set_fs(KERNEL_DS);
+
+	window_type = filp_open(LCD_LDI_FILE_PATH, O_RDONLY, 0666);
+	if (IS_ERR(window_type)) {
+		iRet = PTR_ERR(window_type);
+		if (iRet != -ENOENT)
+			dev_err(&rmi4_data->i2c_client->dev, "%s: window_type file open fail\n", __func__);
+		set_fs(old_fs);
+		goto exit;
+	}
+
+	iRet = window_type->f_op->read(window_type, (u8 *)lcdtype, sizeof(u8) * 4, &window_type->f_pos);
+	if (iRet != (sizeof(u8) * 4)) {
+		dev_err(&rmi4_data->i2c_client->dev, "%s: Can't read the lcd ldi data\n", __func__);
+		iRet = -EIO;
+	}
+
+	/* The variable of lcdtype has ASCII values(40 81 45) at 0x08 OCTA,
+	  * so if someone need a TSP panel revision then to read third parameter.*/
+	rmi4_data->factory_read_panel_wakeup = lcdtype[3] & 0x0F;
+	dev_info(&rmi4_data->i2c_client->dev,
+		"%s: update factory_panel_revision 0x%02X\n",
+		__func__, rmi4_data->factory_read_panel_wakeup);
+
+	filp_close(window_type, current->files);
+	set_fs(old_fs);
+
+exit:
+	return iRet;
+}
+#endif
+
 static int synaptics_rmi4_reinit_device(struct synaptics_rmi4_data *rmi4_data)
 {
 	int retval;
@@ -3512,6 +3565,15 @@ static void synaptics_rmi4_f51_finger_timer(unsigned long data)
 		input_mt_slot(rmi4_data->input_dev, 0);
 		input_mt_report_slot_state(rmi4_data->input_dev,
 				MT_TOOL_FINGER, 0);
+#if defined(CONFIG_TOUCHSCREEN_FACTORY_PLATFORM)
+		if (rmi4_data->hover.state) {
+			dev_info(&rmi4_data->i2c_client->dev,
+				"%s: Hover released.M[%d]\n",
+				__func__, rmi4_data->hover.mcount);
+			rmi4_data->hover.mcount = 0;
+			rmi4_data->hover.state = 0;
+		}
+#endif
 #else
 		input_mt_sync(rmi4_data->input_dev);
 #endif
@@ -4133,14 +4195,26 @@ static void synaptics_rmi4_late_resume(struct early_suspend *h)
 			dev_info(&rmi4_data->i2c_client->dev, "%s: tsp int request failed, ret=%d", __func__, retval);
 			return ;
 		}
+#ifdef CONFIG_TOUCHSCREEN_FACTORY_PLATFORM
+		retval = synaptics_rmi4_query_device(rmi4_data);
+		if (retval < 0)
+			dev_err(&rmi4_data->i2c_client->dev,
+					"%s: Failed to query device\n",
+					__func__);
+		retval = synaptics_rmi4_open_lcd_ldi(rmi4_data);
+		if (retval < 0)
+			dev_err(&rmi4_data->i2c_client->dev,
+					"%s: Failed to read ldi ID2\n",
+					__func__);
 
+#else
 		retval = synaptics_rmi4_reinit_device(rmi4_data);
 		if (retval < 0) {
 			dev_err(&rmi4_data->i2c_client->dev,
 					"%s: Failed to reinit device\n",
 					__func__);
 		}
-
+#endif
 		if (rmi4_data->ta_status)
 			synaptics_charger_conn(rmi4_data, rmi4_data->ta_status);
 
