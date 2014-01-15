@@ -86,10 +86,6 @@ cp $OBJ_DIR/arch/arm/boot/zImage $BIN_DIR/kernel
 # create boot image
 make_boot_image
 
-if [ "$USE_LOKI" = 'y' ]; then
-  make_loki_image
-fi
-
 #check image size
 img_size=`wc -c $BIN_DIR/$IMAGE_NAME.img | awk '{print $1}'`
 if [ $img_size -gt $IMG_MAX_SIZE ]; then
@@ -98,9 +94,10 @@ if [ $img_size -gt $IMG_MAX_SIZE ]; then
     exit -1
 fi
 
-# create odin image
 cd $BIN_DIR
-make_odin3_image
+
+# create odin image
+#make_odin3_image
 
 # create cwm image
 make_cwm_image
