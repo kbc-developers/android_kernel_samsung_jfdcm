@@ -84,10 +84,8 @@ static struct felica_int_irqdata *pgint_irq = &gint_irq;
 /* storages for access restriction */
 static uid_t gmfc_uid = -1;
 static uid_t gmfl_uid = -1;
-#ifndef CONFIG_FELICA_NO_SECURE
 static uid_t grwm_uid = -1;
 static uid_t gdiag_uid = -1;
-#endif
 #ifdef CONFIG_NFC_FELICA
 static uid_t gnfc_uid = -1;
 struct file *pg_tty;
@@ -284,15 +282,15 @@ static int felica_uart_open(struct inode *inode, struct file *file)
 //		__func__, system_rev, felica_uart_port);
 
 	uid = __task_cred(current)->uid;
-#ifndef CONFIG_FELICA_NO_SECURE
 	if ((uid != gmfc_uid) && (uid != gdiag_uid)
 							&& (uid != gant_uid)) {
+#ifndef CONFIG_FELICA_NO_SECURE
 		FELICA_LOG_DEBUG
 		    ("[MFDD] %s END, uid=[%d], gmfc_uid=[%d], gdiag_uid=[%d]",
 		     __func__, uid, gmfc_uid, gdiag_uid);
 		return -EACCES;
-	}
 #endif
+	}
 
 	if (down_interruptible(&dev_sem->felica_sem)) {
 		FELICA_LOG_ERR("[MFDD] %s ERROR(down_interruptible)", \
@@ -803,10 +801,8 @@ static void felica_nl_recv_msg(struct sk_buff *skb)
 			snfc_rfs_init();
 			available_poll_init();
 #endif
-#ifndef CONFIG_FELICA_NO_SECURE
 			if (gdiag_name[0] != 0x00)
 				felica_uid_init();
-#endif
 			}
 
 			gfa_connect_flag = 1;
@@ -967,6 +963,7 @@ static int felica_CpuAll(void)
 
 static uint8_t felica_get_tamper_fuse_cmd(void)
 {
+#ifndef CONFIG_FELICA_NO_SECURE
 	u32 fuse_id = 0;
 	int ret;
 
@@ -986,12 +983,15 @@ static uint8_t felica_get_tamper_fuse_cmd(void)
 	felica_CpuAll();
 
 	return (uint8_t)fuse_id;
+#else
+	return 0;
+#endif
 }
 
 #elif defined(CONFIG_ARCH_APQ8064)
 static uint8_t felica_get_tamper_fuse_cmd(void)
 {
-#if 0
+#ifndef CONFIG_FELICA_NO_SECURE
 	uint32_t fuse_id = FELICA_HLOS_IMG_TAMPER_FUSE;
 	void *cmd_buf;
 	size_t cmd_len;
@@ -1010,8 +1010,9 @@ static uint8_t felica_get_tamper_fuse_cmd(void)
 
 	FELICA_LOG_DEBUG("[MFDD] %s END", __func__);
 	return resp_buf;
+#else
+	return 0;
 #endif
-  return 0;
 }
 #endif
 
@@ -1095,15 +1096,15 @@ static int felica_pon_open(struct inode *inode, struct file *file)
 	FELICA_LOG_DEBUG("[MFDD] %s START", __func__);
 
 	uid = __task_cred(current)->uid;
-#ifndef CONFIG_FELICA_NO_SECURE
 	if ((uid != gmfc_uid) && (uid != gdiag_uid)
 		&& (uid != gant_uid)) {
+#ifndef CONFIG_FELICA_NO_SECURE
 		FELICA_LOG_DEBUG
 		    ("[MFDD] %s END, uid=[%d], gmfc_uid=[%d], gdiag_uid=[%d]",
 		     __func__, uid, gmfc_uid, gdiag_uid);
 		return -EACCES;
-	}
 #endif
+	}
 
 	FELICA_LOG_DEBUG("[MFDD] %s END", __func__);
 	return 0;
@@ -1372,8 +1373,8 @@ static int felica_cen_open(struct inode *inode, struct file *file)
 	FELICA_LOG_DEBUG("[MFDD] %s START", __func__);
 	uid = __task_cred(current)->uid;
 	if (file->f_mode & FMODE_WRITE) {
-#ifndef CONFIG_FELICA_NO_SECURE
 		if ((uid != gdiag_uid) && (uid != gmfl_uid)) {
+#ifndef CONFIG_FELICA_NO_SECURE
 			FELICA_LOG_DEBUG(\
 			"[MFDD] %s END, uid=[%d]\n", __func__, uid);
 			FELICA_LOG_DEBUG(\
@@ -1383,8 +1384,8 @@ static int felica_cen_open(struct inode *inode, struct file *file)
 			FELICA_LOG_DEBUG(\
 			"[MFDD] %s END, gmfl_uid=[%d]\n", __func__, gmfl_uid);
 			return -EACCES;
-		}
 #endif
+		}
 	}
 	FELICA_LOG_DEBUG("[MFDD] %s END", __func__);
 	return 0;
@@ -1598,14 +1599,16 @@ static int felica_rfs_open(struct inode *inode, struct file *file)
 	FELICA_LOG_DEBUG("[MFDD] %s START", __func__);
 
 	uid = __task_cred(current)->uid;
-#ifndef CONFIG_FELICA_NO_SECURE
+
 	if ((uid != gmfc_uid) && (uid != gdiag_uid)) {
+#ifndef CONFIG_FELICA_NO_SECURE
 		FELICA_LOG_DEBUG
 		    ("[MFDD] %s END, uid=[%d], gmfc_uid=[%d], gdiag_uid=[%d]",
 		     __func__, uid, gmfc_uid, gdiag_uid);
 		return -EACCES;
-	}
 #endif
+	}
+
 	FELICA_LOG_DEBUG("[MFDD] %s END", __func__);
 	return 0;
 }
@@ -1741,23 +1744,26 @@ static int felica_rws_open(struct inode *inode, struct file *file)
 	FELICA_LOG_DEBUG("[MFDD] %s START", __func__);
 
 	uid = __task_cred(current)->uid;
-#ifndef CONFIG_FELICA_NO_SECURE
 	if (file->f_mode & FMODE_WRITE) {
 		if (uid != grwm_uid) {
+#ifndef CONFIG_FELICA_NO_SECURE
 			FELICA_LOG_DEBUG(\
 			"[MFDD] %s END, uid=[%d],gmfc_uid=[%d],gdiag_uid=[%d]",
 			     __func__, uid, gmfc_uid, gdiag_uid);
 			return -EACCES;
+#endif
 		}
 	} else {
 		if ((uid != gmfc_uid) && (uid != grwm_uid)) {
+#ifndef CONFIG_FELICA_NO_SECURE
 			FELICA_LOG_DEBUG(\
 			"[MFDD] %s END, uid=[%d],gmfc_uid=[%d],gdiag_uid=[%d]",
 			     __func__, uid, gmfc_uid, gdiag_uid);
 			return -EACCES;
+#endif
 		}
 	}
-#endif
+
 	FELICA_LOG_DEBUG("[MFDD] %s END", __func__);
 	return 0;
 }
@@ -2079,7 +2085,6 @@ static unsigned int felica_int_poll_poll(struct file *file, poll_table *wait)
 	FELICA_LOG_DEBUG("%s END", __func__);
 	return mask;
 }
-#if 0
 /******************************************************************************
  * /dev/felica_uid
  ******************************************************************************/
@@ -2171,13 +2176,13 @@ static int felica_uid_open(struct inode *inode, struct file *file)
 	memcpy(cmdline, cmdpos, leng);
 	cmdline[leng] = '\0';
 
-#ifndef CONFIG_FELICA_NO_SECURE
 	if (strncmp(cmdline, gdiag_name, leng) != 0) {
+#ifndef CONFIG_FELICA_NO_SECURE
 		FELICA_LOG_DEBUG("[MFDD] %s ERROR, %s gdiag %s", \
 			__func__, cmdline, gdiag_name);
 		return -EACCES;
-	}
 #endif
+	}
 
 	FELICA_LOG_DEBUG("[MFDD] %s END", __func__);
 	return 0;
@@ -2215,7 +2220,6 @@ static long felica_uid_ioctl(struct file *file, unsigned int cmd,
 	FELICA_LOG_DEBUG("[MFDD] %s END", __func__);
 	return 0;
 }
-#endif
 
 /******************************************************************************
  * /dev/felica_ant
@@ -2297,15 +2301,16 @@ static int felica_ant_open(struct inode *inode, struct file *file)
 	FELICA_LOG_DEBUG("[MFDD] %s START", __func__);
 
 	uid = __task_cred(current)->uid;
-#ifndef CONFIG_FELICA_NO_SECURE
 	if ((uid != gant_uid) && (uid != gdiag_uid)) {
+#ifndef CONFIG_FELICA_NO_SECURE
 		FELICA_LOG_DEBUG(\
 		"[MFDD] %s END, uid=[%d]\n", __func__, uid);
 		FELICA_LOG_DEBUG(\
 		"[MFDD] %s END, gant_uid=[%d]\n", __func__, gant_uid);
 		return -EACCES;
-	}
 #endif
+	}
+
 	FELICA_LOG_DEBUG("[MFDD] %s END", __func__);
 	return 0;
 }
@@ -2464,9 +2469,7 @@ static void felica_register_device(void)
 static void felica_deregister_device(void)
 {
 	FELICA_LOG_DEBUG("[MFDD] %s START", __func__);
-#ifndef CONFIG_FELICA_NO_SECURE
 	felica_uid_exit();
-#endif
 	felica_int_poll_exit();
 	felica_ant_exit();
 	felica_rws_exit();
@@ -3441,9 +3444,11 @@ static int rfs_poll_open(struct inode *inode, struct file *file)
 
 	uid_ret = snfc_uid_check();
 	if (uid_ret < 0) {
+#ifndef CONFIG_FELICA_NO_SECURE
 		FELICA_LOG_ERR
 		    ("[MFDD] %s open fail=[%d]", __func__, uid_ret);
 		return -EACCES;
+#endif
 	}
 
 	FELICA_LOG_DEBUG("[MFDD] %s END", __func__);
@@ -3629,9 +3634,11 @@ static int cxd2235power_open(struct inode *inode, struct file *file)
 
 	uid_ret = snfc_uid_check();
 	if (uid_ret < 0) {
+#ifndef CONFIG_FELICA_NO_SECURE
 		FELICA_LOG_ERR
 		    ("[MFDD] %s open fail=[%d]", __func__, uid_ret);
 		return -EACCES;
+#endif
 	}
 
 	FELICA_LOG_DEBUG("[MFDD] %s END", __func__);
@@ -3763,9 +3770,11 @@ static int snfc_rfs_open(struct inode *inode, struct file *file)
 
 	uid_ret = snfc_uid_check();
 	if (uid_ret < 0) {
+#ifndef CONFIG_FELICA_NO_SECURE
 		FELICA_LOG_ERR
 		    ("[MFDD] %s open fail=[%d]", __func__, uid_ret);
 		return -EACCES;
+#endif
 	}
 
 	FELICA_LOG_DEBUG("[MFDD] %s END", __func__);
@@ -3906,11 +3915,13 @@ static int snfc_uart_open(struct inode *inode, struct file *file)
 	/* check NFC uid */
 	uid = __task_cred(current)->uid;
 	if(uid != gnfc_uid){
+#ifndef CONFIG_FELICA_NO_SECURE
 		FELICA_LOG_DEBUG(\
 		"[MFDD] %s END, uid=[%d]\n", __func__, uid);
 		FELICA_LOG_DEBUG(\
 		"[MFDD] %s END, gnfc_uid=[%d]\n", __func__, gnfc_uid);
 		return -EACCES;
+#endif
 	}
 
 	file->private_data = dev_sem;

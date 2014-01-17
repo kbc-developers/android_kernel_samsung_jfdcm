@@ -9,7 +9,12 @@ mkdir -p $BIN_DIR
 mkdir -p $OBJ_DIR
 
 . build_func
-. recovery_version
+
+RECOVERY_VERSION=recovery_version
+if [ -f $RAMDISK_SRC_DIR/recovery_version ]; then
+    RECOVERY_VERSION=$RAMDISK_SRC_DIR/recovery_version
+fi
+. $RECOVERY_VERSION
 
 echo BUILD_RECOVERYVERSION $BUILD_RECOVERYVERSION
 

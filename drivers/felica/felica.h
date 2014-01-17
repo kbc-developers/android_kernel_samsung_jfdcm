@@ -328,14 +328,12 @@ static unsigned int felica_int_poll_poll(struct file *file, poll_table *wait);
 #define SET_FELICA_UID_DIAG	_IOW(FELICA_MAGIC, 4, void *)
 
 /* function prototype */
-#ifndef CONFIG_FELICA_NO_SECURE
 static void felica_uid_init(void);
 static void felica_uid_exit(void);
 static int felica_uid_open(struct inode *inode, struct file *file);
 static int felica_uid_close(struct inode *inode, struct file *file);
 static long felica_uid_ioctl(struct file *file, unsigned int cmd, \
 						unsigned long arg);
-#endif
 /******************************************************************************
  * /dev/felica_ant
  ******************************************************************************/

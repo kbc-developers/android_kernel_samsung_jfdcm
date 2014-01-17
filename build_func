@@ -10,6 +10,10 @@ copy_ramdisk()
     rm -rf $RAMDISK_TMP_DIR/.git
     find $RAMDISK_TMP_DIR -name .gitkeep | xargs rm --force
     find $RAMDISK_TMP_DIR -name .gitignore | xargs rm --force
+
+    if [ -f $RAMDISK_TMP_DIR/recovery_version ]; then
+        rm -f $RAMDISK_TMP_DIR/recovery_version
+    fi
 }
 
 make_boot_image()
@@ -40,18 +44,13 @@ make_cwm_image()
     cp $IMAGE_NAME.img ./tmp/
     cp $KERNEL_DIR/release-tools/update-binary ./tmp/META-INF/com/google/android/
     sed -e "s/@VERSION/$BUILD_LOCALVERSION/g" $KERNEL_DIR/release-tools/$TARGET_DEVICE/updater-script-$IMAGE_NAME.sed > ./tmp/META-INF/com/google/android/updater-script
+    mkdir -p ./tmp/loki
+    cp $KERNEL_DIR/release-tools/loki/* ./tmp/loki/
     cd tmp && zip -rq ../cwm.zip ./* && cd ../
     SIGNAPK_DIR=$KERNEL_DIR/release-tools/signapk
     java -jar $SIGNAPK_DIR/signapk.jar $SIGNAPK_DIR/testkey.x509.pem $SIGNAPK_DIR/testkey.pk8 cwm.zip $BUILD_LOCALVERSION-$IMAGE_NAME-signed.zip
     rm cwm.zip
     rm -rf tmp
     echo "  $BIN_DIR/$BUILD_LOCALVERSION-$IMAGE_NAME-signed.zip"
-}
-
-make_loki_image()
-{
-    echo "  execute loki patch"
-    ./release-tools/loki/loki_patch-linux-x86_64 $IMAGE_NAME ./release-tools/$TARGET_DEVICE/aboot.mbn $BIN_DIR/$IMAGE_NAME.img $BIN_DIR/$IMAGE_NAME.lok
-    mv $BIN_DIR/$IMAGE_NAME.lok $BIN_DIR/$IMAGE_NAME.img
 }
 
