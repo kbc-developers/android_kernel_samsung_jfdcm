@@ -16,7 +16,7 @@ make_boot_image()
 {
     ./release-tools/mkbootfs $RAMDISK_TMP_DIR > $BIN_DIR/ramdisk-$IMAGE_NAME.cpio
     ./release-tools/minigzip < $BIN_DIR/ramdisk-$IMAGE_NAME.cpio > $BIN_DIR/ramdisk-$IMAGE_NAME.img
-    ./release-tools/mkbootimg --cmdline "androidboot.hardware=qcom user_debug=31 zcache" --base $KERNEL_BASEADDRESS --pagesize 2048 --ramdisk_offset $KERNEL_RAMDISK_OFFSET --kernel $BIN_DIR/kernel --ramdisk $BIN_DIR/ramdisk-$IMAGE_NAME.img --output $BIN_DIR/$IMAGE_NAME.img
+    ./release-tools/mkbootimg --cmdline "androidboot.hardware=qcom user_debug=31 zcache msm_rtb.filter=0x3F ehci-hcd.park=3" --base $KERNEL_BASEADDRESS --pagesize 2048 --ramdisk_offset $KERNEL_RAMDISK_OFFSET --kernel $BIN_DIR/kernel --ramdisk $BIN_DIR/ramdisk-$IMAGE_NAME.img --output $BIN_DIR/$IMAGE_NAME.img
     echo "  $BIN_DIR/$IMAGE_NAME.img"
     rm $BIN_DIR/ramdisk-$IMAGE_NAME.img
     rm $BIN_DIR/ramdisk-$IMAGE_NAME.cpio
