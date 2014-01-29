@@ -31,9 +31,9 @@
 #include <linux/memcontrol.h>
 #include <linux/poll.h>
 #include <linux/oom.h>
-#include <linux/export.h>
 #include <linux/frontswap.h>
-
+#include <linux/swapfile.h>
+#include <linux/export.h>
 #include <asm/pgtable.h>
 #include <asm/tlbflush.h>
 #include <linux/swapops.h>
