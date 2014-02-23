@@ -1278,12 +1278,16 @@ static int SMT113J_IOCTL_SET_MONITOR_MODE ( struct file* FIle,
 	else
 	{
 		/* Monitor Mode Stop */
-		moni_cnt--;
-		if ( 0 > moni_cnt )
-		{
-			DEBUG_PRINT (" -> under counter = %ld => 0", moni_cnt );
-			moni_cnt = 0;
+/* Tmm-support prevent mod-s */
+		if (moni_cnt != 0) {
+			moni_cnt--;
 		}
+/* 		if ( 0 > moni_cnt )                                            */
+/* 		{                                                              */
+/* 			DEBUG_PRINT (" -> under counter = %ld => 0", moni_cnt );   */
+/* 			moni_cnt = 0;                                              */
+/* 		}                                                              */
+/* Tmm-support prevent mod-e */
 	}
 	DEBUG_PRINT ("SMT113J_IOCTL_SET_MONITOR_MODE << End >> : moni_cnt = %ld", 
 				 moni_cnt );

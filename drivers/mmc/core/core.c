@@ -948,7 +948,16 @@ void mmc_set_data_timeout(struct mmc_data *data, const struct mmc_card *card)
 	if (data->flags & MMC_DATA_WRITE)
 		mult <<= card->csd.r2w_factor;
 
-	data->timeout_ns = card->csd.tacc_ns * mult;
+	/* 
+	 * max time value is 4.2s 
+	 * 4,294,967 is from 0xffffffff / 1000
+	 */
+
+	if ((card->csd.tacc_ns/1000 * mult) > 4294967)
+		data->timeout_ns = 0xffffffff;
+	else
+		data->timeout_ns = card->csd.tacc_ns * mult;
+
 	data->timeout_clks = card->csd.tacc_clks * mult;
 
 	/*
@@ -2114,9 +2123,6 @@ int mmc_erase(struct mmc_card *card, unsigned int from, unsigned int nr,
 	if (to <= from)
 		return -EINVAL;
 
-	/* 'from' and 'to' are inclusive */
-	to -= 1;
-
     /* to set the address in 16k (32sectors) */
 	if(arg == MMC_TRIM_ARG) {
 		if ((from % 32) != 0)
@@ -2127,6 +2133,9 @@ int mmc_erase(struct mmc_card *card, unsigned int from, unsigned int nr,
 		if (from >= to)
 			return 0;
 	}
+	/* 'from' and 'to' are inclusive */
+	to -= 1;
+
 	return mmc_do_erase(card, from, to, arg);
 }
 EXPORT_SYMBOL(mmc_erase);

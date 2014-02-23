@@ -53,6 +53,7 @@
 #if SSP_DBG
 #define SSP_FUNC_DBG 1
 #define SSP_DATA_DBG 0
+#define STEP_SENSOR	0
 
 #define ssp_dbg(dev, format, ...) do { \
 	printk(KERN_INFO dev, format, ##__VA_ARGS__); \
@@ -237,8 +238,10 @@ enum {
 	GEOMAGNETIC_RAW,
 	ORIENTATION_SENSOR,
 	SIG_MOTION_SENSOR,
+#if STEP_SENSOR
 	STEP_DETECTOR,
 	STEP_COUNTER,
+#endif
 	SENSOR_MAX,
 };
 
@@ -278,8 +281,10 @@ struct sensor_value {
 		s16 data[9];
 		s32 pressure[3];
 		u8 sig_motion;
+#if STEP_SENSOR
 		u8 step_det;
 		u32 step_diff;
+#endif
 	};
 };
 
@@ -307,8 +312,10 @@ struct ssp_data {
 	struct input_dev *mag_input_dev;
 	struct input_dev *gesture_input_dev;
 	struct input_dev *sig_motion_input_dev;
+#if STEP_SENSOR
 	struct input_dev *step_det_input_dev;
 	struct input_dev *step_cnt_input_dev;
+#endif
 	struct i2c_client *client;
 	struct wake_lock ssp_wake_lock;
 	struct miscdevice akmd_device;
@@ -369,7 +376,9 @@ struct ssp_data {
 	unsigned int uFactoryProxAvg[4];
 	unsigned int uFactorydataReady;
 	s32 iPressureCal;
+#if STEP_SENSOR
 	u64 step_count_total;
+#endif
 	atomic_t aSensorEnable;
 	int64_t adDelayBuf[SENSOR_MAX];
 
@@ -474,8 +483,10 @@ void report_prox_data(struct ssp_data *, struct sensor_value *);
 void report_prox_raw_data(struct ssp_data *, struct sensor_value *);
 void report_geomagnetic_raw_data(struct ssp_data *, struct sensor_value *);
 void report_sig_motion_data(struct ssp_data *, struct sensor_value *);
+#if STEP_SENSOR
 void report_step_det_data(struct ssp_data *, struct sensor_value *);
 void report_step_cnt_data(struct ssp_data *, struct sensor_value *);
+#endif
 int print_mcu_debug(char *, int *, int);
 void report_temp_humidity_data(struct ssp_data *, struct sensor_value *);
 unsigned int get_module_rev(struct ssp_data *data);

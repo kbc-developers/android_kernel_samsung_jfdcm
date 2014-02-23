@@ -1804,7 +1804,11 @@ static int msm_hsusb_vbus_power(bool on)
 static int phy_init_seq[] = {
 	0x44, 0x80, /* set VBUS valid threshold
 			and disconnect valid threshold */
+#if defined(CONFIG_MACH_JFTDD_CHN_CU)
+	0x5F, 0x81, /* update DC voltage level */
+#else
 	0x6F, 0x81, /* update DC voltage level */
+#endif
 	0x3C, 0x82, /* set preemphasis and rise/fall time */
 	0x17, 0x83, /* set source impedance adjusment */
 	-1};
@@ -2128,6 +2132,7 @@ static int ssp_check_changes(void)
 */
 static void ssp_get_positions(int *acc, int *mag)
 {
+#if !defined(CONFIG_MACH_JF_CMCCCSFB)
 	if (system_rev == BOARD_REV13)
 		*acc = MPU6500_TOP_RIGHT_UPPER;
 	else if (system_rev > BOARD_REV09)
@@ -2136,7 +2141,15 @@ static void ssp_get_positions(int *acc, int *mag)
 		*acc = MPU6500_TOP_RIGHT_UPPER;
 	else
 		*acc = MPU6500_BOTTOM_RIGHT_UPPER;
+#else
+	if (system_rev > BOARD_REV09)
+		*acc = K330_TOP_LEFT_UPPER;
+	else if (system_rev > BOARD_REV04)
+		*acc = MPU6500_TOP_RIGHT_UPPER;
+	else
+		*acc = MPU6500_BOTTOM_RIGHT_UPPER;
 
+#endif
 	if (system_rev > BOARD_REV06)
 		*mag = YAS532_BOTTOM_RIGHT_LOWER;
 	else if (system_rev > BOARD_REV03)
@@ -4327,7 +4340,7 @@ static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi3_pdata = {
 };
 
 static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi4_pdata = {
-	.clk_freq = 100000,
+	.clk_freq = 400000,
 	.src_clk_rate = 24000000,
 };
 

@@ -1736,7 +1736,7 @@ static long vid_enc_ioctl(struct file *file,
 	{
 		struct vcd_property_hdr vcd_property_hdr;
 		struct vcd_property_bitstream_restrict_enable vcd_property_val;
-		u32 vcd_status = VCD_ERR_FAIL;
+		u32 vcd_status;
 
 		vcd_property_hdr.prop_id =
 			VCD_I_ENABLE_VUI_BITSTREAM_RESTRICT_FLAG;
@@ -1752,7 +1752,7 @@ static long vid_enc_ioctl(struct file *file,
 			return -EIO;
 		}
 		break;
-	}	
+	}
 	case VEN_IOCTL_SET_AC_PREDICTION:
 	case VEN_IOCTL_GET_AC_PREDICTION:
 	case VEN_IOCTL_SET_RVLC:

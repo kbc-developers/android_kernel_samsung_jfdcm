@@ -485,6 +485,7 @@ static ssize_t set_sig_motion_delay(struct device *dev,
 	return size;
 }
 
+#if STEP_SENSOR
 static ssize_t show_step_det_delay(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -528,7 +529,7 @@ static ssize_t set_step_cnt_delay(struct device *dev,
 	change_sensor_delay(data, STEP_COUNTER, dNewDelay);
 	return size;
 }
-
+#endif
 static DEVICE_ATTR(mcu_rev, S_IRUGO, mcu_revision_show, NULL);
 static DEVICE_ATTR(mcu_name, S_IRUGO, mcu_model_name_show, NULL);
 static DEVICE_ATTR(mcu_update, S_IRUGO, mcu_update_kernel_bin_show, NULL);
@@ -573,13 +574,14 @@ static struct device_attribute dev_attr_temp_humi_poll_delay
 static struct device_attribute dev_attr_sig_motion_poll_delay
 	= __ATTR(poll_delay, S_IRUGO | S_IWUSR | S_IWGRP,
 	show_sig_motion_delay, set_sig_motion_delay);
+#if STEP_SENSOR
 static struct device_attribute dev_attr_step_det_poll_delay
 	= __ATTR(poll_delay, S_IRUGO | S_IWUSR | S_IWGRP,
 	show_step_det_delay, set_step_det_delay);
 static struct device_attribute dev_attr_step_cnt_poll_delay
 	= __ATTR(poll_delay, S_IRUGO | S_IWUSR | S_IWGRP,
 	show_step_cnt_delay, set_step_cnt_delay);
-
+#endif
 static struct device_attribute *mcu_attrs[] = {
 	&dev_attr_enable,
 	&dev_attr_mcu_rev,
@@ -641,7 +643,7 @@ int initialize_sysfs(struct ssp_data *data)
 	if (device_create_file(&data->sig_motion_input_dev->dev,
 		&dev_attr_sig_motion_poll_delay))
 		goto err_sig_motion_input_dev;
-
+#if STEP_SENSOR
 	if (device_create_file(&data->step_det_input_dev->dev,
 		&dev_attr_step_det_poll_delay))
 		goto err_step_det_input_dev;
@@ -649,7 +651,7 @@ int initialize_sysfs(struct ssp_data *data)
 	if (device_create_file(&data->step_cnt_input_dev->dev,
 		&dev_attr_step_cnt_poll_delay))
 		goto err_step_cnt_input_dev;
-
+#endif
 	initialize_accel_factorytest(data);
 	initialize_gyro_factorytest(data);
 	initialize_prox_factorytest(data);
@@ -664,12 +666,14 @@ int initialize_sysfs(struct ssp_data *data)
 	initialize_temphumidity_factorytest(data);
 #endif
 	return SUCCESS;
+#if STEP_SENSOR
 err_step_cnt_input_dev:
 	device_remove_file(&data->step_det_input_dev->dev,
 		&dev_attr_step_det_poll_delay);
 err_step_det_input_dev:
 	device_remove_file(&data->sig_motion_input_dev->dev,
 		&dev_attr_sig_motion_poll_delay);
+#endif
 err_sig_motion_input_dev:
 	device_remove_file(&data->mag_input_dev->dev,
 		&dev_attr_mag_poll_delay);
@@ -718,10 +722,12 @@ void remove_sysfs(struct ssp_data *data)
 		&dev_attr_mag_poll_delay);
 	device_remove_file(&data->sig_motion_input_dev->dev,
 		&dev_attr_sig_motion_poll_delay);
+#if STEP_SENSOR
 	device_remove_file(&data->step_det_input_dev->dev,
 		&dev_attr_step_det_poll_delay);
 	device_remove_file(&data->step_cnt_input_dev->dev,
 		&dev_attr_step_cnt_poll_delay);
+#endif
 	remove_accel_factorytest(data);
 	remove_gyro_factorytest(data);
 	remove_prox_factorytest(data);

@@ -390,8 +390,11 @@ wont_overwrite:
  *   sp  = stack pointer
  */
 		orrs	r1, r0, r5
+#ifndef CONFIG_CRYPTO_FIPS
 		beq	not_relocated
-
+#else
+        beq not_relocated_copy
+#endif
 		add	r11, r11, r0
 		add	r12, r12, r0
 
@@ -404,6 +407,9 @@ wont_overwrite:
 		add	r2, r2, r0
 		add	r3, r3, r0
 
+#ifdef CONFIG_CRYPTO_FIPS
+        bl copy_compressed
+#endif
 		/*
 		 * Relocate all entries in the GOT table.
 		 * Bump bss entries to _edata + dtb size
@@ -482,6 +488,46 @@ params:		ldr	r0, =0x10000100		@ params_phys for RPC
 		mov	pc, lr
 		.ltorg
 		.align
+#endif
+
+/*
+ * change@ksingh.sra-dallas - Copying the zImage to a secure location
+ * this copy will be used to computer integrity for FIPS validation
+ */
+#ifdef CONFIG_CRYPTO_FIPS
+not_relocated_copy:
+		bl copy_compressed
+		b not_relocated
+
+copy_compressed:
+		// preserve the registers
+		PUSH {r1, r2, r4, r8, r9, r10}
+
+		// source address - zImage load address
+		movw r1, #:lower16:FIPS_KERNEL_RAM_BASE
+		movt r1, #:upper16:FIPS_KERNEL_RAM_BASE
+
+		// destination address - location where zImage copy will be made
+		movw r9, #:lower16:CONFIG_CRYPTO_FIPS_INTEG_COPY_ADDRESS
+	        movt r9, #:upper16:CONFIG_CRYPTO_FIPS_INTEG_COPY_ADDRESS
+
+1:
+		// makes the copy of zImage
+		ldmia	r1!, {r10}
+		stmia	r9!, {r10}
+		cmp	r1, r2
+		blo	1b
+
+		// copy the padded hash of zImage
+		.rept 8
+		ldmia	r1!, {r10}
+		stmia	r9!, {r10}
+		.endr
+
+		// restore the registers
+		POP {r1, r2, r4, r8, r9, r10}
+		// go back to where we came from
+		mov	pc, lr
 #endif
 
 /*
@@ -804,7 +850,7 @@ proc_types:
 		W(b)	__armv3_mpu_cache_on
 		W(b)	__armv3_mpu_cache_off
 		W(b)	__armv3_mpu_cache_flush
-		
+
 		.word	0x41009400		@ ARM94x
 		.word	0xff00ff00
 		W(b)	__armv4_mpu_cache_on
@@ -1031,7 +1077,7 @@ __armv4_mpu_cache_flush:
 		mcrne	p15, 0, ip, c7, c5, 0	@ invalidate I cache
 		mcr	p15, 0, ip, c7, c10, 4	@ drain WB
 		mov	pc, lr
-		
+
 __fa526_cache_flush:
 		mov	r1, #0
 		mcr	p15, 0, r1, c7, c14, 0	@ clean and invalidate D cache

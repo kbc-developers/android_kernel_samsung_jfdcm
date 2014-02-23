@@ -51,7 +51,7 @@ make_env = os.environ
 pwd = os.environ.get("PWD")
 make_env.update({
         'ARCH': 'arm',
-        'CROSS_COMPILE': pwd + '/../prebuilts/gcc/linux-x86/arm/arm-eabi-4.6/bin/arm-eabi-',
+        'CROSS_COMPILE': pwd + '/../prebuilts/gcc/linux-x86/arm/arm-eabi-4.7/bin/arm-eabi-',
         'KCONFIG_NOTIMESTAMP': 'true' })
 all_options = {}
 
@@ -90,6 +90,8 @@ def scan_configs():
     """Get the full list of defconfigs appropriate for this tree."""
     names = {}
     for n in glob.glob('arch/arm/configs/jf_???_defconfig'):
+        names[os.path.basename(n)[:-10]] = n
+    for n in glob.glob('arch/arm/configs/jactive_???_defconfig'):
         names[os.path.basename(n)[:-10]] = n
     return names
 
@@ -142,7 +144,7 @@ def build(target):
     print 'Building %s in %s log %s' % (target, dest_dir, log_name)
     if not os.path.isdir(dest_dir):
         os.mkdir(dest_dir)
-    defconfig = 'arch/arm/configs/%s_defconfig' % target[:-4]
+    defconfig = 'arch/arm/configs/jf_defconfig'
     dotconfig = '%s/.config' % dest_dir
     savedefconfig = '%s/defconfig' % dest_dir
     shutil.copyfile(defconfig, dotconfig)
@@ -150,10 +152,10 @@ def build(target):
     devnull = open('/dev/null', 'r')
     subprocess.check_call(['make', 'O=%s' % dest_dir,
         'VARIANT_DEFCONFIG=%s_defconfig' % target,
-        'DEBUG_DEFCONFIG=%seng_defconfig' % target[:-4],
-	'SELINUX_DEFCONFIG=%sselinux_defconfig' % target[:-4],
-	'SELINUX_LOG_DEFCONFIG=%sselinux_log_defconfig' % target[:-4],
-        '%s_defconfig' % target[:-4]], env=make_env, stdin=devnull)
+        'DEBUG_DEFCONFIG=jfeng_defconfig',
+	'SELINUX_DEFCONFIG=jfselinux_defconfig',
+	'SELINUX_LOG_DEFCONFIG=jfselinux_log_defconfig',
+        'jf_defconfig'], env=make_env, stdin=devnull)
     devnull.close()
 
     if not all_options.updateconfigs:

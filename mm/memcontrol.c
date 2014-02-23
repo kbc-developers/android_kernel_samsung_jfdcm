@@ -57,26 +57,6 @@
 
 #include <trace/events/vmscan.h>
 
-struct cgroup_subsys mem_cgroup_subsys __read_mostly;
-#define MEM_CGROUP_RECLAIM_RETRIES	5
-struct mem_cgroup *root_mem_cgroup __read_mostly;
-
-#ifdef CONFIG_CGROUP_MEM_RES_CTLR_SWAP
-/* Turned on only when memory cgroup is enabled && really_do_swap_account = 1 */
-int do_swap_account __read_mostly;
-
-/* for remember boot option*/
-#ifdef CONFIG_CGROUP_MEM_RES_CTLR_SWAP_ENABLED
-static int really_do_swap_account __initdata = 1;
-#else
-static int really_do_swap_account __initdata = 0;
-#endif
-
-#else
-#define do_swap_account		(0)
-#endif
-
-
 /*
  * Statistics for memory cgroup.
  */
@@ -1718,9 +1698,11 @@ static int mem_cgroup_soft_reclaim(struct mem_cgroup *root_memcg,
 		}
 		if (!mem_cgroup_reclaimable(victim, false))
 			continue;
+
 		total += mem_cgroup_shrink_node_zone(victim, gfp_mask, false,
 						     zone, &nr_scanned);
 		*total_scanned += nr_scanned;
+
 		if (!res_counter_soft_limit_excess(&root_memcg->res))
 			break;
 	}
@@ -5013,7 +4995,9 @@ mem_cgroup_create(struct cgroup *cont)
 	if (parent)
 		memcg->swappiness = mem_cgroup_swappiness(parent);
 	atomic_set(&memcg->refcnt, 1);
+
 	memcg->move_charge_at_immigrate = 0;
+
 	mutex_init(&memcg->thresholds_lock);
 	spin_lock_init(&memcg->move_lock);
 	return &memcg->css;
@@ -5613,6 +5597,7 @@ static void mem_cgroup_move_task(struct cgroup *cont,
 		put_swap_token(mm);
 		mmput(mm);
 	}
+
 	if (mc.to)
 		mem_cgroup_clear_mc();
 }

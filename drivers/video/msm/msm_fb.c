@@ -187,6 +187,8 @@ static void msm_fb_set_bl_brightness(struct led_classdev *led_cdev,
 	struct msm_fb_data_type *mfd = dev_get_drvdata(led_cdev->dev->parent);
 	int bl_lvl;
 
+	pr_info("%s", __func__);
+
 	/* This maps android backlight level 1 to 255 into
 	   driver backlight level bl_min to bl_max with rounding
 	   and maps backlight level 0 to 0. */
@@ -891,6 +893,8 @@ void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
 
 	if (!mfd->panel_power_on || !bl_updated) {
 		unset_bl_level = bkl_lvl;
+		pr_info("%s panel_power_on : %d  bl_updated : %d bkl_lvl : %d", __func__,
+			mfd->panel_power_on, bl_updated, bkl_lvl);
 		return;
 	} else {
 		unset_bl_level = 0;
@@ -901,6 +905,7 @@ void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
 	if ((pdata) && (pdata->set_backlight)) {
 		msm_fb_scale_bl(&temp);
 		if (bl_level_old == temp) {
+			pr_info("%s bl_level_old : %d return", __func__, bl_level_old);
 			return;
 		}
 		mfd->bl_level = temp;
@@ -1724,9 +1729,11 @@ static int msm_fb_open(struct fb_info *info, int user)
 			pr_debug("%s:%d no mdp_set_dma_pan_info %d\n",
 				__func__, __LINE__, info->node);
 
-		if (msm_fb_blank_sub(FB_BLANK_UNBLANK, info, TRUE)) {
-			printk(KERN_ERR "msm_fb_open: can't turn on display!\n");
-			return -1;
+		if (mfd->panel_info.type != DTV_PANEL) {
+			if (msm_fb_blank_sub(FB_BLANK_UNBLANK, info, TRUE)) {
+				pr_err("msm_fb_open: can't turn on display\n");
+				return -EINVAL;
+			}
 		}
 	}
 
@@ -2226,7 +2233,9 @@ static int msm_fb_set_par(struct fb_info *info)
 	mfd->fbi->fix.line_length = msm_fb_line_length(mfd->index, var->xres,
 						       var->bits_per_pixel/8);
 
-	if (blank) {
+	if ((mfd->panel_info.type == DTV_PANEL) && !mfd->panel_power_on) {
+		msm_fb_blank_sub(FB_BLANK_UNBLANK, info, mfd->op_enable);
+	} else if (blank) {
 		msm_fb_blank_sub(FB_BLANK_POWERDOWN, info, mfd->op_enable);
 		msm_fb_blank_sub(FB_BLANK_UNBLANK, info, mfd->op_enable);
 	}

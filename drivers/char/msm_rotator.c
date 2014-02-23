@@ -1745,8 +1745,8 @@ static int msm_rotator_do_rotate_sub(
 	msm_rotator_dev->processing = 1;
 	iowrite32(0x1, MSM_ROTATOR_START);
 	mutex_unlock(&msm_rotator_dev->rotator_lock);
-	wait_event(msm_rotator_dev->wq,
-		   (msm_rotator_dev->processing == 0));
+	wait_event_timeout(msm_rotator_dev->wq,
+		   (msm_rotator_dev->processing == 0), msecs_to_jiffies(2000));
 	mutex_lock(&msm_rotator_dev->rotator_lock);
 	status = (unsigned char)ioread32(MSM_ROTATOR_INTR_STATUS);
 	if ((status & 0x03) != 0x01) {
@@ -1857,10 +1857,12 @@ static int msm_rotator_do_rotate(unsigned long arg)
                                                                                 
 	schedule_work(&mrd->commit_work);                                              
 	mutex_unlock(&mrd->commit_mutex);                                              
-                                                                                
-	if (info.wait_for_finish)                                                      
-		rot_wait_for_commit_queue(true);                                             
-                                                                                
+
+#if !defined(CONFIG_MACH_JACTIVE_EUR) && !defined(CONFIG_MACH_JACTIVE_ATT)
+	if (info.wait_for_finish)
+#endif
+		rot_wait_for_commit_queue(true);
+
 	return 0;                                                                      
 }                                                                               
                                                                                 

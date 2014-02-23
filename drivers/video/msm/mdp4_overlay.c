@@ -134,7 +134,7 @@ struct mdp4_overlay_perf perf_current;
 
 static struct ion_client *display_iclient;
 static char *sec_underrun_log_buff;
-
+int force_increase_bw;
 static int mdp4_map_sec_resource(struct msm_fb_data_type *mfd)
 {
 	int ret = 0;
@@ -2371,6 +2371,9 @@ void mdp4_overlay_pipe_free(struct mdp4_overlay_pipe *pipe)
 
 	pr_debug("%s: pipe=%x ndx=%d\n", __func__, (int)pipe, pipe->pipe_ndx);
 
+	if (pipe->src_format == 18)
+		force_increase_bw = 0;
+
 	ptype = pipe->pipe_type;
 	num = pipe->pipe_num;
 	ndx = pipe->pipe_ndx;
@@ -2608,16 +2611,29 @@ static int mdp4_overlay_req2pipe(struct mdp_overlay *req, int mixer,
 #ifdef MDP_ODD_RESOLUTION_CTRL
 	if(req->dst_rect.w== 1)
 	{
-		pr_err("#### dst change\n");
+		pr_info("#### dst change\n");
 		if(req->dst_rect.x >= 1079)
 			req->dst_rect.x -=1;
 		req->dst_rect.w += 1;
 		pipe->check_odd_res = 1;
 	}
 	else if(req->dst_rect.w == 1079)
-	{	
+	{
 		pipe->check_odd_res = 1;
 	}
+	else if((req->src_rect.w == req->dst_rect.w) && (req->src_rect.w == req->dst_rect.w) &&
+		((req->src_rect.x < 5) || (req->src_rect.y < 16))&& (req->dst_rect.h < 80)) /*shift case*/
+	{
+		pipe->check_odd_res = 1;
+		pr_info("shift case (same resolution but different start point)\n");
+	}
+	else if((req->src_rect.y == 75)&&((req->src_rect.y + req->src_rect.h) == req->src.height)&&
+		(req->src_rect.w > req->dst_rect.w)) /*odd rect.y case*/
+	{
+		pipe->check_odd_res = 1;
+		pr_info("odd rect.y case\n");
+	}
+
 #endif	
 
 	pipe->mixer_stage = req->z_order + MDP4_MIXER_STAGE0;
@@ -2852,6 +2868,15 @@ static int mdp4_calc_req_mdp_clk(struct msm_fb_data_type *mfd,
 		pr_debug("%s calculated mdp clk is less than pclk.\n",
 			__func__);
 	}
+
+	//Exceed max MDP clock case was src_w / dst_w = 1.77 that is downscale
+	if (((10* src_w / dst_w) == 17) && (dst_h >= src_h) && ((u32)rst > mdp_max_clk))
+		rst = mdp_max_clk;
+
+	// Since we do not want falling back to GPU when playing DRM video clip
+	if (mfd->sec_active && ((u32)rst > mdp_max_clk))
+		rst = mdp_max_clk;
+
 	pr_debug("%s: required mdp clk %d\n", __func__, (u32)rst);
 
 	return (u32)rst;
@@ -2911,16 +2936,16 @@ static int mdp4_calc_pipe_mdp_clk(struct msm_fb_data_type *mfd,
 	pr_debug("%s: dst(w,h)(%d,%d),dst(x,y)(%d,%d)\n",
 		 __func__, pipe->dst_w, pipe->dst_h, pipe->dst_x, pipe->dst_y);
 
+	pipe->req_clk = mdp4_calc_req_mdp_clk
+		(mfd, pipe->src_h, pipe->dst_h, pipe->src_w, pipe->dst_w);
 #ifdef MDP_ODD_RESOLUTION_CTRL
-	if (pipe->check_odd_res) {
+	if ((pipe->check_odd_res) && (pipe->req_clk < mdp_max_clk)) {
 		pr_info("%s ENTER odd_resolution detected!! requires max mdp clk.pipe->pipe_ndx = %d\n",
 			__func__, pipe->pipe_ndx);
 		pipe->req_clk = mdp_max_clk;
 		return 0;
 	}
 #endif
-	pipe->req_clk = mdp4_calc_req_mdp_clk
-		(mfd, pipe->src_h, pipe->dst_h, pipe->src_w, pipe->dst_w);
 
 	pr_debug("%s: required mdp clk %d mixer %d pipe ndx %d\n",
 		 __func__, pipe->req_clk, pipe->mixer_num, pipe->pipe_ndx);
@@ -2935,6 +2960,7 @@ static int mdp4_calc_pipe_mdp_bw(struct msm_fb_data_type *mfd,
 	int ret = -EINVAL;
 	u32 quota;
 	u32 shift = 16;
+	int offset = 1;
 
 	if (!pipe) {
 		pr_err("%s: pipe is null!\n", __func__);
@@ -2946,26 +2972,36 @@ static int mdp4_calc_pipe_mdp_bw(struct msm_fb_data_type *mfd,
 	}
 
 	fps = mdp_get_panel_framerate(mfd);
-	
+#ifdef CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT
+	if ((pipe->src_h == 788) && (pipe->src_w == 1026))
+		offset = 3;
+	else if((pipe->src_x > 20) && (pipe->src_w < 1080)) /*AIA crop case*/
+		offset = 4;
+	else if (force_increase_bw && ((pipe->src_h <= 75) && (pipe->src_w == 1080)))
+		offset = 10;
+#endif
 	if((pipe->bpp==2)&&(pipe->src_format == 0 )) 
 		quota = pipe->src_w * pipe->src_h * fps * pipe->bpp * 2;
 	else 
-		quota = pipe->src_w * pipe->src_h * fps * pipe->bpp; 
+		quota = pipe->src_w * pipe->src_h * fps * pipe->bpp * offset; 
+
 	
 	quota >>= shift;
 	/* factor 1.15 for ab */
-			quota = quota * MDP4_BW_AB_FACTOR / 100;
-	/* downscaling factor for ab */
+	pipe->bw_ab_quota = quota * MDP4_BW_AB_FACTOR / 100;
+	/* factor 1.25 for ib */
+	pipe->bw_ib_quota = quota * MDP4_BW_IB_FACTOR / 100;
+	/* down scaling factor for ib */
 	if ((pipe->dst_h) && (pipe->src_h) &&
 	    (pipe->src_h > pipe->dst_h)) {
-			quota = quota * pipe->src_h / pipe->dst_h;
-			pr_debug("%s: src_h=%d dst_h=%d mdp ab %llu\n",
-					__func__, pipe->src_h, pipe->dst_h, ((u64)quota << 16));
+		u32 ib = quota; 
+		ib *= pipe->src_h;
+		ib /= pipe->dst_h;
+		pipe->bw_ib_quota = max((u64)ib, pipe->bw_ib_quota); 
+		pr_debug("%s: src_h=%d dst_h=%d mdp ib %u, ib_quota=%llu\n", 
+			 __func__, pipe->src_h, pipe->dst_h,
+			 ib<<shift, pipe->bw_ib_quota<<shift);
 	}
-	pipe->bw_ab_quota = quota;
-
-	 /*factor 1.5 for ib */
-	pipe->bw_ib_quota = quota * MDP4_BW_IB_FACTOR / 100;
 
 	pipe->bw_ab_quota <<= shift;
 	pipe->bw_ib_quota <<= shift;
@@ -3582,6 +3618,8 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 		pr_err("%s: mdp4_overlay_req2pipe, ret=%d\n", __func__, ret);
 		return ret;
 	}
+	if ((pipe->src_format == 18) && ((pipe->src_w <= 400) && (pipe->src_h <= 320)))
+		force_increase_bw = 1;
 
 	/* if blt mode is required when bypass mode, it returns error */
 	if ((pipe->flags & MDP_BACKEND_COMPOSITION) &&

@@ -130,6 +130,7 @@ int mdp4_overlay_writeback_on(struct platform_device *pdev)
 	if (vctrl->base_pipe == NULL) {
 		pipe = mdp4_overlay_pipe_alloc(OVERLAY_TYPE_BF, MDP4_MIXER2);
 		if (pipe == NULL) {
+			mdp_clk_ctrl(0);
 			pr_info("%s: pipe_alloc failed\n", __func__);
 			return -EIO;
 		}
@@ -400,8 +401,8 @@ int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd,
 	}
 	/* free previous committed iommu back to pool */
 	mdp4_overlay_iommu_unmap_freelist(mixer);
-
-	mdp_clk_ctrl(1);
+	if(wait)
+		mdp_clk_ctrl(1);
 
 	pipe = vp->plist;
 	for (i = 0; i < OVERLAY_PIPE_MAX; i++, pipe++) {
@@ -437,8 +438,10 @@ int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd,
 
 	mdp4_stat.overlay_commit[pipe->mixer_num]++;
 
-	if (wait)
+	if (wait){
 		mdp4_wfd_wait4ov(cndx);
+		mdp_clk_ctrl(0);
+	}
 
 	mdp4_wfd_queue_wakeup(mfd, node);
 

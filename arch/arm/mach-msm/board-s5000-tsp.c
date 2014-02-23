@@ -195,6 +195,9 @@ static struct synaptics_rmi4_platform_data rmi4_platformdata = {
 #ifdef CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL
 	.tout1_on = touch_tout1_on,
 #endif
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_PREVENT_HSYNC_LEAKAGE)
+	.hsync_onoff = lcd_hsync_onoff,
+#endif
 };
 
 static struct i2c_board_info bus2_i2c_devices[] = {
@@ -247,6 +250,10 @@ void __init S5000_tsp_input_init(int version)
 	touch_type = (version >> 12) & 0xF;
 	el_type = (version >> 8) & 0x1;
 
+#if defined(CONFIG_MACH_JACTIVE_EUR) || defined(CONFIG_MACH_JACTIVE_ATT)
+	/* JACITVE USE ONLY B Type */ 
+	touch_sleep_time = SYNAPTICS_HW_RESET_TIME_B0;
+#else
 	/* IF TSP IS is A1, B0 version : ID2 value is 40
 	 * IF TSP IS is B0 version : ID2 value is more than 40
 	 */
@@ -254,6 +261,7 @@ void __init S5000_tsp_input_init(int version)
 		touch_sleep_time = SYNAPTICS_HW_RESET_TIME_B0;
 	else
 		touch_sleep_time = SYNAPTICS_HW_RESET_TIME;
+#endif
 
 	if (touch_type < 5) {
 		if (el_type)

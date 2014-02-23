@@ -31,7 +31,7 @@ extern u32 mdp_max_clk;
 
 extern u64 mdp_max_bw;
 #define MDP4_BW_AB_FACTOR (200)	/* 2.00 */
-#define MDP4_BW_IB_FACTOR (250)	/* 2.50 */
+#define MDP4_BW_IB_FACTOR (210)	/* 2.10 */
 
 #define MDP_BUS_SCALE_AB_STEP (0x4000000)
 

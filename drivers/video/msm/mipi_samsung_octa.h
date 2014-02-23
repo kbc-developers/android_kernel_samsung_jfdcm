@@ -83,6 +83,7 @@ struct mipi_samsung_driver_data {
 
 struct mipi_panel_data {
 	const char panel_name[20];
+	struct cmd_set ready_to_on;
 	struct cmd_set on;
 	struct cmd_set off;
 	struct cmd_set late_on;
@@ -133,6 +134,7 @@ struct mipi_panel_data {
 	int temperature;
 	char temperature_value;
 	int need_update;
+	int support_smart_acl;
 
 };
 

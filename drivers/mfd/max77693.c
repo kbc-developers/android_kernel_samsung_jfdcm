@@ -175,6 +175,13 @@ static int max77693_i2c_probe(struct i2c_client *i2c,
 		pm8xxx_hard_reset_config(PM8XXX_DISABLE_HARD_RESET);
 		max77693_write_reg(i2c, MAX77693_PMIC_REG_MAINCTRL1, 0x0c);
 	}
+#elif defined(CONFIG_MACH_JACTIVE_EUR)
+		if (kernel_sec_get_debug_level() == KERNEL_SEC_DEBUG_LEVEL_LOW) {
+			max77693_write_reg(i2c, MAX77693_PMIC_REG_MAINCTRL1, 0x04);
+		} else {
+			pm8xxx_hard_reset_config(PM8XXX_DISABLE_HARD_RESET);
+			max77693_write_reg(i2c, MAX77693_PMIC_REG_MAINCTRL1, 0x0b);
+		}	
 #else
 	if (kernel_sec_get_debug_level() == KERNEL_SEC_DEBUG_LEVEL_LOW) {
 		max77693_write_reg(i2c, MAX77693_PMIC_REG_MAINCTRL1, 0x04);

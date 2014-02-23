@@ -211,7 +211,7 @@
 
 /* 0xC8: CBUS Device Capability Registers */
 #define MHL_VER_MAJOR			(1<<1) /* Most Significant 4-bits */
-#define MHL_VER_MINOR			(0<<0) /* Least significant 4-bits */
+#define MHL_VER_MINOR			(1<<0) /* Least significant 4-bits */
 
 #define DEV_TYPE_SOURCE			0x02
 #define DEV_TYPE_SINK			0x01
