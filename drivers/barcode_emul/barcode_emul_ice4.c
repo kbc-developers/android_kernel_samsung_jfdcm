@@ -1100,7 +1100,7 @@ int ice_gpiox_set(int num, int val)
 	else
 		gpiox_state &= ~(1 << num);
 
-	pr_barcode("%s : num = %d , val = %d\n", __func__, num, val);
+	//pr_barcode("%s : num = %d , val = %d\n", __func__, num, val);
 
 #if defined(CONFIG_MACH_JF_DCM)
 	if(num == FPGA_GPIO_FELICA_HSEL || num == FPGA_GPIO_FELICA_PON)
