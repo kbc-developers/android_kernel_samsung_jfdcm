@@ -1,0 +1,56 @@
+
+copy_ramdisk()
+{
+    echo copy $RAMDISK_SRC_DIR to $(dirname $RAMDISK_TMP_DIR)
+
+    if [ -d $RAMDISK_TMP_DIR ]; then
+        rm -rf $RAMDISK_TMP_DIR
+    fi
+    cp -a $RAMDISK_SRC_DIR $(dirname $RAMDISK_TMP_DIR)
+    rm -rf $RAMDISK_TMP_DIR/.git
+    find $RAMDISK_TMP_DIR -name .gitkeep | xargs rm --force
+    find $RAMDISK_TMP_DIR -name .gitignore | xargs rm --force
+
+    if [ -f $RAMDISK_TMP_DIR/recovery_version ]; then
+        rm -f $RAMDISK_TMP_DIR/recovery_version
+    fi
+}
+
+make_boot_image()
+{
+    ./release-tools/mkbootfs $RAMDISK_TMP_DIR > $BIN_DIR/ramdisk-$IMAGE_NAME.cpio
+    ./release-tools/minigzip < $BIN_DIR/ramdisk-$IMAGE_NAME.cpio > $BIN_DIR/ramdisk-$IMAGE_NAME.img
+    ./release-tools/mkbootimg --cmdline "androidboot.hardware=qcom user_debug=31 zcache" --base $KERNEL_BASEADDRESS --pagesize 2048 --ramdisk_offset $KERNEL_RAMDISK_OFFSET --kernel $BIN_DIR/kernel --ramdisk $BIN_DIR/ramdisk-$IMAGE_NAME.img --output $BIN_DIR/$IMAGE_NAME.img
+    echo "  $BIN_DIR/$IMAGE_NAME.img"
+    rm $BIN_DIR/ramdisk-$IMAGE_NAME.img
+    rm $BIN_DIR/ramdisk-$IMAGE_NAME.cpio
+    rm $BIN_DIR/kernel 
+}
+
+make_odin3_image()
+{
+    tar cf $BUILD_LOCALVERSION-$IMAGE_NAME-odin.tar $IMAGE_NAME.img
+    md5sum -t $BUILD_LOCALVERSION-$IMAGE_NAME-odin.tar >> $BUILD_LOCALVERSION-$IMAGE_NAME-odin.tar
+    mv $BUILD_LOCALVERSION-$IMAGE_NAME-odin.tar $BUILD_LOCALVERSION-$IMAGE_NAME-odin.tar.md5
+    echo "  $BIN_DIR/$BUILD_LOCALVERSION-$IMAGE_NAME-odin.tar.md5"
+}
+
+make_cwm_image()
+{
+    if [ -d tmp ]; then
+        rm -rf tmp
+    fi
+    mkdir -p ./tmp/META-INF/com/google/android
+    cp $IMAGE_NAME.img ./tmp/
+    cp $KERNEL_DIR/release-tools/update-binary ./tmp/META-INF/com/google/android/
+    sed -e "s/@VERSION/$BUILD_LOCALVERSION/g" $KERNEL_DIR/release-tools/$TARGET_DEVICE/updater-script-$IMAGE_NAME.sed > ./tmp/META-INF/com/google/android/updater-script
+    mkdir -p ./tmp/loki
+    cp $KERNEL_DIR/release-tools/loki/* ./tmp/loki/
+    cd tmp && zip -rq ../cwm.zip ./* && cd ../
+    SIGNAPK_DIR=$KERNEL_DIR/release-tools/signapk
+    java -jar $SIGNAPK_DIR/signapk.jar $SIGNAPK_DIR/testkey.x509.pem $SIGNAPK_DIR/testkey.pk8 cwm.zip $BUILD_LOCALVERSION-$IMAGE_NAME-signed.zip
+    rm cwm.zip
+    rm -rf tmp
+    echo "  $BIN_DIR/$BUILD_LOCALVERSION-$IMAGE_NAME-signed.zip"
+}
+
