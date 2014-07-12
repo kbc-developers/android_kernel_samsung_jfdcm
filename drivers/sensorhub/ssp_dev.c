@@ -119,9 +119,8 @@ static void initialize_variable(struct ssp_data *data)
 	data->prox_device = NULL;
 	data->light_device = NULL;
 	data->ges_device = NULL;
-#if STEP_SENSOR
+
 	data->step_count_total = 0;
-#endif
 	initialize_function_pointer(data);
 }
 
@@ -429,8 +428,6 @@ static void ssp_shutdown(struct i2c_client *client)
 	ssp_sensorhub_remove(data);
 #endif
 
-	del_timer_sync(&data->debug_timer);
-	cancel_work_sync(&data->work_debug);
 	destroy_workqueue(data->debug_wq);
 	wake_lock_destroy(&data->ssp_wake_lock);
 #ifdef CONFIG_SENSORS_SSP_SHTC1

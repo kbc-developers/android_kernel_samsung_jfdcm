@@ -236,7 +236,6 @@ static void get_sig_motion_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	sensorsdata->sig_motion = (u8)pchRcvDataFrame[(*iDataIdx)++];
 }
 
-#if STEP_SENSOR
 static void get_step_det_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
@@ -260,7 +259,7 @@ static void get_step_cnt_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	iTemp += pchRcvDataFrame[(*iDataIdx)++];
 	sensorsdata->step_diff = iTemp;
 }
-#endif
+
 
 int parse_dataframe(struct ssp_data *data, char *pchRcvDataFrame, int iLength)
 {
@@ -338,10 +337,8 @@ void initialize_function_pointer(struct ssp_data *data)
 		get_temp_humidity_sensordata;
 	data->get_sensor_data[GEOMAGNETIC_RAW] = get_geomagnetic_rawdata;
 	data->get_sensor_data[SIG_MOTION_SENSOR] = get_sig_motion_sensordata;
-#if STEP_SENSOR
 	data->get_sensor_data[STEP_DETECTOR] = get_step_det_sensordata;
 	data->get_sensor_data[STEP_COUNTER] = get_step_cnt_sensordata;
-#endif
 
 	data->report_sensor_data[ACCELEROMETER_SENSOR] = report_acc_data;
 	data->report_sensor_data[GYROSCOPE_SENSOR] = report_gyro_data;
@@ -355,8 +352,6 @@ void initialize_function_pointer(struct ssp_data *data)
 		report_temp_humidity_data;
 	data->report_sensor_data[GEOMAGNETIC_RAW] = report_geomagnetic_raw_data;
 	data->report_sensor_data[SIG_MOTION_SENSOR] = report_sig_motion_data;
-#if STEP_SENSOR
 	data->report_sensor_data[STEP_DETECTOR] = report_step_det_data;
 	data->report_sensor_data[STEP_COUNTER] = report_step_cnt_data;
-#endif
 }

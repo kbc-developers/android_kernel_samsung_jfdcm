@@ -824,6 +824,7 @@ static int __devinit an30259a_probe(struct i2c_client *client,
 {
 	struct an30259a_data *data;
 	int ret, i;
+
 	dev_dbg(&client->adapter->dev, "%s\n", __func__);
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "need I2C_FUNC_I2C.\n");

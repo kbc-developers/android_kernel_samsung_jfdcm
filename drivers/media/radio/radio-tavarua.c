@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -744,7 +744,15 @@ static void tavarua_handle_interrupts(struct tavarua_device *radio)
 		return;
 	}
 	mutex_lock(&radio->lock);
-	tavarua_read_registers(radio, STATUS_REG1, STATUS_REG_NUM);
+	retval = tavarua_read_registers(radio, STATUS_REG1, STATUS_REG_NUM);
+	if (retval < 0) {
+		FMDERR("Fails to read status register and try once again");
+		msleep(TAVARUA_DELAY);
+		retval = tavarua_read_registers(radio, STATUS_REG1,
+							STATUS_REG_NUM);
+		if (retval < 0)
+			FMDERR("Fails to read status register");
+	}
 
 	FMDBG("INTSTAT1 <%x>\n", radio->registers[STATUS_REG1]);
 	FMDBG("INTSTAT2 <%x>\n", radio->registers[STATUS_REG2]);
@@ -1354,13 +1362,16 @@ static int optimized_search_algorithm(struct tavarua_device *radio,
 	/* Set channel spacing */
 	switch (region) {
 	case TAVARUA_REGION_US:
-		if (adie_type_bahma) {
+		if ((adie_type_bahma) && (bahama_version == 0x09)) {
 			FMDBG("Adie type : Bahama\n");
 			/*
 			Configuring all 200KHZ spaced regions as 100KHz due to
 			change in the new Bahma FM SoC search algorithm.
 			*/
 			value = FM_CH_SPACE_100KHZ;
+		} else if ((adie_type_bahma) && (bahama_version == 0x0a)) {
+			FMDBG("Adie type : Bahama B1\n");
+			value = FM_CH_SPACE_200KHZ;
 		} else {
 			FMDBG("Adie type : Marimba\n");
 			value = FM_CH_SPACE_200KHZ;
@@ -1368,7 +1379,7 @@ static int optimized_search_algorithm(struct tavarua_device *radio,
 		break;
 	case TAVARUA_REGION_JAPAN:
 	case TAVARUA_REGION_OTHER:
-		if (adie_type_bahma) {
+		if ((adie_type_bahma) && (bahama_version == 0x09)) {
 			FMDBG("Adie type : Bahama\n");
 			FMDBG("%s: Configuring the channel-spacing as 50KHz"
 				"for the Region : %d", __func__, region);
@@ -1377,6 +1388,9 @@ static int optimized_search_algorithm(struct tavarua_device *radio,
 			change in the new Bahma FM SoC search algorithm.
 			*/
 			value = FM_CH_SPACE_50KHZ;
+		} else if ((adie_type_bahma) && (bahama_version == 0x0a)) {
+			FMDBG("Adie type : Bahama B1\n");
+			value = FM_CH_SPACE_100KHZ;
 		} else {
 			FMDBG("Adie type : Marimba\n");
 			value = FM_CH_SPACE_100KHZ;
@@ -1940,7 +1954,7 @@ static int tavarua_fops_open(struct file *file)
 		}
 
 		/* Check for Bahama V2 variant*/
-		if (bahama_version == 0x09)	{
+		if ((bahama_version == 0x09) || (bahama_version == 0x0a)) {
 
 			/* In case of Bahama v2, forcefully enable the
 			 * internal analog and digital voltage controllers
@@ -2179,7 +2193,8 @@ static int tavarua_fops_release(struct file *file)
 	/* Set the index based on the bt status*/
 	index = bt_status ?  1 : 0;
 	/* Check for Bahama's existance and Bahama V2 variant*/
-	if (bahama_present && (bahama_version == 0x09))   {
+	if (bahama_present
+		&& (bahama_version == 0x09 || bahama_version == 0x0a))   {
 		radio->marimba->mod_id = SLAVE_ID_BAHAMA;
 		/* actual value itself used as mask*/
 		retval = marimba_write_bit_mask(radio->marimba,
@@ -3027,7 +3042,7 @@ static int tavarua_vidioc_s_ext_ctrls(struct file *file, void *priv,
 	int retval = 0;
 	int bytes_to_copy;
 	int bytes_copied = 0;
-	int bytes_left = 0;
+	__u32 bytes_left = 0;
 	int chunk_index = 0;
 	char tx_data[XFR_REG_NUM];
 	struct tavarua_device *radio = video_get_drvdata(video_devdata(file));
@@ -3042,15 +3057,15 @@ static int tavarua_vidioc_s_ext_ctrls(struct file *file, void *priv,
 
 		chunk_index = 0;
 		bytes_copied = 0;
-		bytes_left = min((int)(ctrl->controls[0]).size,
-			MAX_PS_LENGTH);
+		bytes_left = min((ctrl->controls[0]).size,
+			(__u32)MAX_PS_LENGTH);
 		data = (ctrl->controls[0]).string;
 
 		/* send payload to FM hardware */
 		while (bytes_left) {
 			chunk_index++;
 			FMDBG("chunk is %d", chunk_index);
-			bytes_to_copy = min(bytes_left, XFR_REG_NUM);
+			bytes_to_copy = min(bytes_left, (__u32)XFR_REG_NUM);
 			/*Clear the tx_data */
 			memset(tx_data, 0, XFR_REG_NUM);
 			if (copy_from_user(tx_data,
@@ -3092,12 +3107,12 @@ static int tavarua_vidioc_s_ext_ctrls(struct file *file, void *priv,
 		FMDBG("Passed RT String : %s\n",
 			(ctrl->controls[0]).string);
 		bytes_left =
-		    min((int)(ctrl->controls[0]).size, MAX_RT_LENGTH);
+		    min((ctrl->controls[0]).size, (__u32)MAX_RT_LENGTH);
 		data = (ctrl->controls[0]).string;
 		/* send payload to FM hardware */
 		while (bytes_left) {
 			chunk_index++;
-			bytes_to_copy = min(bytes_left, XFR_REG_NUM);
+			bytes_to_copy = min(bytes_left, (__u32)XFR_REG_NUM);
 			memset(tx_data, 0, XFR_REG_NUM);
 			if (copy_from_user(tx_data,
 				    data + bytes_copied, bytes_to_copy))
@@ -4149,7 +4164,7 @@ static int tavarua_setup_interrupts(struct tavarua_device *radio,
 
 	/* use xfr for interrupt setup */
     if (radio->chipID == MARIMBA_2_1 || radio->chipID == BAHAMA_1_0
-		|| radio->chipID == BAHAMA_2_0) {
+		|| radio->chipID == BAHAMA_2_0 || radio->chipID == BAHAMA_2_1) {
 		FMDBG("Setting interrupts\n");
 		retval =  sync_write_xfr(radio, INT_CTRL, int_ctrl);
 	/* use register write to setup interrupts */
@@ -4175,7 +4190,8 @@ static int tavarua_setup_interrupts(struct tavarua_device *radio,
 	*  registers and it is not valid for MBA 2.1
 	*/
 	if ((radio->chipID != MARIMBA_2_1) && (radio->chipID != BAHAMA_1_0)
-		&& (radio->chipID != BAHAMA_2_0))
+		&& (radio->chipID != BAHAMA_2_0)
+		&& (radio->chipID != BAHAMA_2_1))
 		tavarua_handle_interrupts(radio);
 
 	return retval;
@@ -4208,7 +4224,7 @@ static int tavarua_disable_interrupts(struct tavarua_device *radio)
 	/* use xfr for interrupt setup */
 	wait_timeout = 100;
 	if (radio->chipID == MARIMBA_2_1 || radio->chipID == BAHAMA_1_0
-		|| radio->chipID == BAHAMA_2_0)
+		|| radio->chipID == BAHAMA_2_0 || radio->chipID == BAHAMA_2_1)
 		retval = sync_write_xfr(radio, INT_CTRL, lpm_buf);
 	/* use register write to setup interrupts */
 	else
@@ -4318,9 +4334,15 @@ static int tavarua_resume(struct platform_device *pdev)
 			retval = tavarua_setup_interrupts(radio,
 			(radio->registers[RDCTRL] & 0x03));
 			if (retval < 0) {
-				printk(KERN_INFO DRIVER_NAME "Error in \
-					tavarua_resume %d\n", retval);
-				return -EIO;
+				FMDERR("Fails to write RDCTRL");
+				msleep(TAVARUA_DELAY);
+				retval = tavarua_setup_interrupts(radio,
+				(radio->registers[RDCTRL] & 0x03));
+				if (retval < 0) {
+					FMDERR("Error in tavarua_resume %d\n",
+								retval);
+					return -EIO;
+				}
 			}
 		}
 	}
@@ -4435,8 +4457,8 @@ static int  __init tavarua_probe(struct platform_device *pdev)
 
 	struct marimba_fm_platform_data *tavarua_pdata;
 	struct tavarua_device *radio;
-	int retval;
-	int i;
+	int retval = 0;
+	int i = 0, j = 0;
 	FMDBG("%s: probe called\n", __func__);
 	/* private data allocation */
 	radio = kzalloc(sizeof(struct tavarua_device), GFP_KERNEL);
@@ -4449,6 +4471,7 @@ static int  __init tavarua_probe(struct platform_device *pdev)
 	tavarua_pdata = pdev->dev.platform_data;
 	radio->pdata = tavarua_pdata;
 	radio->dev = &pdev->dev;
+	radio->wqueue = NULL;
 	platform_set_drvdata(pdev, radio);
 
 	/* video device allocation */
@@ -4478,15 +4501,16 @@ static int  __init tavarua_probe(struct platform_device *pdev)
 		if (kfifo_alloc_rc!=0) {
 			printk(KERN_ERR "%s: failed allocating buffers %d\n",
 				__func__, kfifo_alloc_rc);
-			goto err_bufs;
+		        retval = -ENOMEM;
+		        goto err_all;
 		}
 	}
 	/* initializing the device count  */
 	atomic_set(&radio->users, 1);
 	radio->xfr_in_progress = 0;
 	radio->xfr_bytes_left = 0;
-	for (i = 0; i < TAVARUA_XFR_MAX; i++)
-		radio->pending_xfrs[i] = 0;
+	for (j = 0; j < TAVARUA_XFR_MAX; j++)
+		radio->pending_xfrs[j] = 0;
 
 	/* init transmit data */
 	radio->tx_mode = TAVARUA_TX_RT;
@@ -4517,11 +4541,14 @@ static int  __init tavarua_probe(struct platform_device *pdev)
     /*Start the worker thread for event handling and register read_int_stat
 	as worker function*/
 	radio->wqueue  = create_singlethread_workqueue("kfmradio");
-	if (!radio->wqueue)
-		return -ENOMEM;
+	if (!radio->wqueue) {
+	        retval = -ENOMEM;
+		goto err_all;
+        }
 
 	/* register video device */
-	if (video_register_device(radio->videodev, VFL_TYPE_RADIO, radio_nr)) {
+	retval = video_register_device(radio->videodev, VFL_TYPE_RADIO, radio_nr);
+	if (retval != 0) {
 		printk(KERN_WARNING DRIVER_NAME
 				": Could not register video device\n");
 		goto err_all;
@@ -4531,9 +4558,11 @@ static int  __init tavarua_probe(struct platform_device *pdev)
 
 err_all:
 	video_device_release(radio->videodev);
-err_bufs:
-	for (; i > -1; i--)
+	if (radio->wqueue)
+		destroy_workqueue(radio->wqueue);
+	for (i--; i >= 0; i--) {
 		kfifo_free(&radio->data_buf[i]);
+        }
 err_radio:
 	kfree(radio);
 err_initial:

@@ -128,7 +128,6 @@ static void fpga_enable(int enable, int bdelay)
 				usleep_range(20000, 25000);
 			else
 				usleep_range(1000, 2000);
-			
 			gpio_set_value(g_pdata->rst_n, GPIO_LEVEL_LOW);
 			if (g_pdata->clock_en)
 				g_pdata->clock_en(0);
@@ -166,7 +165,6 @@ static void fpga_enable(int enable)
 		}else{
 			enable_count--;
 		}
-		
 	}
 }
 #endif
@@ -664,13 +662,14 @@ static void ir_remocon_work(struct barcode_emul_data *ir_data, int count)
 
 	struct barcode_emul_data *data = ir_data;
 	struct i2c_client *client = data->client;
-
 	int buf_size = count+2;
 	int ret;
 	int sleep_timing;
 	int end_data;
 	int emission_time;
 	int ack_pin_onoff;
+
+	/* Put code here to handle the extra bytes from CRC and repeat frame length */
 
 	if (count_number >= 100)
 		count_number = 0;
@@ -687,7 +686,6 @@ static void ir_remocon_work(struct barcode_emul_data *ir_data, int count)
 #else
 	fpga_enable(1);
 #endif
-
 
 	mutex_lock(&data->mutex);
 

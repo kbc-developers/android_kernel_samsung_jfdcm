@@ -44,8 +44,6 @@
 #include "mdnie_lite_tuning.h"
 #if defined(CONFIG_SUPPORT_DISPLAY_OCTA_TFT)
 #include "mdnie_lite_tuning_data_jactiveltexx.h"
-#elif defined(CONFIG_MACH_JF_DCM)
-#include "mdnie_lite_tuning_data_jfdcm.h"
 #else
 #include "mdnie_lite_tuning_data.h"
 #endif
@@ -63,13 +61,9 @@
 #endif
 
 #define MAX_LUT_SIZE	256
-#if defined(CONFIG_DISPLAY_DISABLE_TEST_KEY)
+
 #define PAYLOAD1 mdni_tune_cmd[2]
 #define PAYLOAD2 mdni_tune_cmd[1]
-#else
-#define PAYLOAD1 mdni_tune_cmd[3]
-#define PAYLOAD2 mdni_tune_cmd[2]
-#endif
 
 #define INPUT_PAYLOAD1(x) PAYLOAD1.payload = x
 #define INPUT_PAYLOAD2(x) PAYLOAD2.payload = x
@@ -77,7 +71,12 @@
 
 int play_speed_1_5;
 #if defined(CONFIG_FB_MSM_MIPI_RENESAS_TFT_VIDEO_FULL_HD_PT_PANEL)
+#if defined (CONFIG_MACH_JACTIVE_EUR) || defined (CONFIG_MACH_JACTIVE_ATT)
 static int cabc = -1;
+#else
+static int cabc = 0;
+#endif
+
 extern int mipi_samsung_cabc_onoff ( int enable );
 #endif
 
@@ -111,7 +110,6 @@ const char scenario_name[MAX_mDNIe_MODE][16] = {
 	"VT_MODE",
 	"BROWSER",
 	"eBOOK",
-	"EMAIL",
 #if defined(CONFIG_TDMB)
 	"DMB_MODE",
 	"DMB_WARM_MODE",
@@ -151,16 +149,9 @@ static char level1_key[] = {
 	0x5A, 0x5A,
 };
 
-static char level2_key[] = {
-	0xF1,
-	0x5A, 0x5A,
-};
-
 static struct dsi_cmd_desc mdni_tune_cmd[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(level1_key), level1_key},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-		sizeof(level2_key), level2_key},
 
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(tune_data1), tune_data1},
@@ -267,6 +258,10 @@ void mDNIe_Set_Mode(enum Lcd_mDNIe_UI mode)
 	*/
 	if (mdnie_tun_state.blind == COLOR_BLIND)
 		mode = mDNIE_BLINE_MODE;
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL)
+	else if (mdnie_tun_state.blind == DARK_SCREEN)
+		mode = mDNIE_DARK_SCREEN_MODE;
+#endif
 
 	switch (mode) {
 	case mDNIe_UI_MODE:
@@ -525,14 +520,16 @@ void mDNIe_Set_Mode(enum Lcd_mDNIe_UI mode)
 
 	case mDNIe_eBOOK_MODE:
 		DPRINT(" = eBOOK MODE =\n");
-#if !defined(CONFIG_SUPPORT_DISPLAY_OCTA_TFT)
-		INPUT_PAYLOAD1(EBOOK_1);
-		INPUT_PAYLOAD2(EBOOK_2);
-#else
 		if (mdnie_tun_state.background == STANDARD_MODE) {
 			DPRINT(" = STANDARD MODE =\n");
 			INPUT_PAYLOAD1(STANDARD_EBOOK_1);
 			INPUT_PAYLOAD2(STANDARD_EBOOK_2);
+#if !defined(CONFIG_SUPPORT_DISPLAY_OCTA_TFT)
+		} else if (mdnie_tun_state.background == NATURAL_MODE) {
+			DPRINT(" = NATURAL MODE =\n");
+			INPUT_PAYLOAD1(NATURAL_EBOOK_1);
+			INPUT_PAYLOAD2(NATURAL_EBOOK_2);
+#endif
 		} else if (mdnie_tun_state.background == DYNAMIC_MODE) {
 			DPRINT(" = DYNAMIC MODE =\n");
 			INPUT_PAYLOAD1(DYNAMIC_EBOOK_1);
@@ -546,22 +543,21 @@ void mDNIe_Set_Mode(enum Lcd_mDNIe_UI mode)
 			INPUT_PAYLOAD1(AUTO_EBOOK_1);
 			INPUT_PAYLOAD2(AUTO_EBOOK_2);
 		}
-#endif
 		break;
-
-#if !defined(CONFIG_SUPPORT_DISPLAY_OCTA_TFT)
-	case mDNIe_EMAIL_MODE:
-		DPRINT(" = EMAIL MODE =\n");
-		INPUT_PAYLOAD1(EMAIL_1);
-		INPUT_PAYLOAD2(EMAIL_2);
-		break;
-#endif
 
 	case mDNIE_BLINE_MODE:
 		DPRINT(" = BLIND MODE =\n");
 		INPUT_PAYLOAD1(COLOR_BLIND_1);
 		INPUT_PAYLOAD2(COLOR_BLIND_2);
 		break;
+
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL)
+	case mDNIE_DARK_SCREEN_MODE:
+		DPRINT(" = DARK SCREEN MODE =\n");
+		INPUT_PAYLOAD1(DARK_SCREEN_BLIND_1);
+		INPUT_PAYLOAD2(DARK_SCREEN_BLIND_2);
+		break;
+#endif
 
 	default:
 		DPRINT("[%s] no option (%d)\n", __func__, mode);
@@ -724,9 +720,7 @@ static ssize_t scenario_store(struct device *dev,
 	case SIG_MDNIE_eBOOK:
 		mdnie_tun_state.scenario = mDNIe_eBOOK_MODE;
 		break;
-	case SIG_MDNIE_EMAIL:
-		mdnie_tun_state.scenario = mDNIe_EMAIL_MODE;
-		break;
+
 #ifdef BROWSER_COLOR_TONE_SET
 	case SIG_MDNIE_BROWSER_TONE1:
 		mdnie_tun_state.scenario = mDNIe_BROWSER_TONE1;
@@ -995,7 +989,14 @@ static ssize_t accessibility_store(struct device *dev,
 
 		memcpy(&COLOR_BLIND_2[MDNIE_COLOR_BLINDE_CMD],
 				buffer, MDNIE_COLOR_BLINDE_CMD);
-	} else if (cmd_value == ACCESSIBILITY_OFF) {
+	} 
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL)
+	else if  (cmd_value == DARK_SCREEN) {
+		mdnie_tun_state.negative = mDNIe_NEGATIVE_OFF;
+		mdnie_tun_state.blind = DARK_SCREEN;
+	}
+#endif
+	else if (cmd_value == ACCESSIBILITY_OFF) {
 		mdnie_tun_state.blind = ACCESSIBILITY_OFF;
 		mdnie_tun_state.negative = mDNIe_NEGATIVE_OFF;
 	} else 
@@ -1036,12 +1037,12 @@ static ssize_t cabc_store(struct device *dev,
 
 	return size;
 }
-
+#if defined(CONFIG_FB_MSM_MIPI_RENESAS_TFT_VIDEO_FULL_HD_PT_PANEL)
 int is_cabc_on ( void )
 {
 	return cabc;
 }
-
+#endif
 static DEVICE_ATTR(cabc, 0664,
 			cabc_show,
 			cabc_store);
@@ -1191,12 +1192,14 @@ void coordinate_tunning(int x, int y)
 	memcpy(&DYNAMIC_UI_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 	memcpy(&DYNAMIC_VIDEO_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 	memcpy(&DYNAMIC_VT_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
+	memcpy(&DYNAMIC_EBOOK_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 
 	memcpy(&STANDARD_BROWSER_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 	memcpy(&STANDARD_GALLERY_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 	memcpy(&STANDARD_UI_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 	memcpy(&STANDARD_VIDEO_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 	memcpy(&STANDARD_VT_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
+	memcpy(&STANDARD_EBOOK_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 
 	memcpy(&AUTO_BROWSER_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 	memcpy(&AUTO_CAMERA_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);

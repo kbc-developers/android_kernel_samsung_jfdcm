@@ -177,6 +177,9 @@ static irqreturn_t max77693_irq_thread(int irq, void *data)
 {
 	struct max77693_dev *max77693 = data;
 	u8 irq_reg[MAX77693_IRQ_GROUP_NR] = {};
+#if defined(CONFIG_SEC_PRODUCT_8930)
+	u8 tmp_irq_reg[MAX77693_IRQ_GROUP_NR] = {};
+#endif
 	u8 irq_src;
 	int ret;
 	int i;
@@ -199,14 +202,16 @@ clear_retry:
 				&irq_reg[CHG_INT]);
 		pr_info("%s: charger interrupt(0x%02x)\n",
 			__func__, irq_reg[CHG_INT]);
-		/* mask chgin to prevent chgin infinite interrupt
-		 * chgin is unmasked chgin isr
+		/* mask chgin to prevent wcin infinite interrupt
+		 * wcin is unmasked wcin isr
 		 */
 		if (irq_reg[CHG_INT] & max77693_irqs[MAX77693_CHG_IRQ_WCIN_I].mask) {
 			u8 reg_data;
-			reg_data = (1 << WCIN_SHIFT);
-			max77693_update_reg(max77693->i2c, MAX77693_CHG_REG_CHG_INT_MASK, reg_data,
-					WCIN_MASK);
+			max77693_read_reg(max77693->i2c,
+				MAX77693_CHG_REG_CHG_INT_MASK, &reg_data);
+			reg_data |= (1 << 5);
+			max77693_write_reg(max77693->i2c,
+				MAX77693_CHG_REG_CHG_INT_MASK, reg_data);
 		}
 	}
 
@@ -233,7 +238,17 @@ clear_retry:
 		max77693_bulk_read(max77693->muic,
 		MAX77693_MUIC_REG_INT1,
 		MAX77693_NUM_IRQ_MUIC_REGS,
+#if defined(CONFIG_SEC_PRODUCT_8930)
+				&tmp_irq_reg[MUIC_INT1]);
+#else
 				&irq_reg[MUIC_INT1]);
+#endif
+#if defined(CONFIG_SEC_PRODUCT_8930)
+		/* Or temp irq register to irq register for if it retries */
+		for (i = MUIC_INT1; i < MAX77693_IRQ_GROUP_NR; i++)
+			irq_reg[i] |= tmp_irq_reg[i];
+#endif
+
 		pr_info("%s: muic interrupt(0x%02x, 0x%02x, 0x%02x)\n",
 			__func__, irq_reg[MUIC_INT1],
 			irq_reg[MUIC_INT2], irq_reg[MUIC_INT3]);

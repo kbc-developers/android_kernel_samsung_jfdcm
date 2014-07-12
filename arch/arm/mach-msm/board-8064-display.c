@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -272,6 +272,9 @@ static struct msm_bus_scale_pdata mdp_bus_scale_pdata = {
 static struct msm_panel_common_pdata mdp_pdata = {
 	.gpio = MDP_VSYNC_GPIO,
 	.mdp_max_clk = 266667000,
+	.mdp_max_bw = 2000000000,
+	.mdp_bw_ab_factor = 115,
+	.mdp_bw_ib_factor = 150,
 	.mdp_bus_scale_table = &mdp_bus_scale_pdata,
 	.mdp_rev = MDP_REV_44,
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
@@ -297,6 +300,9 @@ void __init apq8064_mdp_writeback(struct memtype_reserve* reserve_table)
 		mdp_pdata.ov0_wb_size;
 	reserve_table[mdp_pdata.mem_hid].size +=
 		mdp_pdata.ov1_wb_size;
+
+	pr_info("mem_map: mdp reserved with size 0x%lx in pool\n",
+			mdp_pdata.ov0_wb_size + mdp_pdata.ov1_wb_size);
 #endif
 }
 
@@ -381,17 +387,11 @@ static bool oled_power_on;
 /* [junesok] Power on for samsung oled */
 #if defined(CONFIG_MACH_JACTIVE_EUR)
 #define LCD_22V_EN	33
-#if defined(CONFIG_FB_MSM_ENABLE_LCD_EN2)
-#define LCD_22V_EN_2	20
-#endif
 #define PMIC_GPIO_LED_DRIVER 31
 #elif defined(CONFIG_MACH_JACTIVE_ATT)
 #define LCD_22V_EN	33
-#if defined(CONFIG_FB_MSM_ENABLE_LCD_EN2)
-#define LCD_22V_EN_2	20
-#endif
 #define PMIC_GPIO_LED_DRIVER_REV00 28
-#define PMIC_GPIO_LED_DRIVER_REV10 31
+#define PMIC_GPIO_LED_DRIVER_REV10 31	
 #else
 #define LCD_22V_EN	69
 #define PMIC_GPIO_LED_DRIVER 27
@@ -543,25 +543,6 @@ static int mipi_dsi_power_tft_request(void)
 		pr_info("[lcd] configure LCD_22V_EN\n");
 		gpio_tlmm_config(GPIO_CFG(LCD_22V_EN,  0, GPIO_CFG_OUTPUT,
 		GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-
-#if defined(CONFIG_FB_MSM_ENABLE_LCD_EN2)
-		if( system_rev >= 13 ) // rev0.5 + 8
-		{
-			pr_info("[lcd] request gpio lcd_22v_en_2\n");
-			rc = gpio_request(LCD_22V_EN_2, "lcd_22v_en_2");
-			if (rc) {
-				gpio_free(LCD_22V_EN_2);
-				rc = gpio_request(LCD_22V_EN_2, "lcd_22v_en_2");
-				if(rc){
-					pr_err("request gpio lcd_22v_en_2 failed, rc=%d\n", rc);
-					return -ENODEV;
-				}
-			}
-			pr_info("[lcd] configure LCD_22V_EN_2\n");
-			gpio_tlmm_config(GPIO_CFG(LCD_22V_EN_2,  0, GPIO_CFG_OUTPUT,
-			GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-		}
-#endif
 	}
 #else
 	pr_info("[lcd] request gpio lcd_22v_en\n");
@@ -575,21 +556,6 @@ static int mipi_dsi_power_tft_request(void)
 	pr_info("[lcd] configure LCD_22V_EN\n");
 	gpio_tlmm_config(GPIO_CFG(LCD_22V_EN,  0, GPIO_CFG_OUTPUT,
 		GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-
-#if defined(CONFIG_FB_MSM_ENABLE_LCD_EN2)
-	if( system_rev >= 16 ) // rev0.6 + 10
-	{
-		pr_info("[lcd] request gpio lcd_22v_en_2\n");
-		rc = gpio_request(LCD_22V_EN_2, "lcd_22v_en_2");
-		if (rc) {
-			pr_err("request gpio lcd_22v_en_2 failed, rc=%d\n", rc);
-			return -ENODEV;
-		}
-		pr_info("[lcd] configure LCD_22V_EN_2\n");
-		gpio_tlmm_config(GPIO_CFG(LCD_22V_EN_2,  0, GPIO_CFG_OUTPUT,
-			GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-	}
-#endif
 #endif
 
 	if (system_rev == 0) {
@@ -629,15 +595,43 @@ static int mipi_dsi_power_tft_request(void)
 		pr_err("gpio_config led_dirver failed (3), rc=%d\n", rc);
 		return -EINVAL;
 	}
+#if !defined(CONFIG_MACH_JACTIVE_ATT) && !defined(CONFIG_MACH_JACTIVE_EUR)
+#if defined(CONFIG_MACH_JACTIVE_ATT)
+	if(system_rev < 10)
+		gpio_direction_output(gpio33, 0);
+	else
+		gpio_direction_output(LCD_22V_EN, 0);	
+#else
+	gpio_direction_output(LCD_22V_EN, 0);
+#endif
+	if (system_rev == 0)
+		gpio_direction_output(gpio43, 0);
+	else
+		pm8xxx_mpp_config(
+			PM8921_MPP_PM_TO_SYS(MLCD_RST_MPP2),
+			&MLCD_RESET_LOW_CONFIG);
 
+	msleep(1000);
+#endif
 	gpio_direction_output(gpio27, 0);
 
 	return rc;
 }
 
+#if defined(CONFIG_MACH_JACTIVE_ATT) 
+static int first_boot = 0; 
+#endif 
+
 static int mipi_panel_power_tft(int enable)
 {
 	int rc = 0;
+#if defined(CONFIG_MACH_JACTIVE_ATT) 
+     if(first_boot < 2) { 
+        first_boot++; 
+        printk("<0> First init Occurred ..... Finished Successfully \n"); 
+        return 0; 
+     } 
+#endif 
 
 	pr_info("%s %d", __func__, enable);
 	if (enable) {
@@ -682,29 +676,22 @@ static int mipi_panel_power_tft(int enable)
 	if(system_rev < 10)
 		gpio_direction_output(gpio33, 1);
 	else
-	{
 		gpio_direction_output(LCD_22V_EN, 1);
-#if defined(CONFIG_FB_MSM_ENABLE_LCD_EN2)
-		if( system_rev >= 13 ) // rev0.5 + 8
-		{
-			mdelay(10);
-			gpio_direction_output(LCD_22V_EN_2, 1);
-		}
-#endif
-	}
 #else
 		gpio_direction_output(LCD_22V_EN, 1);
-#if defined(CONFIG_FB_MSM_ENABLE_LCD_EN2)
-		if( system_rev >= 16 ) // rev0.6 + 10
-		{
-			mdelay(10);
-			gpio_direction_output(LCD_22V_EN_2, 1);
-		}
 #endif
-#endif
+
+#if !defined(CONFIG_MACH_JACTIVE_ATT) && !defined(CONFIG_MACH_JACTIVE_EUR)
+		/*active_reset_ldi(gpio43);*/
+		if (system_rev == 0)
+			gpio_direction_output(gpio43, 1);
+		else
+			pm8xxx_mpp_config(
+				PM8921_MPP_PM_TO_SYS(MLCD_RST_MPP2),
+				&MLCD_RESET_HIGH_CONFIG);
 
 		msleep(20);
-
+#endif
 #if defined(CONFIG_MACH_JACTIVE_EUR)
 		if( system_rev >= 15 ) // rev0.5 + 10
 		{
@@ -750,24 +737,8 @@ static int mipi_panel_power_tft(int enable)
 		if(system_rev < 10)
 			gpio_direction_output(gpio33, 0);
 		else
-		{
-#if defined(CONFIG_FB_MSM_ENABLE_LCD_EN2)
-			if( system_rev >= 13 ) // rev0.5 + 8
-			{
-				gpio_direction_output(LCD_22V_EN_2, 0);
-				mdelay(10);
-			}
-#endif
-			gpio_direction_output(LCD_22V_EN, 0);
-		}
+			gpio_direction_output(LCD_22V_EN, 0);	
 #else
-#if defined(CONFIG_FB_MSM_ENABLE_LCD_EN2)
-		if( system_rev >= 16 ) // rev0.6 + 10
-		{
-			gpio_direction_output(LCD_22V_EN_2, 0);
-			mdelay(10);
-		}
-#endif
 		gpio_direction_output(LCD_22V_EN, 0);
 #endif
 		usleep(2000); /*1ms delay(minimum) required between VDD off and AVDD off*/
@@ -1374,33 +1345,6 @@ static struct msm_bus_vectors dtv_bus_def_vectors[] = {
 	},
 };
 
-#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
-static struct msm_bus_vectors dtv_bus_cam_override_vectors[] = {
-	{
-		.src = MSM_BUS_MASTER_MDP_PORT0,
-		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ab = 0,
-		.ib = 707616000 * 2,
-	},
-};
-#endif
-
-#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
-static struct msm_bus_paths dtv_bus_scale_usecases[] = {
-	{
-		ARRAY_SIZE(dtv_bus_init_vectors),
-		dtv_bus_init_vectors,
-	},
-	{
-		ARRAY_SIZE(dtv_bus_def_vectors),
-		dtv_bus_def_vectors,
-	},
-	{
-		ARRAY_SIZE(dtv_bus_cam_override_vectors),
-		dtv_bus_cam_override_vectors,
-	},
-};
-#else
 static struct msm_bus_paths dtv_bus_scale_usecases[] = {
 	{
 		ARRAY_SIZE(dtv_bus_init_vectors),
@@ -1411,8 +1355,6 @@ static struct msm_bus_paths dtv_bus_scale_usecases[] = {
 		dtv_bus_def_vectors,
 	},
 };
-#endif
-
 static struct msm_bus_scale_pdata dtv_bus_scale_pdata = {
 	dtv_bus_scale_usecases,
 	ARRAY_SIZE(dtv_bus_scale_usecases),

@@ -131,6 +131,11 @@ extern void tcp_time_wait(struct sock *sk, int state, int timeo);
 						 * most likely due to retrans in 3WHS.
 						 */
 
+#if defined(CONFIG_MACH_JFVE_EUR) // getrit 558622
+/* Number of full MSS to receive before Acking RFC2581 */
+#define TCP_DELACK_SEG          20
+#endif
+
 #define TCP_RESOURCE_PROBE_INTERVAL ((unsigned)(HZ/2U)) /* Maximal interval between probes
 					                 * for local resources.
 					                 */
@@ -254,6 +259,13 @@ extern int sysctl_tcp_thin_linear_timeouts;
 extern int sysctl_tcp_thin_dupack;
 
 extern atomic_long_t tcp_memory_allocated;
+
+#if defined(CONFIG_MACH_JFVE_EUR) // getrit 558622
+/* sysctl variables for controlling various tcp parameters */
+extern int sysctl_tcp_delack_seg;
+extern int sysctl_tcp_use_userconfig;
+#endif
+
 extern struct percpu_counter tcp_sockets_allocated;
 extern int tcp_memory_pressure;
 
@@ -345,6 +357,14 @@ extern void tcp_twsk_destructor(struct sock *sk);
 extern ssize_t tcp_splice_read(struct socket *sk, loff_t *ppos,
 			       struct pipe_inode_info *pipe, size_t len,
 			       unsigned int flags);
+
+#if defined(CONFIG_MACH_JFVE_EUR) // getrit 558622
+/* sysctl master controller */
+extern int tcp_use_userconfig_sysctl_handler(struct ctl_table *, int,
+				void __user *, size_t *, loff_t *);
+extern int tcp_proc_delayed_ack_control(struct ctl_table *, int,
+				void __user *, size_t *, loff_t *);
+#endif
 
 static inline void tcp_dec_quickack_mode(struct sock *sk,
 					 const unsigned int pkts)

@@ -143,7 +143,7 @@ static int _get_more_prng_bytes(struct prng_context *ctx, int cont_test)
 #ifdef CONFIG_CRYPTO_FIPS
 					set_in_fips_err();
 #else
-					panic("cprng %p Failed repetition check!\n", ctx);
+					panic("cprng %p Failed repetition check!\n", ctx);					
 #endif
 				}
 

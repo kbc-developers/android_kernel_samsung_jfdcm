@@ -27,6 +27,7 @@
 /* DVFS feature : TOUCH BOOSTER */
 #define TSP_BOOSTER
 #ifdef TSP_BOOSTER
+#define DVFS_STAGE_NINTH		9
 #define DVFS_STAGE_DUAL		2
 #define DVFS_STAGE_SINGLE	1
 #define DVFS_STAGE_NONE		0
@@ -34,6 +35,8 @@
 
 #define TOUCH_BOOSTER_OFF_TIME	300
 #define TOUCH_BOOSTER_CHG_TIME	200
+#define TOUCH_BOOSTER_HIGH_OFF_TIME	1000
+#define TOUCH_BOOSTER_HIGH_CHG_TIME	500
 #endif
 
 /* To support suface touch, firmware should support data

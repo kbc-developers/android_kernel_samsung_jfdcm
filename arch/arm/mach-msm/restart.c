@@ -63,7 +63,8 @@ static int restart_mode;
 #ifndef CONFIG_SEC_DEBUG
 void *restart_reason;
 #endif
-
+int kernel_sec_get_debug_level(void);
+#define KERNEL_SEC_DEBUG_LEVEL_LOW      (0x574F4C44)
 int pmic_reset_irq;
 static void __iomem *msm_tmr0_base;
 
@@ -353,6 +354,9 @@ void msm_restart(char mode, const char *cmd)
 				&& !kstrtoul(cmd + 7, 0, &value)) {
 			__raw_writel(0xfedc0000 | value, restart_reason);
 #endif
+		} else if (strlen(cmd) == 0) {
+			printk(KERN_NOTICE "%s : value of cmd is NULL.\n", __func__);
+			__raw_writel(0x12345678, restart_reason);
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
@@ -401,7 +405,7 @@ static int __init msm_pmic_restart_init(void)
 {
 	int rc;
 
-#ifdef CONFIG_MACH_JF_VZW
+#if defined(CONFIG_MACH_JF_VZW) || defined(CONFIG_MACH_MELIUS)
 	return 0;
 #else
 	if (kernel_sec_get_debug_level() != KERNEL_SEC_DEBUG_LEVEL_LOW)

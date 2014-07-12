@@ -688,6 +688,7 @@ int s5k6b2yx_sensor_set_vision_ae_control(
 	}
 	return 0;
 }
+#if !defined(CONFIG_MACH_MELIUS)
 
 static ssize_t s5k6b2yx_camera_type_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -700,14 +701,19 @@ static ssize_t s5k6b2yx_camera_fw_show(struct device *dev,
 {
 	return sprintf(buf, "%s %s\n", "S5K6B2YX", "S5K6B2YX");
 }
+#endif
+
+#if !defined(CONFIG_MACH_MELIUS)
 
 static DEVICE_ATTR(front_camtype, S_IRUGO, s5k6b2yx_camera_type_show, NULL);
 static DEVICE_ATTR(front_camfw, S_IRUGO, s5k6b2yx_camera_fw_show, NULL);
+#endif
+
 
 static int __init s5k6b2yx_sensor_init_module(void)
 {
+#if !defined(CONFIG_MACH_MELIUS)
 	struct device *cam_dev_front = NULL;
-
 	cam_dev_front =
 	device_create(camera_class, NULL, 0, NULL, "front");
 	if (IS_ERR(cam_dev_front)) {
@@ -726,7 +732,7 @@ static int __init s5k6b2yx_sensor_init_module(void)
 		cam_err("failed to create device file, %s\n",
 		dev_attr_front_camfw.attr.name);
 	}
-
+#endif
 	return i2c_add_driver(&s5k6b2yx_i2c_driver);
 }
 

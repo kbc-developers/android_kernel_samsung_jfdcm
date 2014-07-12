@@ -43,6 +43,7 @@ struct sec_jack_info {
 	struct work_struct buttons_work;
 	struct work_struct detect_work;
 	struct workqueue_struct *queue;
+	struct workqueue_struct *buttons_queue;
 	struct input_dev *input_dev;
 	struct wake_lock det_wake_lock;
 	struct sec_jack_zone *zone;
@@ -120,7 +121,7 @@ static bool sec_jack_buttons_filter(struct input_handle *handle,
 	/* This is called in timer handler of gpio_input driver.
 	 * We use workqueue to read adc value.
 	 */
-	queue_work(hi->queue, &hi->buttons_work);
+	queue_work(hi->buttons_queue, &hi->buttons_work);
 
 	return true;
 }
@@ -465,12 +466,21 @@ static int sec_jack_probe(struct platform_device *pdev)
 
 	INIT_WORK(&hi->buttons_work, sec_jack_buttons_work);
 	INIT_WORK(&hi->detect_work, sec_jack_detect_work);
+
 	hi->queue = create_singlethread_workqueue("sec_jack_wq");
 	if (hi->queue == NULL) {
 		ret = -ENOMEM;
 		pr_err("%s: Failed to create workqueue\n", __func__);
 		goto err_create_wq_failed;
 	}
+
+	hi->buttons_queue = create_singlethread_workqueue("sec_jack_buttons_wq");
+	if (hi->buttons_queue == NULL) {
+		ret = -ENOMEM;
+		pr_err("%s: Failed to create workqueue\n", __func__);
+		goto err_create_wq_failed;
+	}
+
 	queue_work(hi->queue, &hi->detect_work);
 
 	hi->det_irq = gpio_to_irq(pdata->det_gpio);
@@ -519,7 +529,11 @@ err_request_detect_irq:
 	input_unregister_handler(&hi->handler);
 err_register_input_handler:
 	destroy_workqueue(hi->queue);
+	destroy_workqueue(hi->buttons_queue);
 err_create_wq_failed:
+	if(hi->queue) {
+		destroy_workqueue(hi->queue);
+	}
 	wake_lock_destroy(&hi->det_wake_lock);
 	switch_dev_unregister(&switch_jack_detection);
 	switch_dev_unregister(&switch_sendend);
@@ -541,6 +555,7 @@ static int sec_jack_remove(struct platform_device *pdev)
 	pr_info("%s :\n", __func__);
 	disable_irq_wake(hi->det_irq);
 	free_irq(hi->det_irq, hi);
+	destroy_workqueue(hi->buttons_queue);
 	destroy_workqueue(hi->queue);
 	if (hi->send_key_dev) {
 		platform_device_unregister(hi->send_key_dev);

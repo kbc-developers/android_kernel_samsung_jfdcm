@@ -2,7 +2,7 @@
  * drivers/serial/msm_serial.c - driver for msm7k serial device and console
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1125,6 +1125,9 @@ static void msm_hsl_power(struct uart_port *port, unsigned int state,
 {
 	int ret;
 	struct msm_hsl_port *msm_hsl_port = UART_TO_MSM(port);
+	struct platform_device *pdev = to_platform_device(port->dev);
+	const struct msm_serial_hslite_platform_data *pdata =
+					pdev->dev.platform_data;
 
 	switch (state) {
 	case 0:
@@ -1136,10 +1139,11 @@ static void msm_hsl_power(struct uart_port *port, unsigned int state,
 		break;
 	case 3:
 		clk_en(port, 0);
-		ret = clk_set_rate(msm_hsl_port->clk, 0);
-		if (ret)
-			pr_err("%s(): Error setting UART clock rate to zero.\n",
-								__func__);
+		if (pdata && pdata->set_uart_clk_zero) {
+			ret = clk_set_rate(msm_hsl_port->clk, 0);
+			if (ret)
+				pr_err("Error setting UART clock rate to zero.\n");
+		}
 		break;
 	default:
 		pr_err("%s(): msm_serial_hsl: Unknown PM state %d\n",
@@ -1645,7 +1649,7 @@ static int msm_serial_hsl_suspend(struct device *dev)
 		uart_suspend_port(&msm_hsl_uart_driver, port);
 		if (device_may_wakeup(dev))
 			enable_irq_wake(port->irq);
-
+#if !defined(CONFIG_MACH_MELIUS)
 		if (max77693_get_jig_state() &&
 				gpio_get_value(msm_hsl_port->wakeup.rx_gpio)) {
 			/* Enable wakeup_irq
@@ -1665,6 +1669,7 @@ static int msm_serial_hsl_suspend(struct device *dev)
 			msm_hsl_port->wakeup.wakeup_set = 0;
 			//uart_connecting = 0;
 		}
+#endif
 	}
 
 	return 0;
@@ -1691,6 +1696,7 @@ static int msm_serial_hsl_resume(struct device *dev)
 				console_stop(port->cons);
 			msm_hsl_init_clock(port);
 		}
+#if !defined(CONFIG_MACH_MELIUS)
 		if (max77693_get_jig_state() || msm_hsl_port->wakeup.wakeup_set) {
 			/* disable wakeup_irq */
 			if (msm_hsl_port->wakeup.irq > 0) {
@@ -1703,6 +1709,7 @@ static int msm_serial_hsl_resume(struct device *dev)
 				disable_irq(msm_hsl_port->wakeup.irq);
 			}
 		}
+#endif
 	}
 
 	return 0;

@@ -42,6 +42,8 @@ extern struct vibrator_platform_data vibrator_drvdata;
 #define MODULE_NAME                         "tspdrv"
 #define TSPDRV                              "/dev/"MODULE_NAME
 #define TSPDRV_MAGIC_NUMBER                 0x494D4D52
+#define TSPDRV_IOCTL_GROUP                  0x52
+#define TSPDRV_SET_MAGIC_NUMBER             _IO(TSPDRV_IOCTL_GROUP, 2)
 #define TSPDRV_STOP_KERNEL_TIMER            _IO(TSPDRV_MAGIC_NUMBER & 0xFF, 1)
 /*
 ** Obsolete IOCTL command
@@ -93,6 +95,10 @@ int32_t g_nforce_32;
 #define GP_CLK_N_DEFAULT			172
 #define GP_CLK_D_DEFAULT			86  /* 50% duty cycle */
 #define IMM_PWM_MULTIPLIER			172 /* Must be integer */
+
+#if defined(CONFIG_MACH_JFVE_EUR_LTE)
+#define MISC_TSPDRV_MINOR			210
+#endif
 
 /*
  * ** Global variables for LRA PWM M,N and D values.

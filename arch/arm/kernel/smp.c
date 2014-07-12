@@ -43,7 +43,7 @@
 #include <asm/localtimer.h>
 #include <asm/smp_plat.h>
 
-#if CONFIG_SEC_DEBUG
+#if defined(CONFIG_SEC_DEBUG)
 #include <mach/sec_debug.h>
 #endif
 /*
@@ -211,7 +211,7 @@ void __ref cpu_die(void)
 	mb();
 
 	/* Tell __cpu_die() that this CPU is now safe to dispose of */
-	RCU_NONIDLE(complete(&cpu_died));
+	complete(&cpu_died);
 
 	/*
 	 * actual CPU shutdown procedure is at least platform (if not
@@ -507,7 +507,7 @@ static void ipi_cpu_stop(unsigned int cpu)
 		raw_spin_lock(&stop_lock);
 		printk(KERN_CRIT "CPU%u: stopping\n", cpu);
 		dump_stack();
-#if CONFIG_SEC_DEBUG
+#if defined(CONFIG_SEC_DEBUG)
 		sec_debug_dump_stack();
 #endif
 		raw_spin_unlock(&stop_lock);

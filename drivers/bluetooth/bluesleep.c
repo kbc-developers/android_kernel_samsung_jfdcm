@@ -369,8 +369,8 @@ struct uart_port *bluesleep_get_uart_port(void)
 static int bluesleep_read_proc_lpm(char *page, char **start, off_t offset,
 					int count, int *eof, void *data)
 {
-    *eof = 1;
-    return snprintf(page, count, "lpm: %u\n", has_lpm_enabled?1:0 );
+	*eof = 1;
+	return snprintf(page, count, "lpm: %u\n", has_lpm_enabled?1:0 );
 }
 
 static int bluesleep_write_proc_lpm(struct file *file, const char *buffer,
@@ -400,11 +400,11 @@ static int bluesleep_write_proc_lpm(struct file *file, const char *buffer,
 			bluesleep_start();
 		}
 	} else if (b == '2') {
-        BT_ERR("(bluesleep_write_proc_lpm) don`t control ext_wake & uart clk");
-        if(has_lpm_enabled) {
-            has_lpm_enabled = false;
-            bluesleep_abnormal_stop();
-        }
+		BT_ERR("(bluesleep_write_proc_lpm) don`t control ext_wake & uart clk");
+		if(has_lpm_enabled) {
+			has_lpm_enabled = false;
+			bluesleep_abnormal_stop();
+		}
 	}
 
 	return count;
@@ -603,11 +603,11 @@ static void bluesleep_stop_wq(struct work_struct *work)
  */
 static void bluesleep_abnormal_stop_wq(struct work_struct *work)
 {
-    int ret;
+	int ret;
 
-    BT_ERR("bluesleep_abnormal_stop_wq");
+	BT_ERR("bluesleep_abnormal_stop_wq");
 
-    /* assert BT_WAKE */
+	/* assert BT_WAKE */
 	if (bsi->has_ext_wake == 1) {
 		ret = ice_gpiox_set(bsi->ext_wake, 1);
 		if (ret)

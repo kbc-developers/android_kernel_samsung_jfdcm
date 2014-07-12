@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -89,6 +89,13 @@
 #define VIDC_SM_ENC_EXT_CTRL_STREAM_RESTRICT_EN_SHFT 13
 #define VIDC_SM_ENC_EXT_CTRL_AU_DELIMITER_EN_BMSK    0x00000800
 #define VIDC_SM_ENC_EXT_CTRL_AU_DELIMITER_EN_SHFT    11
+#define VIDC_SM_ENC_EXT_CTRL_LONG_TERM_REF_ENABLE_BMSK 0x00000400
+#define VIDC_SM_ENC_EXT_CTRL_LONG_TERM_REF_ENABLE_SHFT 10
+/* MMRND_AVRC. Start */
+// pic_order_cnt_type = 2 */
+#define VIDC_SM_ENC_EXT_CTRL_PIC_ORDER_ENABLE_BMSK  0x200
+#define VIDC_SM_ENC_EXT_CTRL_PIC_ORDER_ENABLE_SHFT  9
+/* MMRND_AVRC. End */
 #define VIDC_SM_ENC_EXT_CTRL_H263_CPCFC_ENABLE_BMSK  0x80
 #define VIDC_SM_ENC_EXT_CTRL_H263_CPCFC_ENABLE_SHFT  7
 #define VIDC_SM_ENC_EXT_CTRL_SPS_PPS_CONTROL_BMSK    0X100
@@ -187,6 +194,11 @@
 #define VIDC_SM_ENC_TIME_SCALE_VALUE_BMSK                         0xffffffff
 #define VIDC_SM_ENC_TIME_SCALE_VALUE_SHFT                         0
 
+#define VIDC_SM_I_FRAME_QBOUND_IFRAME_ADDR                        0x01b8
+#define VIDC_SM_I_FRAME_QBOUND_MAX_QP_IFRAME_BMSK                 0x00003f00
+#define VIDC_SM_I_FRAME_QBOUND_MAX_QP_IFRAME_SHFT                 8
+#define VIDC_SM_I_FRAME_QBOUND_MIN_QP_IFRAME_BMSK                 0x0000003f
+#define VIDC_SM_I_FRAME_QBOUND_MIN_QP_IFRAME_SHFT                 0
 
 #define VIDC_SM_ALLOCATED_LUMA_DPB_SIZE_ADDR               0x0064
 #define VIDC_SM_ALLOCATED_CHROMA_DPB_SIZE_ADDR             0x0068
@@ -309,27 +321,48 @@
 #define VIDC_SM_MP2_DATA_DUMP_BUFFER_ADDR                         0x01a4
 #define VIDC_SM_MP2_DATA_DUMP_BUFFER_SIZE_ADDR                    0x01a8
 
-
+#define VIDC_SM_MP2_COMMON_STATUS_DEC_ORDER_ADDR                  0x01b0
+#define VIDC_SM_MP2_SEQ_END_CODE_BMSK                             0x00000002
+#define VIDC_SM_MP2_SEQ_END_CODE_SHIFT                            1
 
 #define VIDC_SM_ENC_EXT_CTRL_CLOSED_GOP_ENABLE_BMSK	0x40
 #define VIDC_SM_ENC_EXT_CTRL_CLOSED_GOP_ENABLE_SHFT	6
 
+#define DDL_SHARED_MEM_11BIT_RIGHT_SHIFT  11
+
+#ifdef VIDC_REGISTER_LOG
+static void DDL_MEM_WRITE_32(struct ddl_buf_addr *shared_mem, u32 offset,
+	u32 val)
+{
+	u32 *addr;
+	VIDC_REG_OUT("\nShared mem write :REG 0x%08x: write 0x%08x",
+		offset, val);
+	addr = (u32 *)((u8 *)(shared_mem)->align_virtual_addr + (offset));
+	*addr = val;
+}
+static u32 DDL_MEM_READ_32(struct ddl_buf_addr *shared_mem, u32 offset)
+{
+	u32 val;
+	val = *((u32 *)((u8 *)(shared_mem)->align_virtual_addr + (offset)));
+	VIDC_REG_IN("\nShared mem read :REG 0x%08x: read 0x%08x",
+		offset, val);
+	return val;
+}
+#else
 #define DDL_MEM_WRITE_32(base, offset, val) ddl_mem_write_32(\
 	(u32 *) ((u8 *) (base)->align_virtual_addr + (offset)), (val))
 #define DDL_MEM_READ_32(base, offset) ddl_mem_read_32(\
 	(u32 *) ((u8 *) (base)->align_virtual_addr + (offset)))
 
-#define DDL_SHARED_MEM_11BIT_RIGHT_SHIFT  11
-
 static void ddl_mem_write_32(u32 *addr, u32 data)
 {
 	*addr = data;
 }
-
 static u32 ddl_mem_read_32(u32 *addr)
 {
 	return *addr;
 }
+#endif
 
 void vidc_sm_get_extended_decode_status(struct ddl_buf_addr *shared_mem,
 	u32 *more_field_needed,
@@ -459,9 +492,15 @@ void vidc_sm_set_extended_encoder_control(struct ddl_buf_addr
 	*shared_mem, u32 hec_enable,
 	enum VIDC_SM_frame_skip frame_skip_mode,
 	u32 seq_hdr_in_band, u32 vbv_buffer_size, u32 cpcfc_enable,
+/* MMRND_AVRC. Start */
+#if 1
+	u32 sps_pps_control, u32 pic_order_count, u32 closed_gop_enable,
+#else
 	u32 sps_pps_control, u32 closed_gop_enable,
+#endif
+/* MMRND_AVRC. End */
 	u32 au_delim_enable, u32 vui_timing_info_enable,
-	u32 restrict_bitstream_enable)
+	u32 restrict_bitstream_enable, u32 ltr_enable)
 {
 	u32 enc_ctrl;
 	enc_ctrl = VIDC_SETFIELD((hec_enable) ? 1 : 0,
@@ -482,6 +521,11 @@ void vidc_sm_set_extended_encoder_control(struct ddl_buf_addr
 			VIDC_SETFIELD((sps_pps_control) ? 1 : 0,
 			VIDC_SM_ENC_EXT_CTRL_SPS_PPS_CONTROL_SHFT,
 			VIDC_SM_ENC_EXT_CTRL_SPS_PPS_CONTROL_BMSK) |
+/* MMRND_AVRC. Start */
+			VIDC_SETFIELD((pic_order_count) ? 1 : 0,
+			VIDC_SM_ENC_EXT_CTRL_PIC_ORDER_ENABLE_SHFT,
+			VIDC_SM_ENC_EXT_CTRL_PIC_ORDER_ENABLE_BMSK) |
+/* MMRND_AVRC. End */			
 			VIDC_SETFIELD(closed_gop_enable,
 			VIDC_SM_ENC_EXT_CTRL_CLOSED_GOP_ENABLE_SHFT,
 			VIDC_SM_ENC_EXT_CTRL_CLOSED_GOP_ENABLE_BMSK) |
@@ -493,7 +537,10 @@ void vidc_sm_set_extended_encoder_control(struct ddl_buf_addr
 			VIDC_SM_ENC_EXT_CTRL_TIMING_INFO_EN_BMSK) |
 			VIDC_SETFIELD((restrict_bitstream_enable) ? 1 : 0,
 			VIDC_SM_ENC_EXT_CTRL_STREAM_RESTRICT_EN_SHFT,
-			VIDC_SM_ENC_EXT_CTRL_STREAM_RESTRICT_EN_BMSK);
+			VIDC_SM_ENC_EXT_CTRL_STREAM_RESTRICT_EN_BMSK) |
+			VIDC_SETFIELD((ltr_enable) ? 1 : 0,
+			VIDC_SM_ENC_EXT_CTRL_LONG_TERM_REF_ENABLE_SHFT,
+			VIDC_SM_ENC_EXT_CTRL_LONG_TERM_REF_ENABLE_BMSK);
 
 	DDL_MEM_WRITE_32(shared_mem, VIDC_SM_ENC_EXT_CTRL_ADDR, enc_ctrl);
 }
@@ -745,6 +792,21 @@ void vidc_sm_set_pand_b_frame_qp(struct ddl_buf_addr *shared_mem,
 		nP_B_frame_qp);
 }
 
+void vidc_sm_set_i_frame_qp(struct ddl_buf_addr *shared_mem,
+        u32 nMaxQP, u32 nMinQP)
+{
+        u32 nQbound;
+
+        nQbound = VIDC_SETFIELD(nMaxQP,
+                                      VIDC_SM_I_FRAME_QBOUND_MAX_QP_IFRAME_SHFT,
+                                      VIDC_SM_I_FRAME_QBOUND_MAX_QP_IFRAME_BMSK) |
+                  VIDC_SETFIELD(nMinQP,
+                                      VIDC_SM_I_FRAME_QBOUND_MIN_QP_IFRAME_SHFT,
+                                      VIDC_SM_I_FRAME_QBOUND_MIN_QP_IFRAME_BMSK);
+
+        DDL_MEM_WRITE_32 (shared_mem, VIDC_SM_I_FRAME_QBOUND_IFRAME_ADDR,
+                                      nQbound);
+}
 
 void vidc_sm_get_profile_info(struct ddl_buf_addr *shared_mem,
 	struct ddl_profile_info_type *ddl_profile_info)
@@ -1191,4 +1253,15 @@ void vidc_sm_set_h264_encoder_timing_info(struct ddl_buf_addr *shared_mem,
 	DDL_MEM_WRITE_32(shared_mem,
 			VIDC_SM_ENC_TIME_SCALE_ADDR,
 			time_scale);
+}
+
+void vidc_sm_get_mp2common_status(struct ddl_buf_addr *shared_mem,
+	u32 *seq_end_code_present)
+{
+	u32 status;
+	status = DDL_MEM_READ_32(shared_mem,
+			VIDC_SM_MP2_COMMON_STATUS_DEC_ORDER_ADDR);
+	*seq_end_code_present = (u32) VIDC_GETFIELD(status,
+				VIDC_SM_MP2_SEQ_END_CODE_BMSK,
+				VIDC_SM_MP2_SEQ_END_CODE_SHIFT);
 }

@@ -9,7 +9,13 @@
  *
  */
 
-#if defined(CONFIG_MACH_JF_VZW) || defined(CONFIG_MACH_JF_SPR) || defined(CONFIG_MACH_JF_USC) || defined(CONFIG_MACH_JF_CRI)
+#if defined(CONFIG_BOARD_JF_REFRESH)
+#define BIN_FW_VERSION		0x1B
+#define BASE_FW_VERSION	0x01
+#ifdef _CYPRESS_TKEY_FW_H
+#include "fusion3_jf_refresh_tkey_fw.h"
+#endif
+#elif defined(CONFIG_MACH_JF_VZW) || defined(CONFIG_MACH_JF_SPR) || defined(CONFIG_MACH_JF_USC) || defined(CONFIG_MACH_JF_CRI)
 #define BIN_FW_VERSION		0x1A
 #define BASE_FW_VERSION		0x01
 #ifdef _CYPRESS_TKEY_FW_H

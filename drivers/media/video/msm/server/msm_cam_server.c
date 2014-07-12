@@ -445,7 +445,7 @@ static int msm_server_control(struct msm_cam_server_dev *server_dev,
 			break;
 		D("%s: wait_event interrupted by signal, remain_count = %d",
 			__func__, wait_count);
-	} while (wait_count > 0);
+	} while (1);
 	D("Waiting is over for config status\n");
 	if (list_empty_careful(&queue->list)) {
 		if (!rc)
@@ -1412,7 +1412,9 @@ static long msm_ioctl_server(struct file *file, void *fh,
 	case MSM_CAM_IOCTL_V4L2_EVT_NATIVE_CMD:
 		pr_err("%s: MSM_CAM_IOCTL_V4L2_EVT_NATIVE_CMD : %d\n",
 			__func__, _IOC_NR(cmd));
+#if !defined(CONFIG_MACH_MELIUS)
 		sensor_native_control(arg);
+#endif
 		rc = 0;
 		break;
 	case MSM_CAM_IOCTL_V4L2_EVT_NATIVE_FRONT_CMD:

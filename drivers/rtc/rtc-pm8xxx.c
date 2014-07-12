@@ -68,19 +68,23 @@ struct pm8xxx_rtc {
 
 #if defined(CONFIG_RTC_AUTO_PWRON)
 #ifdef CONFIG_RTC_AUTO_PWRON_PARAM
+static struct device *			sapa_rtc_dev;
 static struct workqueue_struct*	sapa_workq;
 static struct delayed_work		sapa_load_param;
 static struct wake_lock			sapa_wakelock;
+static int						sapa_kparam_loaded;
+static int						sapa_shutdown_loaded;
 #endif
 static struct rtc_wkalrm		sapa_saved_time;
 static int						sapa_dev_suspend;
 
+static int sapa_resetbootalarm(struct device *dev);
 
-static void print_time(char* str, struct rtc_wkalrm *alarm)
+static void print_time(char* str, struct rtc_time *time, unsigned long sec)
 {
-	pr_info( "%s: [%d] %d-%d-%d %d:%d:%d\n", str, alarm->enabled,
-		alarm->time.tm_year, alarm->time.tm_mon, alarm->time.tm_mday,
-		alarm->time.tm_hour, alarm->time.tm_min, alarm->time.tm_sec);
+	pr_info("%s: %4d-%02d-%02d %02d:%02d:%02d [%ld]\n", str,
+		time->tm_year, time->tm_mon, time->tm_mday,
+		time->tm_hour, time->tm_min, time->tm_sec, sec);
 }
 #endif
 
@@ -275,20 +279,6 @@ pm8xxx_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alarm)
 
 	rtc_tm_to_time(&alarm->time, &secs);
 
-#ifdef CONFIG_RTC_AUTO_PWRON
-	if ( sapa_saved_time.enabled ) {
-		unsigned long secs_pwron;
-
-		/* If there are power on alarm before alarm time, ignore alarm */
-		rtc_tm_to_time(&sapa_saved_time.time, &secs_pwron);
-		pr_info("secs_pwron=%lu, secs=%lu\n", secs_pwron, secs);
-		if ( secs_pwron < secs ) {
-			pr_info("RTC alarm don't need because of power on alarm\n");
-			return 0;
-		}
-	}
-#endif
-
 	/*
 	 * Read the current RTC time and verify if the alarm time is in the
 	 * past. If yes, return invalid.
@@ -305,6 +295,29 @@ pm8xxx_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alarm)
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_RTC_AUTO_PWRON
+	if ( sapa_saved_time.enabled ) {
+		unsigned long secs_pwron;
+
+		/* If there are power on alarm before alarm time, ignore alarm */
+		rtc_tm_to_time(&sapa_saved_time.time, &secs_pwron);
+
+		print_time("[SAPA] rtc ", &rtc_tm, secs_rtc);
+		print_time("[SAPA] sapa", &sapa_saved_time.time, secs_pwron);
+		print_time("[SAPA] alrm", &alarm->time, secs);
+
+		if ( secs_rtc < secs_pwron && secs_pwron < secs ) {
+			pr_info("[SAPA] override with SAPA\n");
+			memcpy(alarm, &sapa_saved_time, sizeof(struct rtc_wkalrm));
+			secs = secs_pwron;
+		}
+		if (  secs_pwron < secs_rtc ) {
+			pr_info("[SAPA] clear\n");
+			sapa_saved_time.enabled = 0;
+		}
+
+	}
+#endif
 	value[0] = secs & 0xFF;
 	value[1] = (secs >> 8) & 0xFF;
 	value[2] = (secs >> 16) & 0xFF;
@@ -383,6 +396,9 @@ pm8xxx_rtc_alarm_irq_enable(struct device *dev, unsigned int enabled)
 	struct pm8xxx_rtc *rtc_dd = dev_get_drvdata(dev);
 	u8 ctrl_reg;
 
+#ifdef CONFIG_RTC_AUTO_PWRON
+	pr_info("[SAPA] irq=%d\n", enabled);
+#endif
 	spin_lock_irqsave(&rtc_dd->ctrl_reg_lock, irq_flags);
 	ctrl_reg = rtc_dd->ctrl_reg;
 	ctrl_reg = (enabled) ? (ctrl_reg | PM8xxx_RTC_ALARM_ENABLE) :
@@ -406,21 +422,26 @@ rtc_rw_fail:
 static void sapa_load_kparam(struct work_struct *work)
 {
 	int temp1, temp2, temp3;
-	unsigned long pwron_time=(unsigned long)0;
+	unsigned long pwron_time;
 
-	if ( sapa_saved_time.enabled == 0 ) {
-		sec_get_param(param_index_boot_alarm_set, &temp1);
-		sec_get_param(param_index_boot_alarm_value_l, &temp2);
-		sec_get_param(param_index_boot_alarm_value_h, &temp3);
-		pwron_time = temp3<<4 | temp2;
+	sec_get_param(param_index_boot_alarm_set, &temp1);
+	sec_get_param(param_index_boot_alarm_value_l, &temp2);
+	sec_get_param(param_index_boot_alarm_value_h, &temp3);
+	pwron_time = (unsigned long)((temp3 << 4) | temp2);
 
-		pr_info("%s: %x %lu\n", __func__, temp1, pwron_time);
-		if ( temp1 == ALARM_MODE_BOOT_RTC ) {
-			rtc_time_to_tm( pwron_time, &sapa_saved_time.time );
-			sapa_saved_time.enabled = 1;
-			print_time("sapa_saved_time = ", &sapa_saved_time);
-		}
-	}
+	pr_info("[SAPA] %s %x %lu\n", __func__, temp1, pwron_time);
+	if ( temp1 == ALARM_MODE_BOOT_RTC )
+		sapa_saved_time.enabled = 1;
+	else
+		sapa_saved_time.enabled = 0;
+
+	sapa_kparam_loaded = 1;
+
+	rtc_time_to_tm( pwron_time, &sapa_saved_time.time );
+	print_time("[SAPA] saved_time", &sapa_saved_time.time, pwron_time);
+
+	/* Bug fix : USB cable or IRQ is disabled in LPM chg */
+	sapa_resetbootalarm(sapa_rtc_dev);
 }
 #endif
 
@@ -431,11 +452,6 @@ static void sapa_store_kparam(struct rtc_wkalrm *alarm)
 	int MSB=0, LSB=0;
 	int alarm_mode = 0;
 	unsigned long secs;
-
-	if ( !sapa_workq ) {
-		pr_err("%s: pwron alarm work_queue not exist\n", __func__);
-		return ;
-	}
 
 	if ( alarm == &sapa_saved_time ) {
 		pr_err("%s: pwr on alarm param already was written\n", __func__);
@@ -507,7 +523,27 @@ sapa_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alarm)
 	int rc;
 
 	if (!alarm->enabled) {
-		pr_info("%s: try to clear\n", __func__);
+		pr_info("[SAPA] Try to clear :  %4d-%02d-%02d %02d:%02d:%02d\n",
+			alarm->time.tm_year, alarm->time.tm_mon, alarm->time.tm_mday,
+			alarm->time.tm_hour, alarm->time.tm_min, alarm->time.tm_sec);
+
+		if(poweroff_charging && !sapa_kparam_loaded && sapa_shutdown_loaded){
+			pr_info("%s [SAPA] without loading kparam, it will be shutdown. No need to reset the alarm!! \n",__func__);
+			ctrl_reg = (rtc_dd->ctrl_reg | PM8xxx_RTC_ALARM_ENABLE);
+			rc = pm8xxx_write_wrapper(rtc_dd, &ctrl_reg,rtc_dd->rtc_base, 1);
+
+			if (rc) {
+				dev_err(dev, "Write to ALARM cntrol reg failed\n");
+				goto rtc_rw_fail;
+			}
+			return 0;
+		}
+		rc = pm8xxx_write_wrapper(rtc_dd, value, rtc_dd->alarm_rw_base,
+								NUM_8_BIT_RTC_REGS);
+		if (rc < 0) {
+			pr_err("[SAPA] Write to RTC ALARM registers failed\n");
+			goto rtc_rw_fail;
+		}
 
 		sapa_saved_time.enabled = 0;  // disable pwr on alarm to prevent retrying
 		sapa_store_kparam(alarm);
@@ -520,10 +556,20 @@ sapa_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alarm)
 			return rc;
 		}
 		rtc_dd->ctrl_reg = ctrl_reg;
+
+		/* read boot alarm */
+		rc = pm8xxx_rtc_read_alarm(dev, alarm);
+		if ( rc < 0 ) {
+			pr_err("[SAPA] read failed.\n");
+			return rc;
+		}
+		pr_info("[SAPA] -> %4d-%02d-%02d %02d:%02d:%02d\n",
+			alarm->time.tm_year, alarm->time.tm_mon, alarm->time.tm_mday,
+			alarm->time.tm_hour, alarm->time.tm_min, alarm->time.tm_sec);
 	}
 	else
 	{
-		pr_info("%s: <- %4d-%02d-%02d %02d:%02d:%02d\n", __func__,
+		pr_info("[SAPA] <- %4d-%02d-%02d %02d:%02d:%02d\n",
 			alarm->time.tm_year, alarm->time.tm_mon, alarm->time.tm_mday,
 			alarm->time.tm_hour, alarm->time.tm_min, alarm->time.tm_sec);
 
@@ -535,13 +581,13 @@ sapa_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alarm)
 		 */
 		rc = pm8xxx_rtc_read_time(dev, &rtc_tm);
 		if (rc < 0) {
-			pr_err("%s: Unamble to read RTC time\n", __func__);
+			pr_err("[SAPA] Unable to read RTC time\n");
 			return -EINVAL;
 		}
 
 		rtc_tm_to_time(&rtc_tm, &secs_rtc);
 		if (secs < secs_rtc) {
-			pr_err("%s: Trying to set alarm in the past\n", __func__);
+			pr_err("[SAPA] Trying to set alarm in the past\n");
 			sapa_saved_time.enabled = 0;  // disable pwr on alarm to prevent retrying
 			sapa_store_kparam(alarm);
 			return -EINVAL;
@@ -557,7 +603,7 @@ sapa_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alarm)
 		rc = pm8xxx_write_wrapper(rtc_dd, value, rtc_dd->alarm_rw_base,
 								NUM_8_BIT_RTC_REGS);
 		if (rc < 0) {
-			pr_err("%s: Write to RTC ALARM registers failed\n", __func__);
+			pr_err("[SAPA] Write to RTC ALARM registers failed\n");
 			goto rtc_rw_fail;
 		}
 
@@ -574,19 +620,19 @@ sapa_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alarm)
 		rtc_dd->ctrl_reg = ctrl_reg;
 
 		if ( alarm != &sapa_saved_time ) {
-			pr_info("%s: pwron alarm was updated.\n", __func__);
 			memcpy(&sapa_saved_time, alarm, sizeof(struct rtc_wkalrm));
 			sapa_store_kparam(alarm);
+			pr_info("[SAPA] updated\n");
 		}
 	}
 
 	/* read boot alarm */
 	rc = pm8xxx_rtc_read_alarm(dev, alarm);
 	if ( rc < 0 ) {
-		pr_err("%s: write failed.\n", __func__);
-			return rc;
+		pr_err("[SAPA] write failed.\n");
+		return rc;
 	}
-	pr_info("%s: -> %4d-%02d-%02d %02d:%02d:%02d\n", __func__,
+	pr_info("[SAPA] -> %4d-%02d-%02d %02d:%02d:%02d\n",
 			alarm->time.tm_year, alarm->time.tm_mon, alarm->time.tm_mday,
 			alarm->time.tm_hour, alarm->time.tm_min, alarm->time.tm_sec);
 	if ( alarm != &sapa_saved_time )
@@ -597,7 +643,7 @@ rtc_rw_fail:
 	return rc;
 }
 
-static int pm8xxx_rtc0_resetbootalarm(struct device *dev)
+static int sapa_resetbootalarm(struct device *dev)
 {
 	pr_info("%s: enable=%d\n", __func__, sapa_saved_time.enabled);
 	return sapa_rtc_setalarm(dev, &sapa_saved_time);
@@ -621,10 +667,13 @@ static irqreturn_t pm8xxx_alarm_trigger(int irq, void *dev_id)
 	u8 ctrl_reg;
 	int rc;
 	unsigned long irq_flags;
-
 #ifdef CONFIG_RTC_AUTO_PWRON
-	pr_info("##### ALARM TRIGGER #####\n");
+	int time_delta;
+	pr_info("##############################\n");
+	pr_info("%s [SAPA] ALARM TRIGGER\n",__func__);
+	pr_info("##############################\n");
 #endif
+
 	rtc_update_irq(rtc_dd->rtc, 1, RTC_IRQF | RTC_AF);
 
 	spin_lock_irqsave(&rtc_dd->ctrl_reg_lock, irq_flags);
@@ -659,6 +708,8 @@ static irqreturn_t pm8xxx_alarm_trigger(int irq, void *dev_id)
 
 #ifdef CONFIG_RTC_AUTO_PWRON
 #ifdef CONFIG_RTC_AUTO_PWRON_PARAM
+	pr_info("%s [SAPA] : irq(%d), lpm_mode:(%d)\n", __func__, irq, poweroff_charging);
+
 	if ( poweroff_charging && sapa_saved_time.enabled) {
 		struct rtc_time now;
 		struct rtc_wkalrm alarm;
@@ -675,20 +726,23 @@ static irqreturn_t pm8xxx_alarm_trigger(int irq, void *dev_id)
 
 		rtc_tm_to_time(&sapa_saved_time.time, &pwron_time);
 
-		dev_info(rtc_dd->rtc_dev, "curr_time: %lu\n", curr_time);
-		dev_info(rtc_dd->rtc_dev, "pmic_time: %lu\n", alarm_time);
-		dev_info(rtc_dd->rtc_dev, "pwrontime: %lu [%d]\n", pwron_time, sapa_saved_time.enabled);
+		pr_info("%s [SAPA] curr_time: %lu\n",__func__, curr_time);
+		pr_info("%s [SAPA] pmic_time: %lu\n",__func__, alarm_time);
+		pr_info("%s [SAPA] pwrontime: %lu [%d]\n",__func__, pwron_time, sapa_saved_time.enabled);
 
-		if ( pwron_time <= curr_time && curr_time < pwron_time+120 )  {
-			dev_info(rtc_dd->rtc_dev, "%s: Restart since RTC \n", __func__);
+		time_delta = curr_time - pwron_time;
+		if ( abs(time_delta) <= 60 )  {
+			wake_lock(&sapa_wakelock);
+			pr_info("%s [SAPA] Restart since RTC \n",__func__);
+
 			//machine_restart(NULL);
 			kernel_restart(NULL);
 			//panic("Test panic");
 		}
 		else {
-			dev_info(rtc_dd->rtc_dev, "%s: Not power on alarm.\n", __func__);
+			pr_info("%s [SAPA] not power on alarm.\n", __func__);
 			if (!sapa_dev_suspend)
-				pm8xxx_rtc0_resetbootalarm(rtc_dd->rtc_dev);
+				sapa_resetbootalarm(rtc_dd->rtc_dev);
 		}
 	}
 #else
@@ -801,6 +855,7 @@ static int __devinit pm8xxx_rtc_probe(struct platform_device *pdev)
 	}
 
 #ifdef CONFIG_RTC_AUTO_PWRON_PARAM
+	sapa_rtc_dev = rtc_dd->rtc_dev;
 	sapa_workq = create_singlethread_workqueue("pwron_alarm_resume");
 	if (sapa_workq == NULL) {
 		dev_err(&pdev->dev, "pwron_alarm work creating failed (%d)\n", rc);
@@ -840,7 +895,7 @@ static int pm8xxx_rtc_resume(struct device *dev)
 		disable_irq_wake(rtc_dd->rtc_alarm_irq);
 #if defined(CONFIG_RTC_AUTO_PWRON)
 	sapa_dev_suspend = 0;
-	pm8xxx_rtc0_resetbootalarm(dev);
+	sapa_resetbootalarm(dev);
 #endif
 
 	return 0;
@@ -889,7 +944,8 @@ static void pm8xxx_rtc_shutdown(struct platform_device *pdev)
 	u8 ctrl_reg;
 	int rc;
 
-	pm8xxx_rtc0_resetbootalarm(&pdev->dev);
+	sapa_shutdown_loaded = 1;
+	sapa_resetbootalarm(&pdev->dev);
 
 	/* Check if the RTC is on, else turn it on */
 	rc = pm8xxx_read_wrapper(rtc_dd, &ctrl_reg, rtc_dd->rtc_base, 1);

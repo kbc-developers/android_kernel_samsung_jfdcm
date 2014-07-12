@@ -1819,7 +1819,7 @@ static int __init mipi_video_magna_octa_full_hd_pt_init(void)
 	pinfo.mipi.dma_trigger = DSI_CMD_TRIGGER_SW;
 	pinfo.mipi.frame_rate = 60;
 	pinfo.mipi.dsi_phy_db = &dsi_video_mode_phy_db;
-	pinfo.mipi.force_clk_lane_hs = 1;
+	pinfo.mipi.force_clk_lane_hs = 0;
 	pinfo.mipi.esc_byte_ratio = 6;
 	pinfo.lcd.blt_ctrl = 1; //OVERLAY_BLT_SWITCH_TG_OFF;
 

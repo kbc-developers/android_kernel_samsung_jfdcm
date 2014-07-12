@@ -46,6 +46,7 @@
 #include <linux/fcntl.h>
 #include <linux/fs.h>
 #endif
+#include <linux/debugfs.h>
 #include <asm/system_info.h>
 
 /* onlyjazz.ed26 : make the restart_reason global to enable it early
@@ -766,6 +767,58 @@ int kernel_sec_get_debug_level(void)
 }
 EXPORT_SYMBOL(kernel_sec_get_debug_level);
 
+#ifdef CONFIG_SEC_MONITOR_BATTERY_REMOVAL
+static unsigned normal_off = 0;
+static int __init power_normal_off(char *val)
+{
+	normal_off = strncmp(val, "1", 1 ? 0 : 1);
+	pr_info("%s, normal_off: %d\n", __func__, normal_off);
+	return 1;
+}
+__setup("normal_off=", power_normal_off);
+
+bool kernel_sec_set_normal_pwroff(int value)
+{
+	int normal_poweroff = value;
+	pr_info(" %s, value :%d\n", __func__, value);
+	sec_set_param(param_index_normal_poweroff, &normal_poweroff);
+
+	return 1;
+}
+EXPORT_SYMBOL(kernel_sec_set_normal_pwroff);
+
+static int sec_get_normal_off(void *data, u64 *val)
+{
+	*val = normal_off;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(normal_off_fops, sec_get_normal_off, NULL, "%lld\n");
+
+static int __init sec_logger_init(void)
+{
+#ifdef CONFIG_DEBUG_FS
+	struct dentry *dent;
+	struct dentry *dbgfs_file;
+
+	dent = debugfs_create_dir("sec_logger", 0);
+	if (IS_ERR_OR_NULL(dent)) {
+		pr_err("Failed to create debugfs dir of sec_logger\n");
+		return PTR_ERR(dent);
+	}
+
+	dbgfs_file = debugfs_create_file("normal_off", 0664, dent, NULL, &normal_off_fops);
+	
+	if (IS_ERR_OR_NULL(dbgfs_file)) {
+		pr_err("Failed to create debugfs file of normal_off file\n");
+		debugfs_remove_recursive(dent);
+		return PTR_ERR(dbgfs_file);
+	}
+#endif
+	return 0;
+}
+late_initcall(sec_logger_init);
+#endif
+
 /* core reg dump function*/
 static void sec_debug_save_core_reg(struct sec_debug_core_t *core_reg)
 {
@@ -1212,7 +1265,6 @@ int sec_debug_subsys_add_varmon(char *name, unsigned int size, unsigned int pa)
 
 	return 0;
 }
-
 #ifdef CONFIG_SEC_DEBUG_MDM_FILE_INFO
 void sec_set_mdm_subsys_info(char *str_buf)
 {
@@ -1387,10 +1439,6 @@ int __init sec_debug_init(void)
 	register_reboot_notifier(&nb_reboot_block);
 	atomic_notifier_chain_register(&panic_notifier_list, &nb_panic_block);
 
-	sec_debug_set_build_info();
-	sec_debug_set_upload_magic(0x776655ee);
-	sec_debug_set_upload_cause(UPLOAD_CAUSE_INIT);
-
 	if (!enable)
 		return -EPERM;
 
@@ -1399,7 +1447,10 @@ int __init sec_debug_init(void)
 #endif
 
 	debug_semaphore_init();
-	
+	sec_debug_set_build_info();
+	sec_debug_set_upload_magic(0x776655ee);
+	sec_debug_set_upload_cause(UPLOAD_CAUSE_INIT);
+
 	return 0;
 }
 

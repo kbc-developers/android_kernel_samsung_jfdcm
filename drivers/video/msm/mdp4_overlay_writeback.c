@@ -61,6 +61,7 @@ static struct vsycn_ctrl {
 	struct msm_fb_data_type *mfd;
 	struct mdp4_overlay_pipe *base_pipe;
 	struct vsync_update vlist[2];
+	struct work_struct clk_work;
 } vsync_ctrl_db[MAX_CONTROLLER];
 
 static void vsync_irq_enable(int intr, int term)
@@ -130,8 +131,8 @@ int mdp4_overlay_writeback_on(struct platform_device *pdev)
 	if (vctrl->base_pipe == NULL) {
 		pipe = mdp4_overlay_pipe_alloc(OVERLAY_TYPE_BF, MDP4_MIXER2);
 		if (pipe == NULL) {
-			mdp_clk_ctrl(0);
 			pr_info("%s: pipe_alloc failed\n", __func__);
+			mdp_clk_ctrl(0);
 			return -EIO;
 		}
 		pipe->pipe_used++;
@@ -206,7 +207,7 @@ int mdp4_overlay_writeback_off(struct platform_device *pdev)
 	/* sanity check, free pipes besides base layer */
 	mdp4_overlay_unset_mixer(pipe->mixer_num);
 	mdp4_mixer_stage_down(pipe, 1);
-	mdp4_overlay_pipe_free(pipe);
+	mdp4_overlay_pipe_free(pipe, 1);
 	vctrl->base_pipe = NULL;
 
 	mdp_clk_ctrl(0);
@@ -401,8 +402,8 @@ int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd,
 	}
 	/* free previous committed iommu back to pool */
 	mdp4_overlay_iommu_unmap_freelist(mixer);
-	if(wait)
-		mdp_clk_ctrl(1);
+
+	mdp_clk_ctrl(1);
 
 	pipe = vp->plist;
 	for (i = 0; i < OVERLAY_PIPE_MAX; i++, pipe++) {
@@ -425,6 +426,10 @@ int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd,
 	mdp4_mixer_stage_commit(mixer);
 
 	pipe = vctrl->base_pipe;
+	if (!pipe->ov_blt_addr) {
+		schedule_work(&vctrl->clk_work);
+		return cnt;
+	}
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
 	vctrl->ov_koff++;
 	INIT_COMPLETION(vctrl->ov_comp);
@@ -438,14 +443,19 @@ int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd,
 
 	mdp4_stat.overlay_commit[pipe->mixer_num]++;
 
-	if (wait){
+	if (wait)
 		mdp4_wfd_wait4ov(cndx);
-		mdp_clk_ctrl(0);
-	}
 
 	mdp4_wfd_queue_wakeup(mfd, node);
 
 	return cnt;
+}
+
+static void clk_ctrl_work(struct work_struct *work)
+{
+	struct vsycn_ctrl *vctrl =
+		container_of(work, typeof(*vctrl), clk_work);
+	mdp_clk_ctrl(0);
 }
 
 void mdp4_wfd_init(int cndx)
@@ -467,6 +477,7 @@ void mdp4_wfd_init(int cndx)
 	init_completion(&vctrl->ov_comp);
 	atomic_set(&vctrl->suspend, 1);
 	spin_lock_init(&vctrl->spin_lock);
+	INIT_WORK(&vctrl->clk_work, clk_ctrl_work);
 }
 
 static void mdp4_wfd_wait4ov(int cndx)
@@ -500,7 +511,7 @@ void mdp4_overlay2_done_wfd(struct mdp_dma_data *dma)
 	vsync_irq_disable(INTR_OVERLAY2_DONE, MDP_OVERLAY2_TERM);
 	vctrl->ov_done++;
 	complete(&vctrl->ov_comp);
-
+	schedule_work(&vctrl->clk_work);
 	pr_debug("%s ovdone interrupt\n", __func__);
 	spin_unlock(&vctrl->spin_lock);
 }
@@ -525,13 +536,9 @@ void mdp4_writeback_overlay(struct msm_fb_data_type *mfd)
 
 	mdp4_overlay_mdp_perf_upd(mfd, 1);
 
-	mdp_clk_ctrl(1);
-
 	mdp4_wfd_pipe_commit(mfd, 0, 1);
 
 	mdp4_overlay_mdp_perf_upd(mfd, 0);
-
-	mdp_clk_ctrl(0);
 
 	mutex_unlock(&mfd->dma->ov_mutex);
 
@@ -599,7 +606,7 @@ static struct msmfb_writeback_data_list *get_if_registered(
 					  (ulong *)&temp->addr,
 					  (ulong *)&len,
 					  0,
-					  ION_IOMMU_UNMAP_DELAYED)) {
+					  0)) {
 				ion_free(mfd->iclient, srcp_ihdl);
 				pr_err("%s: unable to get ion mapping addr\n",
 				       __func__);

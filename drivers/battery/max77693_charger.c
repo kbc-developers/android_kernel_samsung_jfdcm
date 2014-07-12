@@ -746,6 +746,7 @@ static int sec_chg_set_property(struct power_supply *psy,
 		POWER_SUPPLY_TYPE_USB].fast_charging_current;
 	const int wpc_charging_current = charger->pdata->charging_current[
 		POWER_SUPPLY_TYPE_WIRELESS].input_current_limit;
+	u8 chg_cnfg_00;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_STATUS:
@@ -755,6 +756,24 @@ static int sec_chg_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_ONLINE:
 		/* check and unlock */
 		check_charger_unlock_state(charger);
+
+		if (val->intval == POWER_SUPPLY_TYPE_POWER_SHARING) {
+			psy_do_property("ps", get,
+					POWER_SUPPLY_PROP_STATUS, value);
+			chg_cnfg_00 = CHG_CNFG_00_OTG_MASK
+				| CHG_CNFG_00_BOOST_MASK
+				| CHG_CNFG_00_DIS_MUIC_CTRL_MASK;
+			if (value.intval) {
+				max77693_update_reg(charger->max77693->i2c, MAX77693_CHG_REG_CHG_CNFG_00,
+						chg_cnfg_00, chg_cnfg_00);
+				pr_info("%s: ps enable\n", __func__);
+			} else {
+				max77693_update_reg(charger->max77693->i2c, MAX77693_CHG_REG_CHG_CNFG_00,
+						0, chg_cnfg_00);
+				pr_info("%s: ps disable\n", __func__);
+			}
+			break;
+		}
 		charger->cable_type = val->intval;
 		psy_do_property("battery", get,
 				POWER_SUPPLY_PROP_HEALTH, value);
@@ -1331,7 +1350,9 @@ static __devinit int max77693_charger_probe(struct platform_device *pdev)
 	struct max77693_platform_data *pdata = dev_get_platdata(iodev->dev);
 	struct max77693_charger_data *charger;
 	int ret = 0;
+#if defined(CONFIG_CHARGER_MAX77803) || defined(CONFIG_MACH_JF)
 	u8 reg_data;
+#endif
 
 	pr_info("%s: MAX77693 Charger driver probe\n", __func__);
 
@@ -1375,9 +1396,13 @@ static __devinit int max77693_charger_probe(struct platform_device *pdev)
 	wake_lock_init(&charger->recovery_wake_lock, WAKE_LOCK_SUSPEND,
 					       "charger-recovery");
 	INIT_DELAYED_WORK(&charger->recovery_work, max77693_recovery_work);
+
+#if defined(CONFIG_CHARGER_MAX77803) || defined(CONFIG_MACH_JF)
 	wake_lock_init(&charger->wpc_wake_lock, WAKE_LOCK_SUSPEND,
 					       "charger-wpc");
 	INIT_DELAYED_WORK(&charger->wpc_work, wpc_detect_work);
+#endif
+
 	ret = power_supply_register(&pdev->dev, &charger->psy_chg);
 	if (ret) {
 		pr_err("%s: Failed to Register psy_chg\n", __func__);
@@ -1400,8 +1425,11 @@ static __devinit int max77693_charger_probe(struct platform_device *pdev)
 	charger->wc_w_irq = pdata->irq_base + MAX77693_CHG_IRQ_WCIN_I;
 	ret = request_threaded_irq(charger->wc_w_irq,
 			NULL, wpc_charger_irq,
-			IRQF_TRIGGER_FALLING,
-			"wpc-int", charger);
+#if defined(CONFIG_MACH_JF)
+			IRQF_TRIGGER_FALLING,"wpc-int", charger);
+#else
+			0, "wpc-int", charger);
+#endif
 	if (ret) {
 		pr_err("%s: Failed to Reqeust IRQ\n", __func__);
 		goto err_wc_irq;
@@ -1446,8 +1474,13 @@ static __devinit int max77693_charger_probe(struct platform_device *pdev)
 		pr_err("%s: fail to request bypass IRQ: %d: %d\n",
 				__func__, charger->irq_bypass, ret);
 	return 0;
+
+#if defined(CONFIG_WIRELESS_CHARGING) ||\
+	defined(CONFIG_CHARGER_MAX77803) ||\
+	defined(CONFIG_MACH_JF)
 err_wc_irq:
 	free_irq(charger->pdata->chg_irq, NULL);
+#endif
 err_irq:
 	power_supply_unregister(&charger->psy_chg);
 err_power_supply_register:

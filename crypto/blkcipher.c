@@ -1,6 +1,6 @@
 /*
  * Block chaining cipher operations.
- *
+ * 
  * Generic encrypt/decrypt wrapper for ciphers, handles operations across
  * multiple page boundaries by using temporary blocks.  In user context,
  * the kernel is given a chance to schedule us once per page.
@@ -9,7 +9,7 @@
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; either version 2 of the License, or (at your option)
+ * Software Foundation; either version 2 of the License, or (at your option) 
  * any later version.
  *
  */
@@ -109,7 +109,7 @@ int blkcipher_walk_done(struct blkcipher_desc *desc,
 	unsigned int nbytes = 0;
 
 #ifdef CONFIG_CRYPTO_FIPS
-    if (unlikely(in_fips_err()))
+    if (unlikely(in_fips_err())) 
         return (-EACCES);
 #endif
 
@@ -332,7 +332,7 @@ static int blkcipher_walk_first(struct blkcipher_desc *desc,
 	unsigned int alignmask = crypto_blkcipher_alignmask(tfm);
 
 #ifdef CONFIG_CRYPTO_FIPS
-    if (unlikely(in_fips_err()))
+    if (unlikely(in_fips_err())) 
         return (-EACCES);
 #endif
 
@@ -423,7 +423,7 @@ static int async_encrypt(struct ablkcipher_request *req)
 	};
 
 #ifdef CONFIG_CRYPTO_FIPS
-    if (unlikely(in_fips_err()))
+    if (unlikely(in_fips_err())) 
         return (-EACCES);
 #endif
 
@@ -441,7 +441,7 @@ static int async_decrypt(struct ablkcipher_request *req)
 	};
 
 #ifdef CONFIG_CRYPTO_FIPS
-    if (unlikely(in_fips_err()))
+    if (unlikely(in_fips_err())) 
         return (-EACCES);
 #endif
 
@@ -607,7 +607,7 @@ struct crypto_instance *skcipher_geniv_alloc(struct crypto_template *tmpl,
 	int err;
 
 #ifdef CONFIG_CRYPTO_FIPS
-    if (unlikely(in_fips_err()))
+    if (unlikely(in_fips_err())) 
         return ERR_PTR(-EACCES);
 #endif
 
@@ -736,7 +736,7 @@ int skcipher_geniv_init(struct crypto_tfm *tfm)
 	struct crypto_ablkcipher *cipher;
 
 #ifdef CONFIG_CRYPTO_FIPS
-    if (unlikely(in_fips_err()))
+    if (unlikely(in_fips_err())) 
         return (-EACCES);
 #endif
 

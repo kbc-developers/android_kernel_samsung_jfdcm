@@ -29,7 +29,7 @@
 
 extern void *restart_reason;
 
-#if CONFIG_SEC_DEBUG
+#if defined(CONFIG_SEC_DEBUG)
 extern int sec_debug_init(void);
 extern int sec_debug_dump_stack(void);
 extern void sec_debug_hw_reset(void);
@@ -50,7 +50,7 @@ static inline int sec_debug_init(void)
 {
 	return 0;
 }
-static inline int sec_debug_dump_stack(void) {}
+static inline int sec_debug_dump_stack(void) { return 0; }
 static inline void sec_debug_check_crash_key(unsigned int code, int value) {}
 
 static inline void sec_getlog_supply_fbinfo(void *p_fb, u32 res_x, u32 res_y,
@@ -238,7 +238,6 @@ struct secmsg_log {
 #define secdbg_msg(fmt, ...)
 #endif
 
-//KNOX_SEANDROID_START
 #ifdef CONFIG_SEC_DEBUG_AVC_LOG
 extern asmlinkage int sec_debug_avc_log(const char *fmt, ...);
 #define AVC_LOG_MAX 256
@@ -250,7 +249,6 @@ struct secavc_log {
 #else
 #define secdbg_avc(fmt, ...)
 #endif
-//KNOX_SEANDROID_END
 
 #ifdef CONFIG_SEC_DEBUG_DCVS_LOG
 #define DCVS_LOG_MAX 256
@@ -294,6 +292,12 @@ static inline void sec_debug_fuelgauge_log(unsigned int voltage,
 #define KERNEL_SEC_DEBUG_LEVEL_LOW	(0x574F4C44)
 #define KERNEL_SEC_DEBUG_LEVEL_MID	(0x44494D44)
 #define KERNEL_SEC_DEBUG_LEVEL_HIGH	(0x47494844)
+
+#ifdef CONFIG_SEC_MONITOR_BATTERY_REMOVAL
+extern bool kernel_sec_set_normal_pwroff(int value);
+extern int kernel_sec_get_normal_pwroff(void);
+#endif
+
 extern bool kernel_sec_set_debug_level(int level);
 extern int kernel_sec_get_debug_level(void);
 extern int ssr_panic_handler_for_sec_dbg(void);

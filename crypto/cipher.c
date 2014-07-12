@@ -71,7 +71,7 @@ static void cipher_crypt_unaligned(void (*fn)(struct crypto_tfm *, u8 *,
 	u8 *tmp = (u8 *)ALIGN((unsigned long)buffer, alignmask + 1);
 
 #ifdef CONFIG_CRYPTO_FIPS
-    if (unlikely(in_fips_err()))
+    if (unlikely(in_fips_err())) 
         return;
 #endif
 
@@ -87,7 +87,7 @@ static void cipher_encrypt_unaligned(struct crypto_tfm *tfm,
 	struct cipher_alg *cipher = &tfm->__crt_alg->cra_cipher;
 
 #ifdef CONFIG_CRYPTO_FIPS
-    if (unlikely(in_fips_err()))
+    if (unlikely(in_fips_err())) 
         return;
 #endif
 
@@ -106,9 +106,9 @@ static void cipher_decrypt_unaligned(struct crypto_tfm *tfm,
 	struct cipher_alg *cipher = &tfm->__crt_alg->cra_cipher;
 
 #ifdef CONFIG_CRYPTO_FIPS
-    if (unlikely(in_fips_err()))
+    if (unlikely(in_fips_err())) 
         return;
-#endif
+#endif 
 
 	if (unlikely(((unsigned long)dst | (unsigned long)src) & alignmask)) {
 		cipher_crypt_unaligned(cipher->cia_decrypt, tfm, dst, src);

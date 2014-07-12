@@ -643,12 +643,12 @@ static int msm_compr_trigger(struct snd_pcm_substream *substream, int cmd)
 				break;
 			}
 		}
-		atomic_set(&prtd->pending_buffer, 1);		
+		atomic_set(&prtd->pending_buffer, 1);
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 		pr_info("%s: Trigger start\n", __func__);
 		q6asm_run_nowait(prtd->audio_client, 0, 0, 0);
-		atomic_set(&prtd->start, 1); 
+		atomic_set(&prtd->start, 1);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 		pr_info("SNDRV_PCM_TRIGGER_STOP\n");
@@ -768,6 +768,7 @@ static int msm_compr_open(struct snd_pcm_substream *substream)
 	runtime->private_data = compr;
 	atomic_set(&prtd->eos, 0);
 	compressed_audio.prtd =  &compr->prtd;
+
 	return 0;
 }
 
@@ -775,8 +776,9 @@ int compressed_set_volume(unsigned volume)
 {
 	int rc = 0;
 	if (compressed_audio.prtd && compressed_audio.prtd->audio_client) {
-		rc = q6asm_set_volume(compressed_audio.prtd->audio_client,
-								 volume);
+		rc = q6asm_set_lrgain(compressed_audio.prtd->audio_client,
+						(volume >> 16) & 0xFFFF,
+						volume & 0xFFFF);
 		if (rc < 0) {
 			pr_err("%s: Send Volume command failed"
 					" rc=%d\n", __func__, rc);
@@ -951,22 +953,23 @@ static int msm_compr_hw_params(struct snd_pcm_substream *substream,
 				prtd->audio_client->perf_mode,
 				prtd->session_id,
 				substream->stream);
+			ret = compressed_set_volume(0);
+			if (ret < 0)
+				pr_err("%s : Set Volume failed : %d",
+					__func__, ret);
 
+			ret = q6asm_set_softpause(prtd->audio_client,
+					&softpause);
+			if (ret < 0)
+				pr_err("%s: Send SoftPause Param failed ret=%d\n",
+					__func__, ret);
+			ret = q6asm_set_softvolume(prtd->audio_client,
+					&softvol);
+			if (ret < 0)
+				pr_err("%s: Send SoftVolume Param failed ret=%d\n",
+					__func__, ret);
 			break;
 		}
-		ret = compressed_set_volume(compressed_audio.volume);
-		if (ret < 0)
-			pr_err("%s : Set Volume failed : %d", __func__, ret);
-
-		ret = q6asm_set_softpause(prtd->audio_client, &softpause);
-		if (ret < 0)
-			pr_err("%s: Send SoftPause Param failed ret=%d\n",
-				__func__, ret);
-		ret = q6asm_set_softvolume(prtd->audio_client, &softvol);
-		if (ret < 0)
-			pr_err("%s: Send SoftVolume Param failed ret=%d\n",
-				__func__, ret);
-
 	} else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		switch (compr->info.codec_param.codec.id) {
 		case SND_AUDIOCODEC_AMRWB:
@@ -1152,7 +1155,6 @@ static int msm_compr_ioctl(struct snd_pcm_substream *substream,
 			  (substream->stream == SNDRV_PCM_STREAM_CAPTURE &&
 						atomic_read(&prtd->start))) {
 			if (atomic_read(&prtd->eos)) {
-				prtd->cmd_ack = 1;
 				prtd->cmd_interrupt = 1;
 				wake_up(&the_locks.eos_wait);
 				atomic_set(&prtd->eos, 0);
@@ -1169,7 +1171,7 @@ static int msm_compr_ioctl(struct snd_pcm_substream *substream,
 			}
 			rc = wait_event_timeout(the_locks.flush_wait,
 				prtd->cmd_ack, 5 * HZ);
-			if (rc < 0)
+			if (!rc)
 				pr_err("Flush cmd timeout\n");
 			prtd->pcm_irq_pos = 0;
 		}
@@ -1181,7 +1183,7 @@ static int msm_compr_ioctl(struct snd_pcm_substream *substream,
 			__func__);
 			return -EWOULDBLOCK;
 		}
-		
+
 		atomic_set(&prtd->eos, 1);
 		atomic_set(&prtd->pending_buffer, 0);
 		prtd->cmd_ack = 0;

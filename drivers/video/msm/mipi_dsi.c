@@ -138,10 +138,10 @@ static int mipi_dsi_off(struct platform_device *pdev)
 		mipi_dsi_pdata->active_reset(0); /* low */
 
 	usleep(2000); /*1ms delay(minimum) required between reset low and AVDD off*/
-
+#if defined(CONFIG_SUPPORT_SECOND_POWER)
 	if (mipi_dsi_pdata && mipi_dsi_pdata->panel_power_save)
 		mipi_dsi_pdata->panel_power_save(0);
-
+#endif
 	if (mipi_dsi_pdata && mipi_dsi_pdata->dsi_power_save)
 		mipi_dsi_pdata->dsi_power_save(0);
 
@@ -192,16 +192,7 @@ static int mipi_dsi_on(struct platform_device *pdev)
 	if( is_booting == 1 )
 	{
 		is_booting = 0;
-#if defined(CONFIG_MACH_JACTIVE_ATT)
-		usleep(5000);
-		if (mipi_dsi_pdata && mipi_dsi_pdata->active_reset)
-				mipi_dsi_pdata->active_reset(0); /* low */
-		usleep(2000);
-
-		if (mipi_dsi_pdata && mipi_dsi_pdata->panel_power_save)
-			mipi_dsi_pdata->panel_power_save(0);
-		msleep(10);
-#elif defined(CONFIG_MACH_JACTIVE_EUR)
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 		usleep(5000);
 		if (mipi_dsi_pdata && mipi_dsi_pdata->active_reset)
 				mipi_dsi_pdata->active_reset(0); /* low */

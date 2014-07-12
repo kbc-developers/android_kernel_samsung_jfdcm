@@ -2810,7 +2810,7 @@ int alg_test(const char *driver, const char *alg, u32 type, u32 mask)
 	j = alg_find_test(driver);
 	if (i < 0 && j < 0)
 		goto notest;
-
+		
 #if FIPS_FUNC_TEST == 3
     // change@wtl.rsengott - FIPS mode self test Functional Test
     if (fips_enabled)
@@ -2838,7 +2838,7 @@ test_done:
 #ifdef CONFIG_CRYPTO_FIPS
 		IN_FIPS_ERROR = FIPS_ERR;
 #else
-		panic("%s: %s alg self test failed in fips mode!\n", driver, alg);
+		panic("%s: %s alg self test failed in fips mode!\n", driver, alg);		
 #endif
 		return rc;
 	}

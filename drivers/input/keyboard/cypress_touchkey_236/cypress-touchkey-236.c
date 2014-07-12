@@ -225,6 +225,25 @@ static void cypress_gpio_setting(bool value)
 
 			printk(KERN_DEBUG "%s in suspend \n",__func__);
 		}
+#elif defined(CONFIG_MACH_JFVE_EUR)
+	if(value) {
+		ret = gpio_request(GPIO_TOUCHKEY_SCL_2, "TKEY_SCL");
+		if (ret)
+			printk(KERN_ERR "%s: request GPIO %s err %d.",\
+					__func__, "TKEY_SCL_2", ret);
+
+		ret = gpio_request(GPIO_TOUCHKEY_SDA, "TKEY_SDA");
+		if (ret)
+			printk(KERN_ERR "%s: request GPIO %s err %d.",\
+					__func__, "TKEY_SDA", ret);
+
+		printk(KERN_DEBUG "%s in resume \n",__func__);
+	} else {
+		gpio_free(GPIO_TOUCHKEY_SCL_2);
+		gpio_free(GPIO_TOUCHKEY_SDA);
+		printk(KERN_DEBUG "%s in suspend \n",__func__);
+	}
+
 #else /*VZW, SPR, USC, CRI*/
 	if(value) {
 		if (system_rev < 10) {
@@ -601,13 +620,6 @@ static void cypress_touchkey_glove_work(struct work_struct *work)
 		}
 
 	while (retry < 3) {
-
-		if (!(info->enabled)) {
-			printk(KERN_ERR "[TouchKey] %s %d Touchkey is not enabled.\n",
-				__func__, __LINE__);
-			return ;
-			}
-
 		ret = i2c_touchkey_read(info->client, CYPRESS_GEN, data, 4);
 		if (ret < 0) {
 			dev_err(&info->client->dev, "[TouchKey] Failed to read Keycode_reg.\n");
@@ -623,24 +635,11 @@ static void cypress_touchkey_glove_work(struct work_struct *work)
 			data[3] = 0x40;
 		}
 
-		if (!(info->enabled)) {
-			printk(KERN_ERR "[TouchKey] %s %d Touchkey is not enabled.\n",
-				__func__, __LINE__);
-			return ;
-			}
-
 		count = i2c_touchkey_write(info->client, data, 4);
 
 		msleep(50);
 
 		/* Check autocal status */
-
-		if (!(info->enabled)) {
-			printk(KERN_ERR "[TouchKey] %s %d Touchkey is not enabled.\n",
-				__func__, __LINE__);
-			return ;
-			}
-
 		ret = i2c_touchkey_read(info->client, CYPRESS_GEN, data, 6);
 
 		if (glove_value == 1) {
@@ -719,13 +718,6 @@ void touchkey_flip_cover(int value)
 		}
 
 	while (retry < 3) {
-
-		if (!(info->enabled)) {
-			printk(KERN_ERR "[TouchKey] %s %d Touchkey is not enabled.\n",
-				__func__, __LINE__);
-			return ;
-			}
-
 		ret = i2c_touchkey_read(info->client, KEYCODE_REG, data, 4);
 		if (ret < 0) {
 			dev_err(&info->client->dev, "[Touchkey] Failed to read Keycode_reg %d times.\n",
@@ -742,24 +734,11 @@ void touchkey_flip_cover(int value)
 				data[3] = 0x40;
 		}
 
-		if (!(info->enabled)) {
-			printk(KERN_ERR "[TouchKey] %s %d Touchkey is not enabled.\n",
-				__func__, __LINE__);
-			return ;
-			}
-
 		count = i2c_touchkey_write(info->client, data, 4);
 
 		msleep(100);
 
 		/* Check autocal status */
-
-		if (!(info->enabled)) {
-			printk(KERN_ERR "[TouchKey] %s %d Touchkey is not enabled.\n",
-				__func__, __LINE__);
-			return ;
-			}
-
 		ret = i2c_touchkey_read(info->client, KEYCODE_REG, data, 6);
 
 		if (value == 1){

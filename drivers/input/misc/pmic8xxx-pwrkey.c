@@ -22,7 +22,7 @@
 
 #include <linux/mfd/pm8xxx/core.h>
 #include <linux/input/pmic8xxx-pwrkey.h>
-#if CONFIG_SEC_DEBUG
+#if defined(CONFIG_SEC_DEBUG)
 #include <mach/sec_debug.h>
 #endif
 #include <linux/string.h>
@@ -33,9 +33,7 @@
 #define PON_CNTL_PULL_UP BIT(7)
 #define PON_CNTL_TRIG_DELAY_MASK (0x7)
 
-#ifdef CONFIG_SAMSUNG_LPM_MODE
 extern int poweroff_charging;
-#endif
 
 /**
  * struct pmic8xxx_pwrkey - pmic8xxx pwrkey information
@@ -45,19 +43,17 @@ extern int poweroff_charging;
 struct pmic8xxx_pwrkey {
 	struct input_dev *pwr;
 	int key_press_irq;
-	u32	powerkey_state ;
+	u32	powerkey_state;
 	int key_release_irq;
 	bool press;
 	const struct pm8xxx_pwrkey_platform_data *pdata;
-#ifdef CONFIG_SAMSUNG_LPM_MODE
 	struct wake_lock wake_lock;
-#endif
 };
 
 static irqreturn_t pwrkey_press_irq(int irq, void *_pwrkey)
 {
 	struct pmic8xxx_pwrkey *pwrkey = _pwrkey;
-	pwrkey->powerkey_state = 1;
+
 	if (pwrkey->press == true) {
 		pwrkey->press = false;
 		return IRQ_HANDLED;
@@ -65,13 +61,12 @@ static irqreturn_t pwrkey_press_irq(int irq, void *_pwrkey)
 		pwrkey->press = true;
 	}
 
-#ifdef CONFIG_SAMSUNG_LPM_MODE
+	pwrkey->powerkey_state = 1;
 	if (poweroff_charging)
 		wake_lock(&pwrkey->wake_lock);
-#endif
 	input_report_key(pwrkey->pwr, KEY_POWER, 1);
 	input_sync(pwrkey->pwr);
-#if CONFIG_SEC_DEBUG
+#if defined(CONFIG_SEC_DEBUG)
 	sec_debug_check_crash_key(KEY_POWER, 1);
 #endif
 	return IRQ_HANDLED;
@@ -80,7 +75,7 @@ static irqreturn_t pwrkey_press_irq(int irq, void *_pwrkey)
 static irqreturn_t pwrkey_release_irq(int irq, void *_pwrkey)
 {
 	struct pmic8xxx_pwrkey *pwrkey = _pwrkey;
-	pwrkey->powerkey_state = 0;
+
 	if (pwrkey->press == false) {
 		input_report_key(pwrkey->pwr, KEY_POWER, 1);
 		input_sync(pwrkey->pwr);
@@ -89,18 +84,17 @@ static irqreturn_t pwrkey_release_irq(int irq, void *_pwrkey)
 		pwrkey->press = false;
 	}
 
+	pwrkey->powerkey_state = 0;
 	input_report_key(pwrkey->pwr, KEY_POWER, 0);
 	input_sync(pwrkey->pwr);
-#ifdef CONFIG_SAMSUNG_LPM_MODE
 	if (poweroff_charging)
 		wake_unlock(&pwrkey->wake_lock);
-#endif
-#if CONFIG_SEC_DEBUG
+#if defined(CONFIG_SEC_DEBUG)
 	sec_debug_check_crash_key(KEY_POWER, 0);
 #endif
 	return IRQ_HANDLED;
 }
-
+	
 #ifdef CONFIG_PM_SLEEP
 static int pmic8xxx_pwrkey_suspend(struct device *dev)
 {
@@ -130,25 +124,25 @@ static int pmic8xxx_pwrkey_resume(struct device *dev)
 static SIMPLE_DEV_PM_OPS(pm8xxx_pwr_key_pm_ops,
 		pmic8xxx_pwrkey_suspend, pmic8xxx_pwrkey_resume);
 
-
 static ssize_t  sysfs_powerkey_onoff_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
-
 {
 	struct pmic8xxx_pwrkey *pwrkey = dev_get_drvdata(dev);
 	printk(KERN_INFO "inside sysfs_powerkey_onoff_show\n");
 	if (pwrkey->powerkey_state == 1) {
 		printk(KERN_INFO "powerkey is pressed\n");
 		return snprintf(buf, 5, "%d\n", pwrkey->powerkey_state);
-	} else {
+	}
+	if (pwrkey->powerkey_state == 0) {
 		printk(KERN_INFO "powerkey is released\n");
 		return snprintf(buf, 5, "%d\n", pwrkey->powerkey_state);
 	}
+
+	return 0;
 }
 
 static DEVICE_ATTR(sec_powerkey_pressed, 0664 , sysfs_powerkey_onoff_show,
 	NULL);
-
 static int __devinit pmic8xxx_pwrkey_probe(struct platform_device *pdev)
 {
 	struct input_dev *pwr;
@@ -157,7 +151,7 @@ static int __devinit pmic8xxx_pwrkey_probe(struct platform_device *pdev)
 	int err;
 	unsigned int delay;
 	u8 pon_cntl;
-	int ret ;
+	int ret;
 	struct pmic8xxx_pwrkey *pwrkey;
 	struct device *sec_powerkey;
 	const struct pm8xxx_pwrkey_platform_data *pdata =
@@ -228,10 +222,8 @@ static int __devinit pmic8xxx_pwrkey_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, pwrkey);
 
-#ifdef CONFIG_SAMSUNG_LPM_MODE
 	if (poweroff_charging)
 		wake_lock_init(&pwrkey->wake_lock, WAKE_LOCK_SUSPEND, "pmic_pwrkey");
-#endif
 
 	/* check power key status during boot */
 	err = pm8xxx_read_irq_stat(pdev->dev.parent, key_press_irq);
@@ -262,14 +254,14 @@ static int __devinit pmic8xxx_pwrkey_probe(struct platform_device *pdev)
 
 		goto free_press_irq;
 	}
-	sec_powerkey = device_create(sec_class, NULL, 0, NULL,
-	"sec_powerkey");
-	 if (IS_ERR(sec_powerkey))
+
+	sec_powerkey = device_create(sec_class, NULL, 0, NULL, "sec_powerkey");
+	if (IS_ERR(sec_powerkey))
 		pr_err("Failed to create device(sec_powerkey)!\n");
-	 ret = device_create_file(sec_powerkey, &dev_attr_sec_powerkey_pressed);
-	 if (ret) {
+	ret = device_create_file(sec_powerkey, &dev_attr_sec_powerkey_pressed);
+	if (ret) {
 		pr_err("Failed to create device file in sysfs entries(%s)!\n",
-		dev_attr_sec_powerkey_pressed.attr.name);
+			dev_attr_sec_powerkey_pressed.attr.name);
 	}
 	dev_set_drvdata(sec_powerkey, pwrkey);
 	device_init_wakeup(&pdev->dev, pdata->wakeup);
@@ -296,10 +288,8 @@ static int __devexit pmic8xxx_pwrkey_remove(struct platform_device *pdev)
 	int key_press_irq = platform_get_irq(pdev, 1);
 
 	device_init_wakeup(&pdev->dev, 0);
-#ifdef CONFIG_SAMSUNG_LPM_MODE
 	if (poweroff_charging)
 		wake_lock_destroy(&pwrkey->wake_lock);
-#endif
 	free_irq(key_press_irq, pwrkey);
 	free_irq(key_release_irq, pwrkey);
 	input_unregister_device(pwrkey->pwr);

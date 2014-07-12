@@ -5844,19 +5844,23 @@ int msm_axi_subdev_init(struct v4l2_subdev *sd,
 
 #ifdef CONFIG_MSM_IOMMU
 device_misc_attach_failed:
+	pr_err("%s:in device_misc_attach_failed",__func__);
 	iommu_detach_device(mctl->domain, axi_ctrl->iommu_ctx_imgwr);
 device_imgwr_attach_failed:
 #endif
 	msm_cam_clk_enable(&axi_ctrl->pdev->dev, vfe32_clk_info,
 			axi_ctrl->vfe_clk, ARRAY_SIZE(vfe32_clk_info), 0);
 clk_enable_failed:
+	pr_err("%s:in clk_enable_failed",__func__);
 	if (axi_ctrl->fs_vfe)
 		regulator_disable(axi_ctrl->fs_vfe);
 fs_failed:
+	pr_err("%s:in fs_failed",__func__);
 	iounmap(axi_ctrl->share_ctrl->vfebase);
 	axi_ctrl->share_ctrl->vfebase = NULL;
 remap_failed:
 mctl_failed:
+	pr_err("%s:in remap_failed/mctl_failed",__func__);
 	return rc;
 }
 
@@ -5904,6 +5908,7 @@ void msm_axi_subdev_release(struct v4l2_subdev *sd)
 	disable_irq(axi_ctrl->vfeirq->start);
 	tasklet_kill(&axi_ctrl->vfe32_tasklet);
 #ifdef CONFIG_MSM_IOMMU
+    pr_err("%s iommu_detach_device ", __func__);
 	iommu_detach_device(pmctl->domain, axi_ctrl->iommu_ctx_misc);
 	iommu_detach_device(pmctl->domain, axi_ctrl->iommu_ctx_imgwr);
 #endif
@@ -5914,7 +5919,7 @@ void msm_axi_subdev_release(struct v4l2_subdev *sd)
 
 	iounmap(axi_ctrl->share_ctrl->vfebase);
 	axi_ctrl->share_ctrl->vfebase = NULL;
-
+    pr_err("%s setting share_ctrl->vfebase to NULL ", __func__);
 	if (atomic_read(&irq_cnt))
 		pr_warning("%s, Warning IRQ Count not ZERO\n", __func__);
 

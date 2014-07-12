@@ -308,6 +308,7 @@ int _fat_fallocate(struct inode *inode, loff_t len)
 	return err;
 }
 #endif
+
 /*
  * New FAT inode stuff. We do the following:
  *	a) i_ino is constant and has nothing with on-disk location.

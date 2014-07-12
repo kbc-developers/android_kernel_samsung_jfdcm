@@ -162,7 +162,10 @@ static int sdio_read_cccr(struct mmc_card *card, u32 ocr)
 			if (ret)
 				goto out;
 
-			if (mmc_host_uhs(card->host)) {
+			if (card->host->caps &
+				(MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
+				 MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR104 |
+				 MMC_CAP_UHS_DDR50)) {
 				if (data & SDIO_UHS_DDR50)
 					card->sw_caps.sd3_bus_mode
 						|= SD_MODE_UHS_DDR50;
@@ -1144,8 +1147,8 @@ int mmc_attach_sdio(struct mmc_host *host)
 	 * Detect and init the card.
 	 */
 	if (mmc_host_uhs(host))
-			/* to query card if 1.8V signalling is supported */
-			host->ocr |= R4_18V_PRESENT;
+		/* to query card if 1.8V signalling is supported */
+		host->ocr |= R4_18V_PRESENT;
 
 	err = mmc_sdio_init_card(host, host->ocr, NULL, 0);
 	if (err) {
@@ -1294,7 +1297,7 @@ int sdio_reset_comm(struct mmc_card *card)
 	return 0;
 err:
 	printk("%s: Error resetting SDIO communications (%d)\n",
-		mmc_hostname(host), err);
+	       mmc_hostname(host), err);
 	mmc_release_host(host);
 	return err;
 #else

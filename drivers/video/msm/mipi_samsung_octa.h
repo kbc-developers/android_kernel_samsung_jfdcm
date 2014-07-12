@@ -134,7 +134,6 @@ struct mipi_panel_data {
 	int temperature;
 	char temperature_value;
 	int need_update;
-	int support_smart_acl;
 
 };
 

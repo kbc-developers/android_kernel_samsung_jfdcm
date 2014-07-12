@@ -2183,7 +2183,6 @@ retry_find_task:
 			ret= -ESRCH;
 			goto out_unlock_cgroup;
 		}
-
 		/*
 		 * even if we're attaching all tasks in the thread group, we
 		 * only need to check permissions on one of them.
