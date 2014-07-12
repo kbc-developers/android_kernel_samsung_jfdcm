@@ -4670,6 +4670,10 @@ void swap_buf_le16(u16 *buf, unsigned int buf_words)
  *	ata_qc_new - Request an available ATA command, for queueing
  *	@ap: target port
  *
+ *	Some ATA host controllers may implement a queue depth which is less
+ *	than ATA_MAX_QUEUE. So we shouldn't allocate a tag which is beyond
+ *	the hardware limitation.
+ *
  *	LOCKING:
  *	None.
  */
