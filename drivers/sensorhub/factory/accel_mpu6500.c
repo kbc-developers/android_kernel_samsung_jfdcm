@@ -34,7 +34,7 @@ static ssize_t accel_vendor_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct ssp_data *data = dev_get_drvdata(dev);
-	if (system_rev <= 10) {
+        if (system_rev <= 10) {
 		if (data->ap_rev >= k330_rev)
 			return sprintf(buf, "%s\n", VENDOR_K330);
 		else
@@ -53,7 +53,7 @@ static ssize_t accel_name_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct ssp_data *data = dev_get_drvdata(dev);
-    if (system_rev <= 10) {
+        if (system_rev <= 10) {
 		if (data->ap_rev >= k330_rev)
 			return sprintf(buf, "%s\n", CHIP_ID_K330);
 		else

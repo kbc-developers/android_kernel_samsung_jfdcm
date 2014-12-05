@@ -53,7 +53,7 @@ static void f2fs_write_end_io(struct bio *bio, int err)
 		struct page *page = bvec->bv_page;
 
 		if (unlikely(err)) {
-			SetPageError(page);
+			set_page_dirty(page);
 			set_bit(AS_EIO, &page->mapping->flags);
 			set_ckpt_flags(sbi->ckpt, CP_ERROR_FLAG);
 			sbi->sb->s_flags |= MS_RDONLY;
@@ -140,7 +140,10 @@ void f2fs_submit_merged_bio(struct f2fs_sb_info *sbi,
 	/* change META to META_FLUSH in the checkpoint procedure */
 	if (type >= META_FLUSH) {
 		io->fio.type = META_FLUSH;
-		io->fio.rw = WRITE_FLUSH_FUA | REQ_META | REQ_PRIO;
+		if (test_opt(sbi, NOBARRIER))
+			io->fio.rw = WRITE_FLUSH | REQ_META | REQ_PRIO;
+		else
+			io->fio.rw = WRITE_FLUSH_FUA | REQ_META | REQ_PRIO;
 	}
 	__submit_merged_bio(io);
 	up_write(&io->io_rwsem);
@@ -627,8 +630,10 @@ static int __get_data_block(struct inode *inode, sector_t iblock,
 	if (check_extent_cache(inode, pgofs, bh_result))
 		goto out;
 
-	if (create)
+	if (create) {
+		f2fs_balance_fs(sbi);
 		f2fs_lock_op(sbi);
+	}
 
 	/* When reading holes, we need its node page */
 	set_new_dnode(&dn, inode, NULL, NULL, 0);
@@ -687,7 +692,7 @@ get_next:
 			allocated = true;
 			blkaddr = dn.data_blkaddr;
 		}
-		/* Give more consecutive addresses for the read ahead */
+		/* Give more consecutive addresses for the readahead */
 		if (blkaddr == (bh_result->b_blocknr + ofs)) {
 			ofs++;
 			dn.ofs_in_node++;
@@ -735,7 +740,7 @@ static int f2fs_read_data_page(struct file *file, struct page *page)
 
 	trace_f2fs_readpage(page, DATA);
 
-	/* If the file has inline data, try to read it directlly */
+	/* If the file has inline data, try to read it directly */
 	if (f2fs_has_inline_data(inode))
 		ret = f2fs_read_inline_data(inode, page);
 	else
@@ -785,9 +790,11 @@ int do_write_data_page(struct page *page, struct f2fs_io_info *fio)
 			!is_cold_data(page) &&
 			need_inplace_update(inode))) {
 		rewrite_data_page(page, old_blkaddr, fio);
+		set_inode_flag(F2FS_I(inode), FI_UPDATE_WRITE);
 	} else {
 		write_data_page(page, &dn, &new_blkaddr, fio);
 		update_extent_cache(new_blkaddr, &dn);
+		set_inode_flag(F2FS_I(inode), FI_APPEND_WRITE);
 	}
 out_writepage:
 	f2fs_put_dnode(&dn);
@@ -830,8 +837,17 @@ write:
 
 	/* Dentry blocks are controlled by checkpoint */
 	if (S_ISDIR(inode->i_mode)) {
+		if (unlikely(f2fs_cp_error(sbi)))
+			goto redirty_out;
 		err = do_write_data_page(page, &fio);
 		goto done;
+	}
+
+	/* we should bypass data pages to proceed the kworkder jobs */
+	if (unlikely(f2fs_cp_error(sbi))) {
+		SetPageError(page);
+		unlock_page(page);
+		return 0;
 	}
 
 	if (!wbc->for_reclaim)
@@ -921,7 +937,7 @@ static void f2fs_write_failed(struct address_space *mapping, loff_t to)
 
 	if (to > inode->i_size) {
 		truncate_pagecache(inode, 0, inode->i_size);
-		truncate_blocks(inode, inode->i_size);
+		truncate_blocks(inode, inode->i_size, true);
 	}
 }
 
@@ -940,7 +956,7 @@ static int f2fs_write_begin(struct file *file, struct address_space *mapping,
 
 	f2fs_balance_fs(sbi);
 repeat:
-	err = f2fs_convert_inline_data(inode, pos + len);
+	err = f2fs_convert_inline_data(inode, pos + len, NULL);
 	if (err)
 		goto fail;
 
@@ -1085,8 +1101,14 @@ static ssize_t f2fs_direct_IO(int rw, struct kiocb *iocb,
 
 	err = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
 							get_data_block);
+
+	trace_f2fs_direct_IO_enter(inode, offset, count, rw);
+
 	if (err < 0 && (rw & WRITE))
 		f2fs_write_failed(mapping, offset + count);
+
+	trace_f2fs_direct_IO_exit(inode, offset, count, rw, err);
+
 	return err;
 }
 

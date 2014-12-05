@@ -190,6 +190,13 @@ enum max77693_haptic_reg {
 #define CHGDETEN_MASK			(0x1 << CHGDETEN_SHIFT)
 #define CHGTYPM_MASK			(0x1 << CHGTYPM_SHIFT)
 
+/* MAX77693 Charger interrupt register(0xB1) */
+
+#define WCIN_SHIFT				5
+#define WCIN_MASK				(0x1 << WCIN_SHIFT)
+#define CHGIN_SHIFT				6
+#define CHGIN_MASK				(0x1 << CHGIN_SHIFT)
+
 /* MAX77693 CONTROL1 register */
 #define CLEAR_IDBEN_MICEN_MASK	0x3f
 #define COMN1SW_SHIFT				0x0
@@ -396,7 +403,8 @@ enum cable_type_muic {
 	CABLE_TYPE_AUDIODOCK_MUIC,		/* 16 */
 	CABLE_TYPE_INCOMPATIBLE_MUIC,		/* 17 */
 	CABLE_TYPE_CDP_MUIC,			/* 18 */
-	CABLE_TYPE_UNKNOWN_MUIC			/* 19 */
+	CABLE_TYPE_CHARGING_CABLE_MUIC,		/* 19 */
+	CABLE_TYPE_UNKNOWN_MUIC			/* 20 */
 };
 
 enum {

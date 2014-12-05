@@ -589,7 +589,7 @@ static int epm_adc_blocking_conversion(struct epm_adc_drv *epm_adc,
 {
 	struct epm_adc_platform_data *pdata = epm_adc->pdev->dev.platform_data;
 	int32_t channel_num = 0, mux_chan_idx = 0;
-    char adc_data[3] = { 0 };
+	char adc_data[3] = { 0 };
 	int rc = 0;
 
 	mutex_lock(&epm_adc->conv_lock);
@@ -1770,6 +1770,7 @@ static int __devinit epm_adc_probe(struct platform_device *pdev)
 
 	if (misc_register(&epm_adc->misc)) {
 		dev_err(&pdev->dev, "Unable to register misc device!\n");
+		kfree(epm_adc);
 		return -EFAULT;
 	}
 
@@ -1777,6 +1778,7 @@ static int __devinit epm_adc_probe(struct platform_device *pdev)
 	if (rc) {
 		dev_err(&pdev->dev, "msm_adc_dev_init failed\n");
 		misc_deregister(&epm_adc->misc);
+		kfree(epm_adc);
 		return rc;
 	}
 
@@ -1785,6 +1787,7 @@ static int __devinit epm_adc_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "hwmon_device_register failed\n");
 		misc_deregister(&epm_adc->misc);
 		rc = PTR_ERR(epm_adc->hwmon);
+		kfree(epm_adc);
 		return rc;
 	}
 

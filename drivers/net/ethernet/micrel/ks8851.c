@@ -556,7 +556,7 @@ static void ks8851_rx_pkts(struct ks8851_net *ks)
 	for (; rxfc != 0; rxfc--) {
 		rxh = ks8851_rdreg32(ks, KS_RXFHSR);
 		rxstat = rxh & 0xffff;
-		rxlen = rxh >> 16;
+		rxlen = (rxh >> 16) & 0xfff;
 
 		netif_dbg(ks, rx_status, ks->netdev,
 			  "rx: stat 0x%04x, len 0x%04x\n", rxstat, rxlen);
@@ -1466,8 +1466,12 @@ static int __devinit ks8851_init_hw(struct spi_device *spi,
 		goto fail_gpio;
 	}
 
-	regulator_enable(ks->vdd_io);
-	regulator_enable(ks->vdd_phy);
+	ret = regulator_enable(ks->vdd_io);
+	if(ret)
+		goto fail_gpio;
+
+	ret = regulator_enable(ks->vdd_phy);
+		goto fail_regulator;
 
 	/* Wait for atleast 10ms after turning on regulator */
 	usleep_range(10000, 11000);
@@ -1476,7 +1480,8 @@ static int __devinit ks8851_init_hw(struct spi_device *spi,
 		gpio_direction_output(ks->rst_gpio, 1);
 
 	return 0;
-
+fail_regulator:
+	regulator_disable(ks->vdd_io);
 fail_gpio:
 	if (gpio_is_valid(ks->rst_gpio))
 		gpio_free(ks->rst_gpio);

@@ -8,6 +8,14 @@ menu "File systems"
 config DCACHE_WORD_ACCESS
        bool
 
+config LOW_ORDER_SEQ_MALLOC
+	bool "Let seq_file allocation only low order page memory"
+	default y
+	help
+	 Sometimes high-order allocation is requested via seq_file.
+	 This will cause system performance degradation.
+	 When high-order allocation is requested, change it to vmalloc.
+
 if BLOCK
 
 source "fs/ext2/Kconfig"
@@ -282,11 +290,5 @@ endif # NETWORK_FILESYSTEMS
 
 source "fs/nls/Kconfig"
 source "fs/dlm/Kconfig"
-
-config DYNAMIC_FSYNC
-	bool "dynamic file sync control"
-	default n
-	help
-	  An experimental file sync control using Android's early suspend / late resume drivers
 
 endmenu

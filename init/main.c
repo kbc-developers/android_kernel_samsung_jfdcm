@@ -68,12 +68,17 @@
 #include <linux/shmem_fs.h>
 #include <linux/slab.h>
 #include <linux/perf_event.h>
+#include <linux/random.h>
 
 #include <asm/io.h>
 #include <asm/bugs.h>
 #include <asm/setup.h>
 #include <asm/sections.h>
 #include <asm/cacheflush.h>
+
+#ifdef CONFIG_SEC_GPIO_DVS
+#include <linux/secgpio_dvs.h>
+#endif
 
 #ifdef CONFIG_X86_LOCAL_APIC
 #include <asm/smp.h>
@@ -234,8 +239,8 @@ early_param("loglevel", loglevel);
  static int __init battStatus(char *str)
 {
 	int batt_val;
-  
-	
+
+
 	if (get_option(&str, &batt_val)) {
 		console_batt_stat = batt_val;
 		return 0;
@@ -359,7 +364,7 @@ static inline void smp_prepare_cpus(unsigned int maxcpus) { }
  */
 static void __init setup_command_line(char *command_line)
 {
-	saved_command_line = alloc_bootmem(strlen (boot_command_line)+50);
+	saved_command_line = alloc_bootmem(strlen (boot_command_line)+1);
 	static_command_line = alloc_bootmem(strlen (command_line)+1);
 	strcpy (saved_command_line, boot_command_line);
 	strcpy (static_command_line, command_line);
@@ -494,6 +499,48 @@ static void __init mm_init(void)
 	vmalloc_init();
 }
 
+#ifdef CONFIG_CRYPTO_FIPS
+/* change@ksingh.sra-dallas - in kernel 3.4 and + 
+ * the mmu clears the unused/unreserved memory with default RAM initial sticky 
+ * bit data.
+ * Hence to preseve the copy of zImage in the unmarked area, the Copied zImage
+ * memory range has to be marked reserved.
+*/
+#define SHA256_DIGEST_SIZE 32
+
+// this is the size of memory area that is marked as reserved
+long integrity_mem_reservoir = 0;
+
+// internal API to mark zImage copy memory area as reserved
+static void __init integrity_mem_reserve(void) {
+	int result = 0;
+	long len = 0;
+	u8* zBuffer = 0;
+	
+	zBuffer = (u8*)phys_to_virt((unsigned long)CONFIG_CRYPTO_FIPS_INTEG_COPY_ADDRESS);
+	if (*((u32 *) &zBuffer[36]) != 0x016F2818) {
+		printk(KERN_ERR "FIPS main.c: invalid zImage magic number.");
+		return;
+	}
+
+	if (*(u32 *) &zBuffer[44] <= *(u32 *) &zBuffer[40]) {
+		printk(KERN_ERR "FIPS main.c: invalid zImage calculated len");
+		return;
+	}
+	
+	len = *(u32 *) &zBuffer[44] - *(u32 *) &zBuffer[40];
+	printk(KERN_NOTICE "FIPS Actual zImage len = %ld\n", len);
+	
+	integrity_mem_reservoir = len + SHA256_DIGEST_SIZE;
+	result = reserve_bootmem((unsigned long)CONFIG_CRYPTO_FIPS_INTEG_COPY_ADDRESS, integrity_mem_reservoir, 1);
+	if(result != 0) {
+		integrity_mem_reservoir = 0;
+	} 
+	printk(KERN_NOTICE "FIPS integrity_mem_reservoir = %ld\n", integrity_mem_reservoir);
+}
+// change@ksingh.sra-dallas - end
+#endif // CONFIG_CRYPTO_FIPS
+
 asmlinkage void __init start_kernel(void)
 {
 	char * command_line;
@@ -506,11 +553,6 @@ asmlinkage void __init start_kernel(void)
 	lockdep_init();
 	smp_setup_processor_id();
 	debug_objects_early_init();
-
-	/*
-	 * Set up the the initial canary ASAP:
-	 */
-	boot_init_stack_canary();
 
 	cgroup_init_early();
 
@@ -526,6 +568,10 @@ asmlinkage void __init start_kernel(void)
 	page_address_init();
 	printk(KERN_NOTICE "%s", linux_banner);
 	setup_arch(&command_line);
+	/*
+	 * Set up the the initial canary ASAP:
+	 */
+	boot_init_stack_canary();
 	mm_init_owner(&init_mm, &init_task);
 	mm_init_cpumask(&init_mm);
 	setup_command_line(command_line);
@@ -540,10 +586,16 @@ asmlinkage void __init start_kernel(void)
 	parse_early_param();
 	parse_args("Booting kernel", static_command_line, __start___param,
 		   __stop___param - __start___param,
-		   0, 0, &unknown_bootoption);
+		   -1, -1, &unknown_bootoption);
 
 	jump_label_init();
 
+#ifdef CONFIG_CRYPTO_FIPS	
+	/* change@ksingh.sra-dallas
+	 * marks the zImage copy area as reserve before mmu can clear it
+	 */
+ 	integrity_mem_reserve();
+#endif // CONFIG_CRYPTO_FIPS
 	/*
 	 * These use large bootmem allocations and must precede
 	 * kmem_cache_init()
@@ -592,9 +644,6 @@ asmlinkage void __init start_kernel(void)
 	early_boot_irqs_disabled = false;
 	local_irq_enable();
 
-	/* Interrupts are enabled now so all GFP allocations are safe. */
-	gfp_allowed_mask = __GFP_BITS_MASK;
-
 	kmem_cache_init_late();
 
 	/*
@@ -637,7 +686,7 @@ asmlinkage void __init start_kernel(void)
 	pidmap_init();
 	anon_vma_init();
 #ifdef CONFIG_X86
-	if (efi_enabled)
+	if (efi_enabled(EFI_RUNTIME_SERVICES))
 		efi_enter_virtual_mode();
 #endif
 #ifdef CONFIG_X86_ESPFIX64
@@ -668,6 +717,9 @@ asmlinkage void __init start_kernel(void)
 
 	acpi_early_init(); /* before LAPIC and SMP init */
 	sfi_init_late();
+
+	if (efi_enabled(EFI_RUNTIME_SERVICES))
+		efi_free_boot_services();
 
 	ftrace_init();
 
@@ -815,6 +867,7 @@ static void __init do_basic_setup(void)
 	do_ctors();
 	usermodehelper_enable();
 	do_initcalls();
+	random_int_secret_init();
 }
 
 static void __init do_pre_smp_initcalls(void)
@@ -836,6 +889,15 @@ static void run_init_process(const char *init_filename)
  */
 static noinline int init_post(void)
 {
+#ifdef CONFIG_SEC_GPIO_DVS
+	/************************ Caution !!! ****************************/
+	/* This function must be located in appropriate INIT position
+	 * in accordance with the specification of each BB vendor.
+	 */
+	/************************ Caution !!! ****************************/
+	gpio_dvs_check_initgpio();
+#endif
+
 	/* need to finish all async __init code before freeing the memory */
 	async_synchronize_full();
 	free_initmem();
@@ -878,6 +940,10 @@ static int __init kernel_init(void * unused)
 	 * Wait until kthreadd is all set-up.
 	 */
 	wait_for_completion(&kthreadd_done);
+
+	/* Now the scheduler is fully set up and can do blocking allocations */
+	gfp_allowed_mask = __GFP_BITS_MASK;
+
 	/*
 	 * init can allocate pages on any node
 	 */

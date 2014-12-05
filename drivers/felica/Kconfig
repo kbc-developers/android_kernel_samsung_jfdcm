@@ -6,7 +6,3 @@ config NFC_FELICA
 	bool "NFC FeliCa Driver"
 	default n
 
-config FELICA_NO_SECURE
-	bool "FeliCa no secure"
-	default n
-

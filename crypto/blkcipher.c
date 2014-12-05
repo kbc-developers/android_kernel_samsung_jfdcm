@@ -108,6 +108,11 @@ int blkcipher_walk_done(struct blkcipher_desc *desc,
 	struct crypto_blkcipher *tfm = desc->tfm;
 	unsigned int nbytes = 0;
 
+#ifdef CONFIG_CRYPTO_FIPS
+    if (unlikely(in_fips_err())) 
+        return (-EACCES);
+#endif
+
 	if (likely(err >= 0)) {
 		unsigned int n = walk->nbytes - err;
 
@@ -326,6 +331,11 @@ static int blkcipher_walk_first(struct blkcipher_desc *desc,
 	struct crypto_blkcipher *tfm = desc->tfm;
 	unsigned int alignmask = crypto_blkcipher_alignmask(tfm);
 
+#ifdef CONFIG_CRYPTO_FIPS
+    if (unlikely(in_fips_err())) 
+        return (-EACCES);
+#endif
+
 	if (WARN_ON_ONCE(in_irq()))
 		return -EDEADLK;
 
@@ -412,6 +422,10 @@ static int async_encrypt(struct ablkcipher_request *req)
 		.flags = req->base.flags,
 	};
 
+#ifdef CONFIG_CRYPTO_FIPS
+    if (unlikely(in_fips_err())) 
+        return (-EACCES);
+#endif
 
 	return alg->encrypt(&desc, req->dst, req->src, req->nbytes);
 }
@@ -425,6 +439,11 @@ static int async_decrypt(struct ablkcipher_request *req)
 		.info = req->info,
 		.flags = req->base.flags,
 	};
+
+#ifdef CONFIG_CRYPTO_FIPS
+    if (unlikely(in_fips_err())) 
+        return (-EACCES);
+#endif
 
 	return alg->decrypt(&desc, req->dst, req->src, req->nbytes);
 }
@@ -499,9 +518,9 @@ static int crypto_blkcipher_report(struct sk_buff *skb, struct crypto_alg *alg)
 {
 	struct crypto_report_blkcipher rblkcipher;
 
-	snprintf(rblkcipher.type, CRYPTO_MAX_ALG_NAME, "%s", "blkcipher");
-	snprintf(rblkcipher.geniv, CRYPTO_MAX_ALG_NAME, "%s",
-		 alg->cra_blkcipher.geniv ?: "<default>");
+	strncpy(rblkcipher.type, "blkcipher", sizeof(rblkcipher.type));
+	strncpy(rblkcipher.geniv, alg->cra_blkcipher.geniv ?: "<default>",
+		sizeof(rblkcipher.geniv));
 
 	rblkcipher.blocksize = alg->cra_blocksize;
 	rblkcipher.min_keysize = alg->cra_blkcipher.min_keysize;
@@ -586,6 +605,11 @@ struct crypto_instance *skcipher_geniv_alloc(struct crypto_template *tmpl,
 	struct crypto_instance *inst;
 	struct crypto_alg *alg;
 	int err;
+
+#ifdef CONFIG_CRYPTO_FIPS
+    if (unlikely(in_fips_err())) 
+        return ERR_PTR(-EACCES);
+#endif
 
 	algt = crypto_get_attr_type(tb);
 	err = PTR_ERR(algt);
@@ -710,6 +734,11 @@ int skcipher_geniv_init(struct crypto_tfm *tfm)
 {
 	struct crypto_instance *inst = (void *)tfm->__crt_alg;
 	struct crypto_ablkcipher *cipher;
+
+#ifdef CONFIG_CRYPTO_FIPS
+    if (unlikely(in_fips_err())) 
+        return (-EACCES);
+#endif
 
 	cipher = crypto_spawn_skcipher(crypto_instance_ctx(inst));
 	if (IS_ERR(cipher))

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -28,7 +28,6 @@
 #include <asm/page.h>
 #include <mach/msm_dcvs.h>
 #include <trace/events/mpdcvs_trace.h>
-#include "krait-defines.h"
 
 #define CORE_HANDLE_OFFSET (0xA0)
 #define __err(f, ...) pr_err("MSM_DCVS: %s: " f, __func__, __VA_ARGS__)
@@ -147,7 +146,7 @@ static struct dcvs_core core_list[CORES_MAX];
 
 static struct kobject *cores_kobj;
 
-#define DCVS_MAX_NUM_FREQS FREQ_TABLE_SIZE
+#define DCVS_MAX_NUM_FREQS 15
 static struct msm_dcvs_freq_entry cpu_freq_tbl[DCVS_MAX_NUM_FREQS];
 static unsigned num_cpu_freqs;
 static struct msm_dcvs_platform_data *dcvs_pdata;
@@ -1027,6 +1026,9 @@ int msm_dcvs_register_core(
 	uint32_t ret1;
 	uint32_t ret2;
 
+	if (!msm_dcvs_enabled)
+		return ret;
+
 	offset = get_core_offset(type, type_core_num);
 	if (offset < 0)
 		return ret;
@@ -1278,6 +1280,9 @@ static int __init msm_dcvs_late_init(void)
 	struct kobject *module_kobj = NULL;
 	int ret = 0;
 
+	if (!msm_dcvs_enabled)
+		return ret;
+
 	module_kobj = kset_find_obj(module_kset, KBUILD_MODNAME);
 	if (!module_kobj) {
 		pr_err("%s: cannot find kobject for module %s\n",
@@ -1344,6 +1349,7 @@ static int __init msm_dcvs_early_init(void)
 	ret = msm_dcvs_scm_init(SZ_32K);
 	if (ret) {
 		__err("Unable to initialize DCVS err=%d\n", ret);
+		msm_dcvs_enabled = 0;
 		goto done;
 	}
 

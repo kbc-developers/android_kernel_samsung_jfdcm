@@ -1261,7 +1261,7 @@ static int vnet_port_remove(struct vio_dev *vdev)
 		dev_set_drvdata(&vdev->dev, NULL);
 
 		kfree(port);
-	
+
 	}
 	return 0;
 }
