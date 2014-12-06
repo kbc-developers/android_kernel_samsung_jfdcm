@@ -247,4 +247,3 @@ struct a2220_platform_data {
 
 #endif /* __KERNEL__ */
 #endif /* __LINUX_A2220_H */
-

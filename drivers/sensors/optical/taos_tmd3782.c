@@ -1768,5 +1768,3 @@ module_exit(taos_exit);
 MODULE_AUTHOR("SAMSUNG");
 MODULE_DESCRIPTION("Optical Sensor driver for taos");
 MODULE_LICENSE("GPL");
-
-

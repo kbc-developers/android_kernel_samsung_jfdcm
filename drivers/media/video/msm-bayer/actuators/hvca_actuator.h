@@ -44,5 +44,3 @@ int32_t hvca_actuator_move_focus(
 
 
 #endif
-
-
