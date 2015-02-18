@@ -100,6 +100,8 @@ static int ack_number;
 static int count_number;
 #endif
 static struct barcode_emul_platform_data *g_pdata;
+static struct clk *main_clk;
+static int Is_clk_enabled;
 static int Is_beaming;
 static struct mutex		en_mutex;
 static struct i2c_client *g_client;
@@ -107,6 +109,13 @@ static int gpiox_state;
 static bool fw_dl_complete;
 static int 	enable_count;
 static int check_fpga_cdone(void);
+static struct platform_device barcode_mclk_dev = {
+	.name = "barcode_mclk_dev_pdev",
+	.id = -1,
+	.dev = {
+		.init_name = "barcode_mclk_dev",
+	},
+};
 
 #if defined(CONFIG_MACH_JF_DCM)
 static void fpga_enable(int enable, int bdelay)
@@ -1193,12 +1202,28 @@ EXPORT_SYMBOL(ice_gpiox_set);
 
 static void fw_work(struct work_struct *work)
 {
-	ice4_fpga_firmware_update();
+	for (g_pdata->fw_status=1;g_pdata->fw_status < 4;g_pdata->fw_status++) {
+		pr_barcode("%s, fw_status=%d\n", __func__, g_pdata->fw_status);
+		ice4_fpga_firmware_update();
 
-	if (gpio_get_value(g_pdata->cdone) != 1) {
-		pr_err("%s: cdone fail !!\n", __func__);
-		return;
+		if (check_fpga_cdone()) {
+			pr_err("%s: cdone fail !!\n", __func__);
+		} else {
+			g_pdata->fw_status=0;
+			break;
+		}
 	}
+
+	/* set clock */
+	if (!g_pdata->fw_type) {
+		main_clk = clk_get(&barcode_mclk_dev.dev, "osr_clk");
+		clk_set_rate(main_clk, 12288000);
+	}
+	Is_clk_enabled = 0;
+
+	fpga_enable(1);
+	fpga_enable(0);
+
 }
 
 static int __devinit barcode_emul_probe(struct i2c_client *client,

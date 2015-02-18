@@ -782,7 +782,7 @@ static void __init apq8064_reserve_fixed_area(unsigned long fixed_area_size)
 		reserve_info->fixed_area_size);
 	pr_info("mem_map: fixed_area reserved at 0x%lx with size 0x%lx\n",
 			reserve_info->fixed_area_start,
-		reserve_info->fixed_area_size);
+			reserve_info->fixed_area_size);
 	BUG_ON(ret);
 #endif
 }
@@ -1000,8 +1000,23 @@ static void __init reserve_ion_memory(void)
 }
 
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
+static char bootreason[128] = {0,};
+int __init device_boot_reason(char *s)
+{
+	int n;
+
+	if (*s == '=')
+		s++;
+	n = snprintf(bootreason, sizeof(bootreason),
+		 "Boot info:\n"
+		 "Last boot reason: %s\n", s);
+	bootreason[n] = '\0';
+	return 1;
+}
+__setup("bootreason", device_boot_reason);
+
 static struct ram_console_platform_data ram_console_pdata = {
-	.bootinfo = NULL,
+	.bootinfo = bootreason,
 };
 
 static struct platform_device ram_console_device = {
@@ -1027,7 +1042,7 @@ static struct persistent_ram_descriptor per_ram_descs[] __initdata = {
 #else
                .size = SZ_1M,
 #endif
-	    }
+       }
 };
 
 static struct persistent_ram per_ram __initdata = {
@@ -1208,8 +1223,6 @@ static struct platform_device touchkey_i2c_gpio_device_2 = {
 };
 
 #endif
-
-
 
 static char prim_panel_name[PANEL_NAME_MAX_LEN];
 static char ext_panel_name[PANEL_NAME_MAX_LEN];
@@ -3469,7 +3482,7 @@ static struct platform_device msm_tsens_device = {
 static struct msm_thermal_data msm_thermal_pdata = {
 	.sensor_id = 7,
 	.poll_ms = 250,
-	.limit_temp_degC = 70,
+	.limit_temp_degC = 60,
 	.temp_hysteresis_degC = 10,
 	.freq_step = 2,
 	.core_limit_temp_degC = 80,
@@ -4246,9 +4259,7 @@ static struct platform_device *common_not_mpq_devices[] __initdata = {
 static struct platform_device *early_common_devices[] __initdata = {
 	&apq8064_device_acpuclk,
 	&apq8064_device_dmov,
-#if !defined(CONFIG_MACH_JACTIVE_ATT) && !defined(CONFIG_MACH_JACTIVE_EUR)
 	&apq8064_device_qup_spi_gsbi5,
-#endif	
 };
 
 static struct platform_device *pm8921_common_devices[] __initdata = {
@@ -4434,6 +4445,7 @@ static struct platform_device *cdp_devices[] __initdata = {
 #ifdef CONFIG_MSM_ROTATOR
 	&msm_rotator_device,
 #endif
+	&msm8064_cpu_slp_status,
 	&sec_device_jack,
 #ifdef CONFIG_SENSORS_SSP_C12SD
 	&uv_device,
@@ -4742,7 +4754,7 @@ static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi3_pdata = {
 
 #ifndef CONFIG_ISDBTMM
 static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi4_pdata = {
-	.clk_freq = 100000,
+	.clk_freq = 400000,
 	.src_clk_rate = 24000000,
 };
 #endif
@@ -5501,6 +5513,7 @@ static void vps_sound_init(void)
 			&vps_sound_en);
 
 }
+
 #ifdef CONFIG_SERIAL_MSM_HS
 static struct msm_serial_hs_platform_data apq8064_uartdm_gsbi4_pdata = {
 	.config_gpio	= 4,
@@ -5548,7 +5561,7 @@ static void __init apq8064_common_init(void)
 		apq8064ab_update_krait_spm();
 	if (cpu_is_krait_v3()) {
 		struct msm_pm_init_data_type *pdata =
-		                        msm8064_pm_8x60.dev.platform_data;
+				msm8064_pm_8x60.dev.platform_data;
 		pdata->retention_calls_tz = false;
 		apq8064ab_update_retention_spm();
 	}
@@ -5596,22 +5609,12 @@ static void __init apq8064_common_init(void)
 	else
 		platform_add_devices(pm8917_common_devices,
 					ARRAY_SIZE(pm8917_common_devices));
-
-	if (!machine_is_apq8064_mtp())
-		platform_device_register(&apq8064_device_ext_ts_sw_vreg);
-
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	if (!(machine_is_mpq8064_cdp() || machine_is_mpq8064_hrd() ||
-			machine_is_mpq8064_dtv())) {
+			machine_is_mpq8064_dtv()))
 		platform_add_devices(common_not_mpq_devices,
 			ARRAY_SIZE(common_not_mpq_devices));
-
-		/* Add GSBI4 I2C Device for non-fusion3 platform */
-		if (socinfo_get_platform_subtype() !=
-					PLATFORM_SUBTYPE_SGLTE2) {
-			platform_device_register(&apq8064_device_qup_i2c_gsbi4);
-		}
-	}
+	
 #ifdef CONFIG_KEYBOARD_CYPRESS_TOUCH_236
 	if (system_rev < 9)
 		platform_device_register(&touchkey_i2c_gpio_device);
@@ -5625,7 +5628,7 @@ static void __init apq8064_common_init(void)
 	rpmrs_level =
 		msm_rpmrs_levels[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE];
 	msm_hsic_pdata.standalone_latency = rpmrs_level.latency_us;
-	
+
 	if (machine_is_apq8064_mtp() || machine_is_JF()) {
 		msm_hsic_pdata.log2_irq_thresh = 5,
 		apq8064_device_hsic_host.dev.platform_data = &msm_hsic_pdata;
@@ -5828,8 +5831,6 @@ static void __init samsung_jf_init(void)
 #ifdef CONFIG_BCM2079X_NFC_I2C
 	bcm2079x_init();
 #endif
-
-
 #ifndef CONFIG_MACH_JF
 	if (machine_is_mpq8064_cdp()) {
 		platform_device_register(&mpq_gpio_keys_pdev);
