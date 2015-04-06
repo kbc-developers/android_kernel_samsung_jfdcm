@@ -25,6 +25,7 @@ export LOCALVERSION="-$BUILD_LOCALVERSION"
 echo ""
 echo "====================================================================="
 echo "    BUILD START (KERNEL VERSION $BUILD_KERNELVERSION-$BUILD_LOCALVERSION)"
+echo "    toolchain: ${BUILD_CROSS_COMPILE}"
 echo "====================================================================="
 
 if [ ! -n "$1" ]; then
@@ -97,6 +98,7 @@ fi
 cd $BIN_DIR
 
 # create odin image
+#cd $BIN_DIR
 #make_odin3_image
 
 # create cwm image

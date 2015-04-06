@@ -18,10 +18,10 @@ copy_ramdisk()
 
 make_boot_image()
 {
-    ./release-tools/mkbootfs $RAMDISK_TMP_DIR > $BIN_DIR/ramdisk-$IMAGE_NAME.cpio
-#    ./release-tools/minigzip < $BIN_DIR/ramdisk-$IMAGE_NAME.cpio > $BIN_DIR/ramdisk-$IMAGE_NAME.img
-    lzma < $BIN_DIR/ramdisk-$IMAGE_NAME.cpio > $BIN_DIR/ramdisk-$IMAGE_NAME.img
-    ./release-tools/mkbootimg --cmdline "androidboot.hardware=qcom user_debug=31 zcache msm_rtb.filter=0x3F ehci-hcd.park=3" --base $KERNEL_BASEADDRESS --pagesize 2048 --ramdisk_offset $KERNEL_RAMDISK_OFFSET --kernel $BIN_DIR/kernel --ramdisk $BIN_DIR/ramdisk-$IMAGE_NAME.img --output $BIN_DIR/$IMAGE_NAME.img
+    ./release-tools/mkbootfs ${RAMDISK_TMP_DIR} > ${BIN_DIR}/ramdisk-${IMAGE_NAME}.cpio
+#    ./release-tools/minigzip < ${BIN_DIR}/ramdisk-${IMAGE_NAME}.cpio > ${BIN_DIR}/ramdisk-${IMAGE_NAME}.img
+    lzma < ${BIN_DIR}/ramdisk-${IMAGE_NAME}.cpio > ${BIN_DIR}/ramdisk-${IMAGE_NAME}.img
+    ./release-tools/mkbootimg --cmdline "androidboot.hardware=qcom user_debug=31 zcache msm_rtb.filter=0x3F ehci-hcd.park=3" --base ${KERNEL_BASEADDRESS} --pagesize ${KERNEL_PAGESIZE} --ramdisk_offset ${KERNEL_RAMDISK_OFFSET} --kernel ${BIN_DIR}/kernel --ramdisk ${BIN_DIR}/ramdisk-${IMAGE_NAME}.img --output ${BIN_DIR}/${IMAGE_NAME}.img
     echo "  $BIN_DIR/$IMAGE_NAME.img"
     rm $BIN_DIR/ramdisk-$IMAGE_NAME.img
     rm $BIN_DIR/ramdisk-$IMAGE_NAME.cpio
@@ -49,7 +49,7 @@ make_cwm_image()
     cp $KERNEL_DIR/release-tools/loki/* ./tmp/loki/
     cd tmp && zip -rq ../cwm.zip ./* && cd ../
     SIGNAPK_DIR=$KERNEL_DIR/release-tools/signapk
-    java -jar $SIGNAPK_DIR/signapk.jar $SIGNAPK_DIR/testkey.x509.pem $SIGNAPK_DIR/testkey.pk8 cwm.zip $BUILD_LOCALVERSION-$IMAGE_NAME-signed.zip
+    java -jar $SIGNAPK_DIR/signapk.jar -w $SIGNAPK_DIR/testkey.x509.pem $SIGNAPK_DIR/testkey.pk8 cwm.zip $BUILD_LOCALVERSION-$IMAGE_NAME-signed.zip
     rm cwm.zip
     rm -rf tmp
     echo "  $BIN_DIR/$BUILD_LOCALVERSION-$IMAGE_NAME-signed.zip"
