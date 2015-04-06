@@ -1,0 +1,46 @@
+TOOLCHAIN_DIR=/opt/toolchains
+
+# linaro compiler
+# url: https://launchpad.net/linaro-toolchain-binaries/trunk/
+check_and_get_linaro()
+{
+    COMPILER_ARCH=$1
+    TOOLCHAIN_VER=$2
+    COMPILER_VER=$3
+    COMPILER_REV=$4"_linux"
+
+    if [ ! -d $TOOLCHAIN_DIR/gcc-linaro-$COMPILER_ARCH-$TOOLCHAIN_VER-$COMPILER_VER-$COMPILER_REV/$COMPILER_ARCH ]; then
+        wget --no-check-certificate https://launchpad.net/linaro-toolchain-binaries/trunk/$COMPILER_VER/+download/gcc-linaro-$COMPILER_ARCH-$TOOLCHAIN_VER-$COMPILER_VER-$COMPILER_REV.tar.bz2
+        sudo mkdir -p $TOOLCHAIN_DIR
+        sudo tar jxvf gcc-linaro-$COMPILER_ARCH-$TOOLCHAIN_VER-$COMPILER_VER-$COMPILER_REV.tar.bz2 -C $TOOLCHAIN_DIR
+        #rm gcc-linaro-$COMPILER_ARCH-$TOOLCHAIN_VER-$COMPILER_VER-$COMPILER_REV.tar.bz2
+    fi
+
+    echo $TOOLCHAIN_DIR/gcc-linaro-$COMPILER_ARCH-$TOOLCHAIN_VER-$COMPILER_VER-$COMPILER_REV/bin/$COMPILER_ARCH-
+}
+
+# aosp compiler
+check_and_get_aosp_prebuild()
+{
+    COMPILER_ARCH=$1
+    COMPILER_VER=$2
+
+    if [ ! -d $TOOLCHAIN_DIR/$COMPILER_ARCH-$COMPILER_VER ]; then
+        #(temprary)getting from dropbox
+        wget --no-check-certificate https://dl.dropbox.com/u/95052256/prebuild/$COMPILER_ARCH-$COMPILER_VER.tar.bz2
+        sudo mkdir -p $TOOLCHAIN_DIR
+        sudo tar jxvf $COMPILER_ARCH-$COMPILER_VER.tar.bz2 -C $TOOLCHAIN_DIR
+    fi
+
+    echo $TOOLCHAIN_DIR/$COMPILER_ARCH-$COMPILER_VER/bin/$COMPILER_ARCH-
+}
+
+# use linaro compiler
+export BUILD_CROSS_COMPILE=`check_and_get_linaro arm-linux-gnueabihf 4.7 2013.04 20130415`
+
+# use aosp pulibuild
+# export BUILD_CROSS_COMPILE=`check_and_get_aosp_prebuild arm-eabi 4.6`
+
+# export compiler option
+export USE_CFLAGS_OPTION=y
+

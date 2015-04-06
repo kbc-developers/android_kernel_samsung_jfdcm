@@ -1,0 +1,24 @@
+###########################################################
+# set android version
+###########################################################
+ANDROID_VERSION=KK
+
+###########################################################
+# don't edit this file
+###########################################################
+# release build
+if [ ! "$RELEASE_BUILD" = 'y' ]; then
+  BUILD_VERSION=`date +%Y%m%d`
+  
+  if [ -n "$BUILD_NUMBER" ]; then
+    BUILD_VERSION=`date +%Y%m%d`"#$BUILD_NUMBER"
+    export KBUILD_BUILD_VERSION="$BUILD_NUMBER"
+  fi
+fi
+export BUILD_LOCALVERSION="$TARGET_DEVICE-$ANDROID_VERSION-$BUILD_MOD-$BUILD_VERSION-$BUILD_TARGET"
+
+# kernel vesion
+KERNEL_VERSION=`grep '^VERSION = ' ./Makefile | cut -d' ' -f3`
+KERNEL_PATCHLEVEL=`grep '^PATCHLEVEL = ' ./Makefile | cut -d' ' -f3`
+KERNEL_SUBLEVEL=`grep '^SUBLEVEL = ' ./Makefile | cut -d' ' -f3`
+export BUILD_KERNELVERSION="$KERNEL_VERSION.$KERNEL_PATCHLEVEL.$KERNEL_SUBLEVEL"
