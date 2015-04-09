@@ -8,6 +8,7 @@ copy_ramdisk()
     fi
     cp -a $RAMDISK_SRC_DIR $(dirname $RAMDISK_TMP_DIR)
     rm -rf $RAMDISK_TMP_DIR/.git
+    rm -rf $RAMDISK_TMP_DIR/recovery_version
     find $RAMDISK_TMP_DIR -name .gitkeep | xargs rm --force
     find $RAMDISK_TMP_DIR -name .gitignore | xargs rm --force
 

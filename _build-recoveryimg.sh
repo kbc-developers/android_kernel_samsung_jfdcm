@@ -40,7 +40,8 @@ fi
 mkdir -p $BIN_DIR
 
 # copy zImage -> kernel
-cp ./release-tools/$TARGET_DEVICE/stock-img/recovery.img-kernel.gz $BIN_DIR/kernel
+#cp ./release-tools/$TARGET_DEVICE/stock-img/recovery.img-kernel.gz $BIN_DIR/kernel
+cp ./release-tools/$TARGET_DEVICE/prebuild-img/zImage $BIN_DIR/kernel
 
 # create boot image
 make_boot_image
