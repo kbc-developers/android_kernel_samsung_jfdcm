@@ -8,3 +8,6 @@ bootloader=SC04EOMUAML2
 bootloader=SC04EOMUBNB1
 bootloader=SC04EOMUBNC3
 bootloader=SC04EOMUFNF6
+bootloader=SC04EOMUFNI3
+bootloader=SC04EOMUFOA2
+bootloader=SC04EOMUFOB2
