@@ -57,9 +57,10 @@ if [ $img_size -gt $IMG_MAX_SIZE ]; then
     exit -1
 fi
 
-# create odin image
 cd $BIN_DIR
-make_odin3_image
+
+# create odin image
+#make_odin3_image
 
 # create cwm image
 make_cwm_image
