@@ -21,8 +21,8 @@ make_boot_image()
 {
     echo "=== make_boot_image ==="
     ./release-tools/mkbootfs ${RAMDISK_TMP_DIR} > ${BIN_DIR}/ramdisk-${IMAGE_NAME}.cpio
-#    ./release-tools/minigzip < ${BIN_DIR}/ramdisk-${IMAGE_NAME}.cpio > ${BIN_DIR}/ramdisk-${IMAGE_NAME}.img
-    lzma < ${BIN_DIR}/ramdisk-${IMAGE_NAME}.cpio > ${BIN_DIR}/ramdisk-${IMAGE_NAME}.img
+    ./release-tools/minigzip < ${BIN_DIR}/ramdisk-${IMAGE_NAME}.cpio > ${BIN_DIR}/ramdisk-${IMAGE_NAME}.img
+#    lzma < ${BIN_DIR}/ramdisk-${IMAGE_NAME}.cpio > ${BIN_DIR}/ramdisk-${IMAGE_NAME}.img
     ./release-tools/mkbootimg --cmdline "${KERNEL_CMDLINE}" --base ${KERNEL_BASEADDRESS} --pagesize ${KERNEL_PAGESIZE} --ramdisk_offset ${KERNEL_RAMDISK_OFFSET} --kernel ${BIN_DIR}/kernel --ramdisk ${BIN_DIR}/ramdisk-${IMAGE_NAME}.img --output ${BIN_DIR}/${IMAGE_NAME}.img
     echo "  $BIN_DIR/$IMAGE_NAME.img"
     rm $BIN_DIR/ramdisk-$IMAGE_NAME.img
