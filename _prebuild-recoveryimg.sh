@@ -39,16 +39,15 @@ if [ `find $BIN_DIR -type f | wc -l` -gt 0 ]; then
 fi
 mkdir -p $BIN_DIR
 
+PREBUILD_IMAGE=./release-tools/$TARGET_DEVICE/stock-img/recovery.img-kernel.gz
+#PREBUILD_IMAGE=./release-tools/$TARGET_DEVICE/prebuild-img/zImage $BIN_DIR/kernel
+
+echo "use image : ${PREBUILD_IMAGE}"
 # copy zImage -> kernel
-#cp ./release-tools/$TARGET_DEVICE/stock-img/recovery.img-kernel.gz $BIN_DIR/kernel
-cp ./release-tools/$TARGET_DEVICE/prebuild-img/zImage $BIN_DIR/kernel
+cp ${PREBUILD_IMAGE} $BIN_DIR/kernel
 
 # create boot image
 make_boot_image
-
-if [ "$USE_LOKI" = 'y' ]; then
-  make_loki_image
-fi
 
 #check image size
 img_size=`wc -c $BIN_DIR/$IMAGE_NAME.img | awk '{print $1}'`

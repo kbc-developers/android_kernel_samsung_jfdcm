@@ -19,6 +19,7 @@ copy_ramdisk()
 
 make_boot_image()
 {
+    echo "=== make_boot_image ==="
     ./release-tools/mkbootfs ${RAMDISK_TMP_DIR} > ${BIN_DIR}/ramdisk-${IMAGE_NAME}.cpio
 #    ./release-tools/minigzip < ${BIN_DIR}/ramdisk-${IMAGE_NAME}.cpio > ${BIN_DIR}/ramdisk-${IMAGE_NAME}.img
     lzma < ${BIN_DIR}/ramdisk-${IMAGE_NAME}.cpio > ${BIN_DIR}/ramdisk-${IMAGE_NAME}.img
@@ -31,6 +32,7 @@ make_boot_image()
 
 make_odin3_image()
 {
+    echo "=== make_odin3_image ==="
     tar cf $BUILD_LOCALVERSION-$IMAGE_NAME-odin.tar $IMAGE_NAME.img
     md5sum -t $BUILD_LOCALVERSION-$IMAGE_NAME-odin.tar >> $BUILD_LOCALVERSION-$IMAGE_NAME-odin.tar
     mv $BUILD_LOCALVERSION-$IMAGE_NAME-odin.tar $BUILD_LOCALVERSION-$IMAGE_NAME-odin.tar.md5
@@ -39,6 +41,7 @@ make_odin3_image()
 
 make_cwm_image()
 {
+    echo "=== make_cwm_image ==="
     if [ -d tmp ]; then
         rm -rf tmp
     fi
