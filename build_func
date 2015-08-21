@@ -8,10 +8,8 @@ copy_ramdisk()
     fi
     cp -a $RAMDISK_SRC_DIR $(dirname $RAMDISK_TMP_DIR)
     rm -rf $RAMDISK_TMP_DIR/.git
-    rm -rf $RAMDISK_TMP_DIR/recovery_version
     find $RAMDISK_TMP_DIR -name .gitkeep | xargs rm --force
     find $RAMDISK_TMP_DIR -name .gitignore | xargs rm --force
-
     if [ -f $RAMDISK_TMP_DIR/recovery_version ]; then
         rm -f $RAMDISK_TMP_DIR/recovery_version
     fi
@@ -27,7 +25,20 @@ make_boot_image()
     echo "  $BIN_DIR/$IMAGE_NAME.img"
     rm $BIN_DIR/ramdisk-$IMAGE_NAME.img
     rm $BIN_DIR/ramdisk-$IMAGE_NAME.cpio
-    rm $BIN_DIR/kernel 
+    rm $BIN_DIR/kernel
+}
+
+make_recovery_image()
+{
+    echo "=== make_boot_image ==="
+    ./release-tools/mkbootfs ${RAMDISK_TMP_DIR} > ${BIN_DIR}/ramdisk-${IMAGE_NAME}.cpio
+    ./release-tools/minigzip < ${BIN_DIR}/ramdisk-${IMAGE_NAME}.cpio > ${BIN_DIR}/ramdisk-${IMAGE_NAME}.img
+#    lzma < ${BIN_DIR}/ramdisk-${IMAGE_NAME}.cpio > ${BIN_DIR}/ramdisk-${IMAGE_NAME}.img
+    ./release-tools/mkbootimg --cmdline "${KERNEL_CMDLINE} androidboot.selinux=permissive" --base ${KERNEL_BASEADDRESS} --pagesize ${KERNEL_PAGESIZE} --ramdisk_offset ${KERNEL_RAMDISK_OFFSET} --kernel ${BIN_DIR}/kernel --ramdisk ${BIN_DIR}/ramdisk-${IMAGE_NAME}.img --output ${BIN_DIR}/${IMAGE_NAME}.img
+    echo "  $BIN_DIR/$IMAGE_NAME.img"
+    rm $BIN_DIR/ramdisk-$IMAGE_NAME.img
+    rm $BIN_DIR/ramdisk-$IMAGE_NAME.cpio
+    rm $BIN_DIR/kernel
 }
 
 make_odin3_image()

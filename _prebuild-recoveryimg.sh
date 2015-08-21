@@ -39,15 +39,14 @@ if [ `find $BIN_DIR -type f | wc -l` -gt 0 ]; then
 fi
 mkdir -p $BIN_DIR
 
-PREBUILD_IMAGE=./release-tools/$TARGET_DEVICE/stock-img/recovery.img-kernel.gz
-#PREBUILD_IMAGE=./release-tools/$TARGET_DEVICE/prebuild-img/zImage $BIN_DIR/kernel
-
-echo "use image : ${PREBUILD_IMAGE}"
 # copy zImage -> kernel
+#REBUILD_IMAGE=./release-tools/$TARGET_DEVICE/stock-img/recovery.img-kernel.gz
+PREBUILD_IMAGE=./release-tools/$TARGET_DEVICE/prebuild-img/zImage
+echo "use image : ${PREBUILD_IMAGE}"
 cp ${PREBUILD_IMAGE} $BIN_DIR/kernel
 
-# create boot image
-make_boot_image
+# create recovery image
+make_recovery_image
 
 #check image size
 img_size=`wc -c $BIN_DIR/$IMAGE_NAME.img | awk '{print $1}'`
@@ -60,7 +59,7 @@ fi
 cd $BIN_DIR
 
 # create odin image
-#make_odin3_image
+make_odin3_image
 
 # create cwm image
 make_cwm_image
