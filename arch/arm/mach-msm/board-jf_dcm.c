@@ -3482,7 +3482,7 @@ static struct platform_device msm_tsens_device = {
 static struct msm_thermal_data msm_thermal_pdata = {
 	.sensor_id = 7,
 	.poll_ms = 250,
-	.limit_temp_degC = 60,
+	.limit_temp_degC = 70,
 	.temp_hysteresis_degC = 10,
 	.freq_step = 2,
 	.core_limit_temp_degC = 80,
@@ -4259,7 +4259,9 @@ static struct platform_device *common_not_mpq_devices[] __initdata = {
 static struct platform_device *early_common_devices[] __initdata = {
 	&apq8064_device_acpuclk,
 	&apq8064_device_dmov,
+#if !defined(CONFIG_MACH_JACTIVE_ATT) && !defined(CONFIG_MACH_JACTIVE_EUR)
 	&apq8064_device_qup_spi_gsbi5,
+#endif	
 };
 
 static struct platform_device *pm8921_common_devices[] __initdata = {
@@ -4754,7 +4756,7 @@ static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi3_pdata = {
 
 #ifndef CONFIG_ISDBTMM
 static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi4_pdata = {
-	.clk_freq = 400000,
+	.clk_freq = 100000,
 	.src_clk_rate = 24000000,
 };
 #endif
@@ -5609,12 +5611,22 @@ static void __init apq8064_common_init(void)
 	else
 		platform_add_devices(pm8917_common_devices,
 					ARRAY_SIZE(pm8917_common_devices));
+
+	if (!machine_is_apq8064_mtp())
+		platform_device_register(&apq8064_device_ext_ts_sw_vreg);
+
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	if (!(machine_is_mpq8064_cdp() || machine_is_mpq8064_hrd() ||
-			machine_is_mpq8064_dtv()))
+			machine_is_mpq8064_dtv())) {
 		platform_add_devices(common_not_mpq_devices,
 			ARRAY_SIZE(common_not_mpq_devices));
-	
+
+		/* Add GSBI4 I2C Device for non-fusion3 platform */
+		if (socinfo_get_platform_subtype() !=
+					PLATFORM_SUBTYPE_SGLTE2) {
+			platform_device_register(&apq8064_device_qup_i2c_gsbi4);
+		}
+	}
 #ifdef CONFIG_KEYBOARD_CYPRESS_TOUCH_236
 	if (system_rev < 9)
 		platform_device_register(&touchkey_i2c_gpio_device);

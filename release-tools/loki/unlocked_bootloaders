@@ -1,0 +1,13 @@
+# Version strings for unlocked / development devices
+bootloader=I545OYUAMDK
+# DoCoMo
+bootloader=SC04EOMUAMF2
+bootloader=SC04EOMUAMG2
+bootloader=SC04EOMUAMI1
+bootloader=SC04EOMUAML2
+bootloader=SC04EOMUBNB1
+bootloader=SC04EOMUBNC3
+bootloader=SC04EOMUFNF6
+bootloader=SC04EOMUFNI3
+bootloader=SC04EOMUFOA2
+bootloader=SC04EOMUFOB2

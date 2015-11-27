@@ -379,7 +379,7 @@ static inline void smp_prepare_cpus(unsigned int maxcpus) { }
  */
 static void __init setup_command_line(char *command_line)
 {
-	saved_command_line = alloc_bootmem(strlen (boot_command_line)+1);
+	saved_command_line = alloc_bootmem(strlen (boot_command_line)+1+50); // cmdline hack
 	static_command_line = alloc_bootmem(strlen (command_line)+1);
 	strcpy (saved_command_line, boot_command_line);
 	strcpy (static_command_line, command_line);
@@ -469,6 +469,8 @@ static int __init do_early_param(char *param, char *val)
 		} else if (strncmp(val, "SHV-E300", 8) == 0) {
 			samsung_hardware = SHV_E300;
 		} else if (strncmp(val, "SGH-N045", 8) == 0) {
+			samsung_hardware = SGH_N045;
+		} else if (strncmp(val, "SC-04E", 6) == 0) {
 			samsung_hardware = SGH_N045;
 		} else if (strncmp(val, "GT-I9295", 8) == 0) {
 			samsung_hardware = GT_I9295;
