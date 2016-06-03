@@ -4,7 +4,7 @@
  *  Copyright (C)  2001 Russell King
  *            (C)  2003 Venkatesh Pallipadi <venkatesh.pallipadi@intel.com>.
  *                      Jun Nakajima <jun.nakajima@intel.com>
- *            (c)  2013 The Linux Foundation. All rights reserved.
+ *            (c)  2013, 2015 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -136,6 +136,7 @@ struct cpu_dbs_info_s {
 
 	wait_queue_head_t sync_wq;
 	atomic_t src_sync_cpu;
+	atomic_t being_woken;
 	atomic_t sync_enabled;
 };
 static DEFINE_PER_CPU(struct cpu_dbs_info_s, od_cpu_dbs_info);
@@ -1189,14 +1190,8 @@ static void do_dbs_timer(struct work_struct *work)
 			dbs_info->sample_type = DBS_SUB_SAMPLE;
 			delay = dbs_info->freq_hi_jiffies;
 		} else {
-			/* We want all CPUs to do sampling nearly on
-			 * same jiffy
-			 */
 			delay = usecs_to_jiffies(dbs_tuners_ins.sampling_rate
 				* dbs_info->rate_mult);
-
-			if (num_online_cpus() > 1)
-				delay -= jiffies % delay;
 		}
 	} else {
 		__cpufreq_driver_target(dbs_info->cur_policy,
@@ -1312,7 +1307,16 @@ static int dbs_migration_notify(struct notifier_block *nb,
 		&per_cpu(od_cpu_dbs_info, target_cpu);
 
 	atomic_set(&target_dbs_info->src_sync_cpu, (int)arg);
-	wake_up(&target_dbs_info->sync_wq);
+	/*
+	* Avoid issuing recursive wakeup call, as sync thread itself could be
+	* seen as migrating triggering this notification. Note that sync thread
+	* of a cpu could be running for a short while with its affinity broken
+	* because of CPU hotplug.
+	*/
+	if (!atomic_cmpxchg(&target_dbs_info->being_woken, 0, 1)) {
+		wake_up(&target_dbs_info->sync_wq);
+		atomic_set(&target_dbs_info->being_woken, 0);
+	}
 
 	return NOTIFY_OK;
 }
@@ -1687,6 +1691,7 @@ static int __init cpufreq_gov_dbs_init(void)
 		dbs_work->cpu = i;
 
 		atomic_set(&this_dbs_info->src_sync_cpu, -1);
+		atomic_set(&this_dbs_info->being_woken, 0);
 		init_waitqueue_head(&this_dbs_info->sync_wq);
 	}
 
