@@ -1490,8 +1490,8 @@ static int _setup_cipher_aes_cmdlistptrs(struct qce_device *pdev,
 	}
 
 	qce_add_cmd_element(pdev, &ce_vaddr, CRYPTO_GOPROC_REG,
-			((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP)),
-			&pcl_info->go_proc);
+			((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
+			(1 << CRYPTO_CLR_CNTXT)), &pcl_info->go_proc);
 
 	pcl_info->size = (uint32_t)ce_vaddr - (uint32_t)ce_vaddr_start;
 	*pvaddr = (unsigned char *) ce_vaddr;
@@ -1635,8 +1635,8 @@ static int _setup_cipher_des_cmdlistptrs(struct qce_device *pdev,
 	}
 
 	qce_add_cmd_element(pdev, &ce_vaddr, CRYPTO_GOPROC_REG,
-			((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP)),
-			&pcl_info->go_proc);
+			((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP)
+			(1 << CRYPTO_CLR_CNTXT)), &pcl_info->go_proc);
 
 	pcl_info->size = (uint32_t)ce_vaddr - (uint32_t)ce_vaddr_start;
 	*pvaddr = (unsigned char *) ce_vaddr;
@@ -1862,8 +1862,8 @@ static int _setup_auth_cmdlistptrs(struct qce_device *pdev,
 	}
 	if (alg != QCE_AEAD_SHA1_HMAC)
 		qce_add_cmd_element(pdev, &ce_vaddr, CRYPTO_GOPROC_REG,
-			((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP)),
-			&pcl_info->go_proc);
+			((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP)
+			(1 << CRYPTO_CLR_CNTXT)), &pcl_info->go_proc);
 
 	pcl_info->size = (uint32_t)ce_vaddr - (uint32_t)ce_vaddr_start;
 	*pvaddr = (unsigned char *) ce_vaddr;
@@ -2001,8 +2001,8 @@ static int _setup_aead_cmdlistptrs(struct qce_device *pdev,
 			0, NULL);
 
 	qce_add_cmd_element(pdev, &ce_vaddr, CRYPTO_GOPROC_REG,
-			((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP)),
-			&pcl_info->go_proc);
+			((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
+			(1 << CRYPTO_CLR_CNTXT)), &pcl_info->go_proc);
 
 	pcl_info->size = (uint32_t)ce_vaddr - (uint32_t)ce_vaddr_start;
 	*pvaddr = (unsigned char *) ce_vaddr;
@@ -2168,6 +2168,12 @@ int qce_aead_req(void *handle, struct qce_req *q_req)
 	ce_burst_size = pce_dev->ce_sps.ce_burst_size;
 	if (q_req->dir == QCE_ENCRYPT) {
 		q_req->cryptlen = areq->cryptlen;
+		if ((q_req->cryptlen > UINT_MAX - areq->assoclen) ||
+			(q_req->cryptlen + areq->assoclen >
+			UINT_MAX - ivsize)) {
+			pr_err("Integer overflow on total aead req length.\n");
+			return -EINVAL;
+		}
 			totallen_in = q_req->cryptlen + areq->assoclen + ivsize;
 		if (q_req->mode == QCE_MODE_CCM) {
 			out_len = areq->cryptlen + authsize;
@@ -2177,6 +2183,12 @@ int qce_aead_req(void *handle, struct qce_req *q_req)
 		}
 	} else {
 		q_req->cryptlen = areq->cryptlen - authsize;
+		if ((q_req->cryptlen > UINT_MAX - areq->assoclen) ||
+			(q_req->cryptlen + areq->assoclen >
+			UINT_MAX - ivsize)) {
+			pr_err("Integer overflow on total aead req length.\n");
+			return -EINVAL;
+		}
 		if (q_req->mode == QCE_MODE_CCM)
 			totallen_in = areq->cryptlen + areq->assoclen;
 		else
