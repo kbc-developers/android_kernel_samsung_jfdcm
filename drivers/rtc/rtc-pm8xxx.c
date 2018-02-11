@@ -71,6 +71,7 @@ struct pm8xxx_rtc {
 static struct device *			sapa_rtc_dev;
 static struct workqueue_struct*	sapa_workq;
 static struct delayed_work		sapa_load_param;
+static struct delayed_work		sapa_reboot_work;
 static struct wake_lock			sapa_wakelock;
 static int						sapa_kparam_loaded;
 static int						sapa_shutdown_loaded;
@@ -419,6 +420,13 @@ rtc_rw_fail:
 
 #ifdef CONFIG_RTC_AUTO_PWRON
 #ifdef CONFIG_RTC_AUTO_PWRON_PARAM
+static void sapa_reboot(struct work_struct *work)
+{
+	//machine_restart(NULL);
+	kernel_restart(NULL);
+	//panic("Test panic");
+}
+
 static void sapa_load_kparam(struct work_struct *work)
 {
 	int temp1, temp2, temp3;
@@ -735,9 +743,7 @@ static irqreturn_t pm8xxx_alarm_trigger(int irq, void *dev_id)
 			wake_lock(&sapa_wakelock);
 			pr_info("%s [SAPA] Restart since RTC \n",__func__);
 
-			//machine_restart(NULL);
-			kernel_restart(NULL);
-			//panic("Test panic");
+			queue_delayed_work(sapa_workq, &sapa_reboot_work, (1*HZ));
 		}
 		else {
 			pr_info("%s [SAPA] not power on alarm.\n", __func__);
@@ -872,6 +878,7 @@ static int __devinit pm8xxx_rtc_probe(struct platform_device *pdev)
 	/* To read saved power on alarm time */
 	if ( poweroff_charging ) {
 		INIT_DELAYED_WORK(&sapa_load_param, sapa_load_kparam);
+		INIT_DELAYED_WORK(&sapa_reboot_work, sapa_reboot);
 		queue_delayed_work(sapa_workq, &sapa_load_param, (10*HZ));
 	}
 #endif

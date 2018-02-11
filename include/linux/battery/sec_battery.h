@@ -136,13 +136,13 @@ struct sec_battery_info {
 	/* test mode */
 	int test_activated;
 	bool factory_mode;
+	bool store_mode;
 	bool slate_mode;
 
 	int siop_level;
-#if defined(CONFIG_SAMSUNG_BATTERY_ENG_TEST)
+
 	int stability_test;
 	int eng_not_full_status;
-#endif
 };
 
 ssize_t sec_bat_show_attrs(struct device *dev,
@@ -205,6 +205,7 @@ enum {
 	WC_STATUS,
 	WC_ENABLE,
 	FACTORY_MODE,
+	STORE_MODE,
 	UPDATE,
 	TEST_MODE,
 
@@ -226,10 +227,11 @@ enum {
 	BATT_EVENT_LCD,
 	BATT_EVENT_GPS,
 	BATT_EVENT,
+	BATT_TEMP_TABLE,
 #if defined(CONFIG_SAMSUNG_BATTERY_ENG_TEST)
 	BATT_TEST_CHARGE_CURRENT,
-	BATT_STABILITY_TEST,
 #endif
+	BATT_STABILITY_TEST,
 };
 
 #endif /* __SEC_BATTERY_H */

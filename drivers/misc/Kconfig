@@ -379,6 +379,18 @@ config SENSORS_APDS990X
 	   To compile this driver as a module, choose M here: the
 	   module will be called apds990x. If unsure, say N here.
 
+config MUIC_AUDIO_OUTPUT_CONTROL
+        bool "MUIC audio output control feature for Melius"
+        depends on MACH_MELIUS
+        default n
+        ---help---
+	   This option enables Audio Output control feature for Samsung devices,
+	   If same audio output, from codec, is connected to JACK input & MUIC (dock) input,
+	   sound gets played from both JACK & DOCK.
+	   If only JACK sound play is required, we should open dock audio path in MUIC.
+	   This feature disables the dock audio output when JACK is inserted.
+	   Say Y here if you want to enable this feature.
+
 config SAMSUNG_JACK
         bool "3.5 PI JACK driver for Samsung devices"
         depends on INPUT
@@ -553,6 +565,24 @@ config USB_SWITCH_FSA9480
 	  stereo and mono audio, video, microphone and UART data to use
 	  a common connector port.
 
+config USB_SWITCH_FSA9485
+	tristate "FSA9485 USB Switch"
+	depends on I2C
+	help
+	  The FSA9485 is a USB port accessory detector and switch.
+	  The FSA9485 is fully controlled using I2C and enables USB data,
+	  stereo and mono audio, video, microphone and UART data to use
+	  a common connector port.
+
+config USB_SWITCH_TSU6721
+        tristate "TSU6721 USB Switch"
+        depends on I2C
+        help
+          The TSU6721 is a USB port accessory detector and switch.
+          The TSU6721 is fully controlled using I2C and enables USB data,
+          stereo and mono audio, video, microphone and UART data to use
+          a common connector port.
+
 config MAX8997_MUIC
 	tristate "MAX8997 MUIC Support"
 	depends on MFD_MAX8997
@@ -703,7 +733,10 @@ config QFP_FUSE
 	  fuses. The ioctls provides the necessary interface
 	  to the fuse block. Currently this is supported only
 	  on FSM targets.
-
+config MPU_411_ENABLE
+	bool "mpu gyro sensor MPL 4.1.1"
+	depends on I2C
+	default n
 config SEC_MISC
 	bool "Samsung P series miscellaneous driver"
 	default n
@@ -747,6 +780,14 @@ config BCM2079X_NFC_I2C
 	  To compile this driver as a module, choose m here. The module will
 	  be called bcm2079x-i2c.
 
+config VP_A2220
+	tristate "VP driver"
+	default n
+	help
+	  This option enables voice processing audience chip.Please enable this chip
+	  if you want to enable voice processing during call.
+
+
 config SEC_TORCH_FLASH
 	bool "torch flash driver"
 	default n
@@ -759,13 +800,58 @@ config TIMA_LOG
 	help
 	  This option enables support for dumping TIMA log
 
+config CHG_INCOMPATIBLE
+        tristate " support incompatible charger"
+        default n
+        help
+          this option enable support for incompatible charger
+
 config TIMA_TEST
 	tristate "Tima Test Suite"
 	default n
 	help
 	  This option enables kernel component of tima test suite
 
-	  
+config D2_TIMA_LOG
+	tristate "Log dumping support for 8960 D2 TIMA"
+        default n
+	help
+         TIMA Log dumping support
+
+config 8930_TIMA_LOG
+	tristate "Log dumping support for 8930 TIMA"
+        default n
+	help
+         TIMA Log dumping support
+
+config NFC_PN544
+        bool "NXP PN544 NFC Controller Driver"
+        default n
+        help
+          NXP PN544 Near Field Communication controller support.
+
+config NFC_PN547
+    bool "NXP PN547 NFC Controller Driver"
+    depends on I2C
+    default n
+    help
+      NXP PN547 Near Field Communication controller support.
+
+config NFC_PN547_CLOCK_REQUEST
+    bool "NXP PN547 PM8917 XO Clock Source"
+    depends on NFC_PN547
+    default n
+    help
+      PM8917 Clock request for NXP PN547 Near Field
+      Communication controller support.
+      This option enables A1 clock for NFC.
+
+config DESKDOCK_DISABLE
+	tristate "Not support DESKDOCK"
+	default n
+	help
+	  This option enable not support for DESKDOCK
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
@@ -775,5 +861,6 @@ source "drivers/misc/lis3lv02d/Kconfig"
 source "drivers/misc/carma/Kconfig"
 source "drivers/misc/altera-stapl/Kconfig"
 source "drivers/misc/slimport_anx7808/Kconfig"
+source "drivers/misc/inv_mpu/Kconfig"
 
 endmenu

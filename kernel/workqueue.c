@@ -43,9 +43,6 @@
 #include <linux/idr.h>
 
 #include "workqueue_sched.h"
-#if defined(CONFIG_SEC_DEBUG)
-#include <mach/sec_debug.h>
-#endif
 
 enum {
 	/* global_cwq flags */
@@ -548,7 +545,10 @@ static struct cpu_workqueue_struct *get_work_cwq(struct work_struct *work)
 	if (data & WORK_STRUCT_CWQ)
 		return (void *)(data & WORK_STRUCT_WQ_DATA_MASK);
 	else
+	{
+		WARN_ON_ONCE(1);
 		return NULL;
+	}
 }
 
 static struct global_cwq *get_work_gcwq(struct work_struct *work)
@@ -1104,7 +1104,8 @@ static void delayed_work_timer_fn(unsigned long __data)
 	struct delayed_work *dwork = (struct delayed_work *)__data;
 	struct cpu_workqueue_struct *cwq = get_work_cwq(&dwork->work);
 
-	__queue_work(smp_processor_id(), cwq->wq, &dwork->work);
+	if (cwq != NULL)
+		__queue_work(smp_processor_id(), cwq->wq, &dwork->work);
 }
 
 /**
@@ -1871,9 +1872,6 @@ __acquires(&gcwq->lock)
 	lock_map_acquire_read(&cwq->wq->lockdep_map);
 	lock_map_acquire(&lockdep_map);
 	trace_workqueue_execute_start(work);
-#if defined(CONFIG_SEC_DEBUG)
-	secdbg_sched_msg("@%pS", f);
-#endif
 	f(work);
 	/*
 	 * While we must be careful to not use "work" after this, the trace

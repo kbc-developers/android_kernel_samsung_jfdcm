@@ -68,7 +68,11 @@ static sec_charging_current_t charging_current_table[] = {
 	{1700,	1600,	200,	40*60},
 	{0,	0,	0,	0},
 #ifdef CONFIG_WIRELESS_CHARGER
+#if defined(CONFIG_MACH_JFTDD_CHN_CU)
+	{670,	720,	200,	40*60},
+#else
 	{650,	700,	200,	40*60},
+#endif
 #endif
 	{1900,	1600,	200,	40*60},
 	{0,	0,	0,	0},
@@ -178,7 +182,7 @@ static bool sec_fg_gpio_init(void)
 #endif
 		gpio_tlmm_config(GPIO_CFG(GPIO_FUEL_INT,  0, GPIO_CFG_INPUT,
 			GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
-#if defined(CONFIG_MACH_JFTDD_EUR)
+#if defined(CONFIG_MACH_JFTDD_EUR) || defined(CONFIG_MACH_JACTIVE_EUR)
 	gpio_tlmm_config(GPIO_CFG(gpio_i2c_data_fgchg.scl_pin, 0,
 			GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 	gpio_tlmm_config(GPIO_CFG(gpio_i2c_data_fgchg.sda_pin,  0,
@@ -610,6 +614,19 @@ static struct battery_data_t fusion3_battery_data[] = {
 		.type_str = "SDI",
 	}
 };
+#elif defined(CONFIG_MACH_JFTDD_CHN_CU)
+/* for MAX17048 */
+static struct battery_data_t fusion3_battery_data[] = {
+	/* SDI battery data (High voltage 4.35V) */
+	{
+		.RCOMP0 = 0x65,
+		.RCOMP_charging = 0x76,
+		.temp_cohot = -700,
+		.temp_cocold = -4875,
+		.is_using_model_data = true,
+		.type_str = "SDI",
+	}
+};
 #else
 /* for MAX17048 */
 static struct battery_data_t fusion3_battery_data[] = {
@@ -776,6 +793,21 @@ sec_battery_platform_data_t sec_battery_pdata = {
 
 	.temp_high_threshold_lpm = 460,
 	.temp_high_recovery_lpm = 420,
+	.temp_low_threshold_lpm = -50,
+	.temp_low_recovery_lpm = 0,
+#elif defined(CONFIG_MACH_JFTDD_CHN_CU)
+	.temp_high_threshold_event = 600,
+	.temp_high_recovery_event = 460,
+	.temp_low_threshold_event = -50,
+	.temp_low_recovery_event = 0,
+
+	.temp_high_threshold_normal = 600,
+	.temp_high_recovery_normal = 460,
+	.temp_low_threshold_normal = -50,
+	.temp_low_recovery_normal = 0,
+
+	.temp_high_threshold_lpm = 600,
+	.temp_high_recovery_lpm = 460,
 	.temp_low_threshold_lpm = -50,
 	.temp_low_recovery_lpm = 0,
 #elif defined(CONFIG_MACH_JF_EUR)
@@ -968,8 +1000,8 @@ sec_battery_platform_data_t sec_battery_pdata = {
 	.full_condition_type = SEC_BATTERY_FULL_CONDITION_SOC |
 		SEC_BATTERY_FULL_CONDITION_NOTIMEFULL |
 		SEC_BATTERY_FULL_CONDITION_VCELL,
-	.full_condition_soc = 97,
-	.full_condition_vcell = 4300,
+	.full_condition_soc = 93,
+	.full_condition_vcell = 4250,
 
 	.recharge_check_count = 2,
 	.recharge_condition_type =

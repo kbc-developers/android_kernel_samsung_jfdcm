@@ -44,10 +44,19 @@
 #include "mdnie_lite_tuning.h"
 #if defined(CONFIG_SUPPORT_DISPLAY_OCTA_TFT)
 #include "mdnie_lite_tuning_data_jactiveltexx.h"
+#elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_QHD_PT)
+#include "mdnie_lite_tuning_data_serrano.h"
+#include "mipi_samsung_oled-8930.h"
+#elif defined(CONFIG_FB_MSM_MIPI_HX8389B_TFT_VIDEO_QHD_PT_PANEL)
+#include "mdnie_lite_tuning_data_wilcox.h"
 #else
 #include "mdnie_lite_tuning_data.h"
 #endif
+#if defined(CONFIG_FB_MSM_MIPI_HX8389B_TFT_VIDEO_QHD_PT_PANEL)
+#include "mipi_hx8389b_tft.h"
+#else
 #include "mipi_samsung_octa.h"
+#endif
 #if defined(CONFIG_TDMB)
 #include "mdnie_lite_tuning_data_dmb.h"
 #endif
@@ -62,12 +71,19 @@
 
 #define MAX_LUT_SIZE	256
 
+#if defined(CONFIG_FB_MSM_MIPI_HX8389B_TFT_VIDEO_QHD_PT_PANEL)
+#define PAYLOAD1 mdni_tune_cmd[1]
+#define PAYLOAD2 mdni_tune_cmd[0]
+
+#define INPUT_PAYLOAD1(x) PAYLOAD1.payload = x
+#define INPUT_PAYLOAD2(x) PAYLOAD2.payload = x
+#else
 #define PAYLOAD1 mdni_tune_cmd[2]
 #define PAYLOAD2 mdni_tune_cmd[1]
 
 #define INPUT_PAYLOAD1(x) PAYLOAD1.payload = x
 #define INPUT_PAYLOAD2(x) PAYLOAD2.payload = x
-
+#endif
 
 int play_speed_1_5;
 #if defined(CONFIG_FB_MSM_MIPI_RENESAS_TFT_VIDEO_FULL_HD_PT_PANEL)
@@ -90,6 +106,15 @@ struct mdnie_lite_tun_type mdnie_tun_state = {
 	.outdoor = OUTDOOR_OFF_MODE,
 	.negative = mDNIe_NEGATIVE_OFF,
 	.blind = ACCESSIBILITY_OFF,
+};
+
+const char accessibility_name[ACCESSIBILITY_MAX][20] = {
+	"ACCESSIBILITY_OFF",
+	"NEGATIVE_MODE",
+	"COLOR_BLIND_MODE",
+#if defined(CONFIG_FB_MSM_MIPI_RENESAS_TFT_VIDEO_FULL_HD_PT_PANEL)
+	"SCREEN_CURTAIN_MODE",
+#endif
 };
 
 const char background_name[MAX_BACKGROUND_MODE][16] = {
@@ -119,7 +144,6 @@ const char scenario_name[MAX_mDNIe_MODE][16] = {
 
 static char tune_data1[MDNIE_TUNE_FIRST_SIZE] = {0,};
 static char tune_data2[MDNIE_TUNE_SECOND_SIZE] = {0,};
-
 #if defined(CONFIG_DISPLAY_DISABLE_TEST_KEY)
 static char level1_key_enable[] = {
 	0xF0,
@@ -142,6 +166,13 @@ static struct dsi_cmd_desc mdni_tune_cmd[] = {
 
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(level1_key_disable), level1_key_disable},
+};
+#elif defined(CONFIG_FB_MSM_MIPI_HX8389B_TFT_VIDEO_QHD_PT_PANEL)
+static struct dsi_cmd_desc mdni_tune_cmd[] = {
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(tune_data1), tune_data1},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+                sizeof(tune_data2), tune_data2},
 };
 #else
 static char level1_key[] = {
@@ -185,6 +216,10 @@ void sending_tuning_cmd(void)
 {
 	struct msm_fb_data_type *mfd;
 	struct dcs_cmd_req cmdreq;
+#if defined (CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_QHD_PT)
+		if(get_lcd_attached() == 0)
+			return;
+#endif
 
 	mfd = (struct msm_fb_data_type *) registered_fb[0]->par;
 
@@ -258,9 +293,15 @@ void mDNIe_Set_Mode(enum Lcd_mDNIe_UI mode)
 	*/
 	if (mdnie_tun_state.blind == COLOR_BLIND)
 		mode = mDNIE_BLINE_MODE;
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL)
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL) || defined(CONFIG_FB_MSM_MIPI_RENESAS_TFT_VIDEO_FULL_HD_PT_PANEL)
 	else if (mdnie_tun_state.blind == DARK_SCREEN)
 		mode = mDNIE_DARK_SCREEN_MODE;
+#endif
+
+#if defined(CONFIG_FB_MSM_MIPI_HX8389B_TFT_VIDEO_QHD_PT_PANEL)
+
+	if( mdnie_tun_state.background != STANDARD_MODE )
+		mdnie_tun_state.background = STANDARD_MODE;
 #endif
 
 	switch (mode) {
@@ -377,6 +418,29 @@ void mDNIe_Set_Mode(enum Lcd_mDNIe_UI mode)
 
 	case mDNIe_GALLERY:
 		DPRINT(" = GALLERY MODE =\n");
+#if defined(CONFIG_FB_MSM_MIPI_HX8389B_TFT_VIDEO_QHD_PT_PANEL)
+		if (mdnie_tun_state.background == STANDARD_MODE) {
+			DPRINT(" = STANDARD MODE =\n");
+			INPUT_PAYLOAD1(STANDARD_GALLERY_1);
+			INPUT_PAYLOAD2(STANDARD_GALLERY_2);
+		} else if (mdnie_tun_state.background == NATURAL_MODE) {
+			DPRINT(" = NATURAL MODE =\n");
+			INPUT_PAYLOAD1(STANDARD_GALLERY_1);
+			INPUT_PAYLOAD2(STANDARD_GALLERY_2);
+		} else if (mdnie_tun_state.background == DYNAMIC_MODE) {
+			DPRINT(" = DYNAMIC MODE =\n");
+			INPUT_PAYLOAD1(STANDARD_GALLERY_1);
+			INPUT_PAYLOAD2(STANDARD_GALLERY_2);
+		} else if (mdnie_tun_state.background == MOVIE_MODE) {
+			DPRINT(" = MOVIE MODE =\n");
+			INPUT_PAYLOAD1(STANDARD_GALLERY_1);
+			INPUT_PAYLOAD2(STANDARD_GALLERY_2);
+		} else if (mdnie_tun_state.background == AUTO_MODE) {
+			DPRINT(" = AUTO MODE =\n");
+			INPUT_PAYLOAD1(STANDARD_GALLERY_1);
+			INPUT_PAYLOAD2(STANDARD_GALLERY_2);
+		}
+#else
 		if (mdnie_tun_state.background == STANDARD_MODE) {
 			DPRINT(" = STANDARD MODE =\n");
 			INPUT_PAYLOAD1(STANDARD_GALLERY_1);
@@ -400,6 +464,7 @@ void mDNIe_Set_Mode(enum Lcd_mDNIe_UI mode)
 			INPUT_PAYLOAD1(AUTO_GALLERY_1);
 			INPUT_PAYLOAD2(AUTO_GALLERY_2);
 		}
+#endif
 		break;
 
 	case mDNIe_VT_MODE:
@@ -522,22 +587,42 @@ void mDNIe_Set_Mode(enum Lcd_mDNIe_UI mode)
 		DPRINT(" = eBOOK MODE =\n");
 		if (mdnie_tun_state.background == STANDARD_MODE) {
 			DPRINT(" = STANDARD MODE =\n");
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_QHD_PT)
+			INPUT_PAYLOAD1(STANDARD_eBOOK_1);
+			INPUT_PAYLOAD2(STANDARD_eBOOK_2);
+#else
 			INPUT_PAYLOAD1(STANDARD_EBOOK_1);
 			INPUT_PAYLOAD2(STANDARD_EBOOK_2);
+#endif
 #if !defined(CONFIG_SUPPORT_DISPLAY_OCTA_TFT)
 		} else if (mdnie_tun_state.background == NATURAL_MODE) {
 			DPRINT(" = NATURAL MODE =\n");
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_QHD_PT)
+			INPUT_PAYLOAD1(NATURAL_eBOOK_1);
+			INPUT_PAYLOAD2(NATURAL_eBOOK_2);
+#else
 			INPUT_PAYLOAD1(NATURAL_EBOOK_1);
 			INPUT_PAYLOAD2(NATURAL_EBOOK_2);
 #endif
+#endif
 		} else if (mdnie_tun_state.background == DYNAMIC_MODE) {
 			DPRINT(" = DYNAMIC MODE =\n");
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_QHD_PT)
+			INPUT_PAYLOAD1(DYNAMIC_eBOOK_1);
+			INPUT_PAYLOAD2(DYNAMIC_eBOOK_2);
+#else
 			INPUT_PAYLOAD1(DYNAMIC_EBOOK_1);
 			INPUT_PAYLOAD2(DYNAMIC_EBOOK_2);
+#endif
 		} else if (mdnie_tun_state.background == MOVIE_MODE) {
 			DPRINT(" = MOVIE MODE =\n");
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_QHD_PT)
+			INPUT_PAYLOAD1(MOVIE_eBOOK_1);
+			INPUT_PAYLOAD2(MOVIE_eBOOK_2);
+#else
 			INPUT_PAYLOAD1(MOVIE_EBOOK_1);
 			INPUT_PAYLOAD2(MOVIE_EBOOK_2);
+#endif
 		} else if (mdnie_tun_state.background == AUTO_MODE) {
 			DPRINT(" = AUTO MODE =\n");
 			INPUT_PAYLOAD1(AUTO_EBOOK_1);
@@ -551,7 +636,7 @@ void mDNIe_Set_Mode(enum Lcd_mDNIe_UI mode)
 		INPUT_PAYLOAD2(COLOR_BLIND_2);
 		break;
 
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL)
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL) || defined(CONFIG_FB_MSM_MIPI_RENESAS_TFT_VIDEO_FULL_HD_PT_PANEL)
 	case mDNIE_DARK_SCREEN_MODE:
 		DPRINT(" = DARK SCREEN MODE =\n");
 		INPUT_PAYLOAD1(DARK_SCREEN_BLIND_1);
@@ -950,7 +1035,9 @@ static ssize_t accessibility_show(struct device *dev,
 			char *buf)
 {
 	DPRINT("called %s\n", __func__);
-	return snprintf(buf, 256, "%d\n", play_speed_1_5);
+	return snprintf(buf, 256, "Current accessibility Value : %s\n",
+		accessibility_name[mdnie_tun_state.blind]);
+	//return snprintf(buf, 256, "%d\n", play_speed_1_5);
 }
 
 static ssize_t accessibility_store(struct device *dev,
@@ -986,11 +1073,16 @@ static ssize_t accessibility_store(struct device *dev,
 	} else if (cmd_value == COLOR_BLIND) {
 		mdnie_tun_state.negative = mDNIe_NEGATIVE_OFF;
 		mdnie_tun_state.blind = COLOR_BLIND;
-
+#if defined(CONFIG_FB_MSM_MIPI_HX8389B_TFT_VIDEO_QHD_PT_PANEL)
+		for (loop = 0; loop < MDNIE_COLOR_BLINDE_CMD; loop++){
+			COLOR_BLIND_2[28+loop] = buffer[MDNIE_COLOR_BLINDE_CMD - 1 - loop];
+		}
+#else
 		memcpy(&COLOR_BLIND_2[MDNIE_COLOR_BLINDE_CMD],
 				buffer, MDNIE_COLOR_BLINDE_CMD);
+#endif
 	} 
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL)
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL) || defined(CONFIG_FB_MSM_MIPI_RENESAS_TFT_VIDEO_FULL_HD_PT_PANEL)
 	else if  (cmd_value == DARK_SCREEN) {
 		mdnie_tun_state.negative = mDNIe_NEGATIVE_OFF;
 		mdnie_tun_state.blind = DARK_SCREEN;
@@ -1127,6 +1219,30 @@ void mdnie_lite_tuning_init(void)
 	mipi_dsi_buf_alloc(&mdnie_tun_rx_buf, DSI_BUF_SIZE);
 }
 
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_QHD_PT)
+
+#define coordinate_data_size 6
+#define scr_wr_addr 36
+
+#define F1(x,y) ((y)-((99*(x))/91)-6)
+#define F2(x,y) ((y)-((164*(x))/157)-8)
+#define F3(x,y) ((y)+((218*(x))/39)-20166)
+#define F4(x,y) ((y)+((23*(x))/8)-11610)
+
+static char coordinate_data[][coordinate_data_size] = {
+	{0xff, 0x00, 0xff, 0x00, 0xff, 0x00},
+	{0xff, 0x00, 0xf9, 0x00, 0xfa, 0x00},
+	{0xff, 0x00, 0xfa, 0x00, 0xfe, 0x00},
+	{0xfb, 0x00, 0xf9, 0x00, 0xff, 0x00},
+	{0xff, 0x00, 0xfe, 0x00, 0xfb, 0x00},
+	{0xff, 0x00, 0xff, 0x00, 0xff, 0x00},
+	{0xfa, 0x00, 0xfb, 0x00, 0xff, 0x00},
+	{0xfd, 0x00, 0xff, 0x00, 0xf9, 0x00},
+	{0xfc, 0x00, 0xff, 0x00, 0xfc, 0x00},
+	{0xfa, 0x00, 0xff, 0x00, 0xff, 0x00},
+};
+
+#else
 #define coordinate_data_size 6
 #define scr_wr_addr 36
 
@@ -1147,6 +1263,7 @@ static char coordinate_data[][coordinate_data_size] = {
 	{0xfb, 0x00, 0xff, 0x00, 0xfb, 0x00},
 	{0xf9, 0x00, 0xff, 0x00, 0xff, 0x00},
 };
+#endif
 
 void coordinate_tunning(int x, int y)
 {
@@ -1192,15 +1309,22 @@ void coordinate_tunning(int x, int y)
 	memcpy(&DYNAMIC_UI_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 	memcpy(&DYNAMIC_VIDEO_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 	memcpy(&DYNAMIC_VT_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_QHD_PT)
+	memcpy(&DYNAMIC_eBOOK_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
+#else
 	memcpy(&DYNAMIC_EBOOK_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
+#endif
 
 	memcpy(&STANDARD_BROWSER_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 	memcpy(&STANDARD_GALLERY_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 	memcpy(&STANDARD_UI_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 	memcpy(&STANDARD_VIDEO_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 	memcpy(&STANDARD_VT_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_QHD_PT)
+	memcpy(&STANDARD_eBOOK_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
+#else
 	memcpy(&STANDARD_EBOOK_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
-
+#endif
 	memcpy(&AUTO_BROWSER_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 	memcpy(&AUTO_CAMERA_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 	memcpy(&AUTO_GALLERY_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);

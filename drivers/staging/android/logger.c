@@ -33,6 +33,9 @@
 static char klog_buf[256];
 #endif
 
+#ifndef CONFIG_LOGCAT_SIZE
+#define CONFIG_LOGCAT_SIZE 256
+#endif
 /*
  * struct logger_log - represents a specific log, such as 'main' or 'radio'
  *
@@ -445,6 +448,10 @@ static ssize_t do_write_log_from_user(struct logger_log *log,
 		else
 			memcpy(klog_buf, log->buffer + log->w_off, 255);
 		klog_buf[255] = 0;
+#ifdef CONFIG_SEC_BSP
+		if (strncmp(klog_buf, "!@Boot", 6) == 0)
+			sec_boot_stat_add(klog_buf);
+#endif
 	}
 #endif
 	log->w_off = logger_offset(log, log->w_off + count);
@@ -747,10 +754,14 @@ static struct logger_log VAR = { \
 	.size = SIZE, \
 };
 
-DEFINE_LOGGER_DEVICE(log_main, LOGGER_LOG_MAIN, LOGGER_1MB_SIZE)
-DEFINE_LOGGER_DEVICE(log_events, LOGGER_LOG_EVENTS, LOGGER_512KB_SIZE)
-DEFINE_LOGGER_DEVICE(log_radio, LOGGER_LOG_RADIO, LOGGER_2MB_SIZE)
-DEFINE_LOGGER_DEVICE(log_system, LOGGER_LOG_SYSTEM, LOGGER_512KB_SIZE)
+#ifdef CONFIG_SEC_LOGGER_BUFFER_EXPANSION
+DEFINE_LOGGER_DEVICE(log_main, LOGGER_LOG_MAIN, CONFIG_LOGCAT_SIZE*1024*2*CONFIG_SEC_LOGGER_BUFFER_EXPANSION_SIZE) // 2MB
+#else
+DEFINE_LOGGER_DEVICE(log_main, LOGGER_LOG_MAIN, CONFIG_LOGCAT_SIZE*1024*2)	// 1MB
+#endif
+DEFINE_LOGGER_DEVICE(log_events, LOGGER_LOG_EVENTS, CONFIG_LOGCAT_SIZE*1024)	// 512KB
+DEFINE_LOGGER_DEVICE(log_radio, LOGGER_LOG_RADIO, CONFIG_LOGCAT_SIZE*1024*4)	// 2MB
+DEFINE_LOGGER_DEVICE(log_system, LOGGER_LOG_SYSTEM, CONFIG_LOGCAT_SIZE*1024)	// 512KB
 
 static struct logger_log *get_log_from_minor(int minor)
 {
@@ -781,8 +792,7 @@ static int __init init_log(struct logger_log *log)
 
 	return 0;
 }
-
-#ifdef CONFIG_SEC_DEBUG
+#if (defined CONFIG_SEC_DEBUG && defined CONFIG_SEC_DEBUG_SUBSYS)
 int sec_debug_subsys_set_logger_info(
 	struct sec_debug_subsys_logger_log_info *log_info)
 {

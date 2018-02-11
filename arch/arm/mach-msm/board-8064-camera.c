@@ -81,7 +81,7 @@ static struct gpiomux_setting cam_settings[] = {
 
 	{
 		.func = GPIOMUX_FUNC_1, /*active 1*/
-#if defined(CONFIG_MACH_JACTIVE_ATT)
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 		.drv = GPIOMUX_DRV_4MA,
 #else
 		.drv = GPIOMUX_DRV_2MA,
@@ -153,7 +153,7 @@ static struct gpiomux_setting cam_settings[] = {
 	},
 	{
 		.func = GPIOMUX_FUNC_4, /*active 12*/
-#if defined(CONFIG_MACH_JACTIVE_ATT)
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 		.drv = GPIOMUX_DRV_4MA,
 #else
 		.drv = GPIOMUX_DRV_2MA,

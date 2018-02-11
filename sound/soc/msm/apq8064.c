@@ -431,7 +431,7 @@ static int msm_mainmic_bias_event(struct snd_soc_dapm_widget *w,
 #if defined(CONFIG_MACH_JF_DCM)
 	ice_gpiox_set(FPGA_GPIO_MICBIAS_EN, SND_SOC_DAPM_EVENT_ON(event));
 #else
-#if !defined(CONFIG_MACH_MELIUS)
+#if (!defined(CONFIG_MACH_MELIUS) && !defined(CONFIG_MACH_M2_ATT))
 	gpio_set_value_cansleep(
 	PM8921_GPIO_PM_TO_SYS(PMIC_MAIN_MICBIAS_EN),
 	SND_SOC_DAPM_EVENT_ON(event));

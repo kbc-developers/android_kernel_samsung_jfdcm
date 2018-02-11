@@ -42,11 +42,19 @@
 #define MAX_FREQUENCY_UP_THRESHOLD		(100)
 #define MIN_FREQUENCY_DOWN_DIFFERENTIAL		(1)
 
-/* PATCH : SMART_UP */
 #define MIN(X, Y) ((X) < (Y) ? (X) : (Y))
 
+#define DEF_FREQ_STEP				(40)	/* msm8960 tuners */
+
+/* PATCH : SMART_UP */
+#if defined(CONFIG_SEC_PRODUCT_8960)
+#define SMART_UP_PLUS (0)
+#define SMART_UP_SLOW_UP_AT_HIGH_FREQ (0)
+#else
 #define SMART_UP_PLUS (1)
 #define SMART_UP_SLOW_UP_AT_HIGH_FREQ (1)
+#endif
+
 #define SUP_MAX_STEP (3)
 #define SUP_CORE_NUM (4)
 #define SUP_SLOW_UP_DUR (2)
@@ -160,6 +168,7 @@ static struct dbs_tuners {
 	int          powersave_bias;
 	unsigned int io_is_busy;
 	int          enable_turbo_mode;
+	unsigned int freq_step;	/* msm8960 tuners */
 } dbs_tuners_ins = {
 	.up_threshold_multi_core = DEF_FREQUENCY_UP_THRESHOLD,
 	.up_threshold = DEF_FREQUENCY_UP_THRESHOLD,
@@ -172,6 +181,7 @@ static struct dbs_tuners {
 	.sync_freq = 0,
 	.optimal_freq = 0,
 	.enable_turbo_mode = 1,
+	.freq_step = DEF_FREQ_STEP,	/* msm8960 tuners */
 };
 
 static inline u64 get_cpu_idle_time_jiffy(unsigned int cpu, u64 *wall)
@@ -953,11 +963,21 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 #else
 	/* Check for frequency increase */
 	if (max_load_freq > dbs_tuners_ins.up_threshold * policy->cur) {
+#if defined(CONFIG_SEC_PRODUCT_8960)
+		int inc = (policy->max * dbs_tuners_ins.freq_step) / 100;
+		int target = min(policy->max, policy->cur + inc);
 		/* If switching to max speed, apply sampling_down_factor */
+		if (policy->cur < policy->max && target == policy->max)
+#else
 		if (policy->cur < policy->max)
+#endif
 			this_dbs_info->rate_mult =
 				dbs_tuners_ins.sampling_down_factor;
+#if defined(CONFIG_SEC_PRODUCT_8960)
+		dbs_freq_increase(policy, target);
+#else
 		dbs_freq_increase(policy, policy->max);
+#endif
 		return;
 	}
 

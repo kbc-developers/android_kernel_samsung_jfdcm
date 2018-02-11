@@ -859,6 +859,11 @@ unsigned int res_trk_get_ion_flags(void)
 			else if (res_trk_is_cp_enabled())
 				flags |= ION_SECURE;
 		}
+		#if !defined(CONFIG_MSM_IOMMU) && defined(CONFIG_SEC_PRODUCT_8960)
+		 else {
+                 flags |= ION_FORCE_CONTIGUOUS;
+              }
+	    #endif
 	}
 	return flags;
 }

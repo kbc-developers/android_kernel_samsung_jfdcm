@@ -164,6 +164,19 @@ void msm8960_init_pmic(void);
 void msm8960_pm8921_gpio_mpp_init(void);
 #endif
 
+int msm8930_get_board_rev(void);
+int msm8930_get_cable_status(void);
+void msm8930_init_battery(void);
+extern int poweroff_charging;
+
+#ifdef CONFIG_INPUT_TOUCHSCREEN
+void __init input_touchscreen_init(void);
+#endif
+
+#if defined(CONFIG_KEYBOARD_CYPRESS_TOUCH) || defined(CONFIG_KEYBOARD_TC360_TOUCHKEY)|| defined(CONFIG_KEYBOARD_MELFAS_TOUCHKEY)
+void __init input_touchkey_init(void);
+#endif
+
 void msm8930_init_mmc(void);
 int msm8930_init_gpiomux(void);
 void msm8930_allocate_fb_region(void);
@@ -171,9 +184,14 @@ void msm8930_pm8038_gpio_mpp_init(void);
 void msm8930_pm8917_gpio_mpp_init(void);
 void msm8930_mdp_writeback(struct memtype_reserve *reserve_table);
 void __init msm8930_init_gpu(void);
+void __init msm8960_init_battery(void);
 void __init configure_8930_sglte_regulator(void);
 
 int msm8960_get_cable_status(void);
+
+#if defined(CONFIG_TOUCHSCREEN_CYPRESS_TMA46X)
+void __init board_tsp_init(void);
+#endif
 
 #ifdef CONFIG_SAMSUNG_LPM_MODE
 extern int poweroff_charging;

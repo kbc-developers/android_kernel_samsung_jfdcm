@@ -1794,8 +1794,8 @@ void __init apq8064_init_gpiomux(void)
 		msm_gpiomux_install(sdc2_interface,
 				ARRAY_SIZE(sdc2_interface));
 				
-	msm_gpiomux_install(msm8064_ls_en_config,
-			ARRAY_SIZE(msm8064_ls_en_config));			
+    msm_gpiomux_install(msm8064_ls_en_config,
+			ARRAY_SIZE(msm8064_ls_en_config));					
 #else
 	msm_gpiomux_install(wcnss_5wire_interface,
 			ARRAY_SIZE(wcnss_5wire_interface));

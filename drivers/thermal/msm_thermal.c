@@ -29,6 +29,7 @@ static int enabled;
 static struct msm_thermal_data msm_thermal_info;
 static uint32_t limited_max_freq = MSM_CPUFREQ_NO_LIMIT;
 static struct delayed_work check_temp_work;
+static struct delayed_work temp_log_work;
 static bool core_control_enabled;
 static uint32_t cpus_offlined;
 static DEFINE_MUTEX(core_control_mutex);
@@ -37,6 +38,7 @@ static int limit_idx;
 static int limit_idx_low;
 static int limit_idx_high;
 static struct cpufreq_frequency_table *table;
+static long current_temp;
 
 static int msm_thermal_get_freq_table(void)
 {
@@ -52,8 +54,11 @@ static int msm_thermal_get_freq_table(void)
 
 	while (table[i].frequency != CPUFREQ_TABLE_END)
 		i++;
-
+#if defined (CONFIG_MACH_M2_REFRESHSPR)
+	limit_idx_low = 5;
+#else
 	limit_idx_low = 0;
+#endif
 	limit_idx_high = limit_idx = i - 1;
 	BUG_ON(limit_idx_high <= 0 || limit_idx_high <= limit_idx_low);
 fail:
@@ -70,8 +75,8 @@ static int update_cpu_max_freq(int cpu, uint32_t max_freq)
 
 	limited_max_freq = max_freq;
 	if (max_freq != MSM_CPUFREQ_NO_LIMIT)
-		pr_info("%s: Limiting cpu%d max frequency to %d\n",
-				KBUILD_MODNAME, cpu, max_freq);
+		pr_info("%s: Limiting cpu%d max frequency to %d (TEMP=%ld)\n",
+				KBUILD_MODNAME, cpu, max_freq, current_temp);
 	else
 		pr_info("%s: Max frequency reset for cpu%d\n",
 				KBUILD_MODNAME, cpu);
@@ -152,6 +157,7 @@ static void __cpuinit check_temp(struct work_struct *work)
 
 	tsens_dev.sensor_num = msm_thermal_info.sensor_id;
 	ret = tsens_get_temp(&tsens_dev, &temp);
+	current_temp = temp;
 	if (ret) {
 		pr_debug("%s: Unable to read TSENS sensor %d\n",
 				KBUILD_MODNAME, tsens_dev.sensor_num);
@@ -204,6 +210,30 @@ reschedule:
 	if (enabled)
 		schedule_delayed_work(&check_temp_work,
 				msecs_to_jiffies(msm_thermal_info.poll_ms));
+}
+
+static void __ref msm_therm_temp_log(struct work_struct *work)
+{
+    struct tsens_device tsens_dev;
+    long temp = 0;
+    uint32_t max_sensors = 0;
+
+    if(!(tsens_get_max_sensor_num(&max_sensors)))
+    {
+          int i ,added = 0;
+          char buffer[500];
+          for (i = 0 ; i< max_sensors;i++)
+          {
+               int ret = 0;
+               tsens_dev.sensor_num = i;
+               tsens_get_temp(&tsens_dev,&temp);
+               ret = sprintf(buffer + added , "(%d --- %ld)", i ,temp );
+               added += ret;
+          }
+          pr_info("%s: Debug Temp for Sensors %s",KBUILD_MODNAME,buffer);
+
+    }
+    schedule_delayed_work(&temp_log_work, HZ*5);
 }
 
 static int __cpuinit msm_thermal_cpu_callback(struct notifier_block *nfb,
@@ -499,6 +529,12 @@ fail:
 	return ret;
 }
 
+static int msm_thermal_dev_exit(struct platform_device * inp_dev)
+{
+        cancel_delayed_work_sync(&temp_log_work);
+        return 0;
+}
+
 static struct of_device_id msm_thermal_match_table[] = {
 	{.compatible = "qcom,msm-thermal"},
 	{},
@@ -511,6 +547,7 @@ static struct platform_driver msm_thermal_device_driver = {
 		.owner = THIS_MODULE,
 		.of_match_table = msm_thermal_match_table,
 	},
+        .remove = msm_thermal_dev_exit,
 };
 
 int __init msm_thermal_device_init(void)
@@ -520,6 +557,8 @@ int __init msm_thermal_device_init(void)
 
 int __init msm_thermal_late_init(void)
 {
+        INIT_DELAYED_WORK(&temp_log_work,msm_therm_temp_log);
+        schedule_delayed_work(&temp_log_work,HZ*2);
 	return msm_thermal_add_cc_nodes();
 }
 module_init(msm_thermal_late_init);

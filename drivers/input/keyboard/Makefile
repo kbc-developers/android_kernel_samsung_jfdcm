@@ -13,7 +13,11 @@ obj-$(CONFIG_KEYBOARD_ATKBD)		+= atkbd.o
 obj-$(CONFIG_KEYBOARD_BFIN)		+= bf54x-keys.o
 obj-$(CONFIG_KEYBOARD_DAVINCI)		+= davinci_keyscan.o
 obj-$(CONFIG_KEYBOARD_EP93XX)		+= ep93xx_keypad.o
+ifdef CONFIG_SEC_PRODUCT_8960
+obj-$(CONFIG_KEYBOARD_GPIO)		+= gpio_keys_msm8960.o
+else 
 obj-$(CONFIG_KEYBOARD_GPIO)		+= gpio_keys.o
+endif
 obj-$(CONFIG_KEYBOARD_GPIO_POLLED)	+= gpio_keys_polled.o
 obj-$(CONFIG_KEYBOARD_TCA6416)		+= tca6416-keypad.o
 obj-$(CONFIG_KEYBOARD_TCA8418)		+= tca8418_keypad.o
@@ -54,4 +58,6 @@ obj-$(CONFIG_KEYBOARD_XTKBD)		+= xtkbd.o
 obj-$(CONFIG_KEYBOARD_QCIKBD)       += qci_kbd.o
 obj-$(CONFIG_KEYBOARD_W90P910)		+= w90p910_keypad.o
 obj-$(CONFIG_KEYBOARD_PMIC8058)		+= pmic8058-keypad.o
+obj-$(CONFIG_KEYBOARD_TC360_TOUCHKEY)	+= tc360-touchkey.o
+obj-$(CONFIG_KEYBOARD_CYPRESS_TOUCH)	+= cypress_touchkey/
 obj-$(CONFIG_KEYBOARD_CYPRESS_TOUCH_236)	+= cypress_touchkey_236/

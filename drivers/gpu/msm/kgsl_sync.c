@@ -73,6 +73,9 @@ static int kgsl_sync_pt_compare(struct sync_pt *a, struct sync_pt *b)
 struct kgsl_fence_event_priv {
 	struct kgsl_context *context;
 	unsigned int timestamp;
+#ifdef CONFIG_SEC_PRODUCT_8960
+	struct sync_timeline *timeline;
+#endif
 };
 
 /**
@@ -89,11 +92,19 @@ static inline void kgsl_fence_event_cb(struct kgsl_device *device,
 	void *priv, u32 context_id, u32 timestamp, u32 type)
 {
 	struct kgsl_fence_event_priv *ev = priv;
-
+#ifdef CONFIG_SEC_PRODUCT_8960
+	if (ev != NULL) {
+		kgsl_sync_timeline_signal(ev->timeline, ev->timestamp);
+		kfree(ev);
+	} else {
+		KGSL_DRV_WARN(device, "kgsl_sync_timeline_signal Failed ..!!\n");
+	}
+#else
 	/* Signal event time timeline for every event type */
 	kgsl_sync_timeline_signal(ev->context->timeline, ev->timestamp);
 	kgsl_context_put(ev->context);
 	kfree(ev);
+#endif
 }
 
 /**
@@ -143,7 +154,9 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 		ret = -ENOMEM;
 		goto fail_pt;
 	}
-
+#ifdef CONFIG_SEC_PRODUCT_8960
+	event->timeline = context->timeline;
+#endif
 	fence = sync_fence_create("kgsl-fence", pt);
 	if (fence == NULL) {
 		/* only destroy pt when not added to fence */

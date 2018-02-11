@@ -30,14 +30,10 @@
 
 #ifdef CONFIG_SAMSUNG_CMC624
 #include <linux/i2c/samsung_cmc624.h>
-#include <mach/msm8930-gpio.h>
 #endif
-
-#if defined(CONFIG_MACH_KS02) || (defined(CONFIG_MACH_LT02)&&!defined(CONFIG_MACH_LT02_CHN_CTC))
 #include <mach/msm8930-gpio.h>
-#endif
-#if defined(CONFIG_MACH_CRATER_CHN_CTC)
-#include <mach/msm8930-gpio.h>
+#if defined(CONFIG_MACH_LT02_SPR) || defined(CONFIG_MACH_LT02_ATT) ||  defined(CONFIG_MACH_LT02_TMO)
+#include <mach/msm_xo.h>
 #endif
 
 #if defined(CONFIG_MIPI_SAMSUNG_ESD_REFRESH)
@@ -52,7 +48,9 @@ static struct platform_device samsung_mipi_esd_refresh_device = {
 #endif
 
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
-#if defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT_PANEL)
+#if defined(CONFIG_MACH_LT02_CHN_CTC) || defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WSVGA_PT_PANEL)
+#define MSM_FB_PRIM_BUF_SIZE (1024 * 600 * 4 * 3)
+#elif defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT_PANEL)
 #define MSM_FB_PRIM_BUF_SIZE (1280 * 736 * 4 * 3)
 #elif defined(CONFIG_FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT_PANEL) \
  || defined(CONFIG_FB_MSM_MIPI_HIMAX_TFT_VIDEO_WVGA_PT_PANEL) \
@@ -63,7 +61,8 @@ static struct platform_device samsung_mipi_esd_refresh_device = {
 #elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_CMD_QHD_PT_PANEL) \
  || defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_QHD_PT_PANEL) \
  || defined(CONFIG_FB_MSM_MIPI_LMS_HX8389B_VIDEO_QHD_PT_PANEL) \
- || defined(CONFIG_FB_MSM_MIPI_HX8389B_VIDEO_QHD_PT_PANEL)
+ || defined(CONFIG_FB_MSM_MIPI_HX8389B_VIDEO_QHD_PT_PANEL)\
+ || defined(CONFIG_FB_MSM_MIPI_HX8389B_TFT_VIDEO_QHD_PT_PANEL)
 #define MSM_FB_PRIM_BUF_SIZE (544 * 960 * 4 * 3)
 #else
 #define MSM_FB_PRIM_BUF_SIZE \
@@ -71,7 +70,9 @@ static struct platform_device samsung_mipi_esd_refresh_device = {
 #endif
 #else
 /* prim = 540 x 960 x 4(bpp) x 2(pages) */
-#if defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT_PANEL)
+#if defined(CONFIG_MACH_LT02_CHN_CTC) || defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WSVGA_PT_PANEL)
+#define MSM_FB_PRIM_BUF_SIZE (1024 * 600 * 4 * 2)
+#elif defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT_PANEL)
 #define MSM_FB_PRIM_BUF_SIZE (1280 * 736 * 4 * 2)
 #elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT_PANEL) \
  || defined(CONFIG_FB_MSM_MIPI_HX8369B_VIDEO_WVGA_PT_PANEL)
@@ -79,7 +80,8 @@ static struct platform_device samsung_mipi_esd_refresh_device = {
 #elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_CMD_QHD_PT_PANEL) \
  || defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_QHD_PT_PANEL) \
  || defined(CONFIG_FB_MSM_MIPI_LMS_HX8389B_VIDEO_QHD_PT_PANEL) \
- || defined(CONFIG_FB_MSM_MIPI_HX8389B_VIDEO_QHD_PT_PANEL)
+ || defined(CONFIG_FB_MSM_MIPI_HX8389B_VIDEO_QHD_PT_PANEL) \
+ || defined(CONFIG_FB_MSM_MIPI_HX8389B_TFT_VIDEO_QHD_PT_PANEL)
 #define MSM_FB_PRIM_BUF_SIZE (544 * 960 * 4 * 2)
 #else
 #define MSM_FB_PRIM_BUF_SIZE \
@@ -91,7 +93,9 @@ static struct platform_device samsung_mipi_esd_refresh_device = {
 #define MSM_FB_SIZE roundup(MSM_FB_PRIM_BUF_SIZE, 4096)
 
 #ifdef CONFIG_FB_MSM_OVERLAY0_WRITEBACK
-#if defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT_PANEL)
+#if defined(CONFIG_MACH_LT02_CHN_CTC) || defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WSVGA_PT_PANEL)
+#define MSM_FB_OVERLAY0_WRITEBACK_SIZE roundup((1024 * 600 * 3 * 2), 4096)
+#elif defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT_PANEL)
 #define MSM_FB_OVERLAY0_WRITEBACK_SIZE roundup((1280 * 736 * 3 * 2), 4096)
 #elif defined(CONFIG_FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT_PANEL) \
  || defined(CONFIG_FB_MSM_MIPI_HIMAX_TFT_VIDEO_WVGA_PT_PANEL) \
@@ -102,7 +106,8 @@ static struct platform_device samsung_mipi_esd_refresh_device = {
 #elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_CMD_QHD_PT_PANEL)\
  || defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_QHD_PT_PANEL)\
  || defined(CONFIG_FB_MSM_MIPI_LMS_HX8389B_VIDEO_QHD_PT_PANEL) \
- || defined(CONFIG_FB_MSM_MIPI_HX8389B_VIDEO_QHD_PT_PANEL)
+ || defined(CONFIG_FB_MSM_MIPI_HX8389B_VIDEO_QHD_PT_PANEL) \
+ || defined(CONFIG_FB_MSM_MIPI_HX8389B_TFT_VIDEO_QHD_PT_PANEL) 
 #define MSM_FB_OVERLAY0_WRITEBACK_SIZE roundup((544 * 960 * 3 * 2), 4096)
 #else
 #define MSM_FB_OVERLAY0_WRITEBACK_SIZE roundup((1376 * 768 * 3 * 2), 4096)
@@ -128,6 +133,7 @@ static struct platform_device samsung_mipi_esd_refresh_device = {
 #define MIPI_VIDEO_SIMULATOR_VGA_PANEL_NAME	"mipi_video_simulator_vga"
 #define MIPI_CMD_RENESAS_FWVGA_PANEL_NAME	"mipi_cmd_renesas_fwvga"
 #define MIPI_VIDEO_NT_HD_PANEL_NAME		"mipi_video_nt35590_720p"
+#define MIPI2LVDS_VIDEO_VX5B3D_WSVGA_PANEL_NAME	"mipi2lvds_vx5b3d_wsvga"
 #define HDMI_PANEL_NAME	"hdmi_msm"
 #define TVOUT_PANEL_NAME	"tvout_msm"
 
@@ -150,6 +156,10 @@ static int msm_fb_detect_panel(const char *name)
 				PANEL_NAME_MAX_LEN)))
 			return 0;
 	}
+        if (!strncmp(name, MIPI2LVDS_VIDEO_VX5B3D_WSVGA_PANEL_NAME,
+			strnlen(MIPI2LVDS_VIDEO_VX5B3D_WSVGA_PANEL_NAME,
+				PANEL_NAME_MAX_LEN)))
+		return 0;
 	if (!strncmp(name, MIPI_VIDEO_NOVATEK_HD_PANEL_NAME,
 			strnlen(MIPI_VIDEO_NOVATEK_HD_PANEL_NAME,
 				PANEL_NAME_MAX_LEN)))
@@ -209,7 +219,8 @@ static struct platform_device msm_fb_device = {
 };
 
 static bool dsi_power_on;
-#if !defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT_PANEL)
+#if !defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT_PANEL) && !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT_PANEL) \
+	&& !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WSVGA_PT_PANEL)
 static struct mipi_dsi_panel_platform_data novatek_pdata;
 static void pm8917_gpio_set_backlight(int bl_level)
 {
@@ -232,11 +243,13 @@ static void pm8917_gpio_set_backlight(int bl_level)
 /* see ks02-gpio.h */
 #define DISP_3D_2D_MODE GPIO_MHL_RST
 #else
-#define DISP_RST_GPIO 58
+#if !defined(CONFIG_MACH_SERRANO)
 #define DISP_3D_2D_MODE 1
 #endif
+#define DISP_RST_GPIO 58
+#endif
 #if defined(CONFIG_FB_MSM_MIPI_HIMAX_TFT_VIDEO_WVGA_PT_PANEL)
-#if defined(CONFIG_MACH_CANE)
+#if defined(CONFIG_MACH_CANE) || defined(CONFIG_MACH_WILCOX_EUR_LTE)
 #define DISP_BL_CONT_GPIO 7
 #else
 #define DISP_BL_CONT_GPIO 10
@@ -287,19 +300,11 @@ void active_reset(int on)
 		pr_info("%s: DISP_RST_GPIO high\n", __func__);
 		mdelay(5);
 #elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT_PANEL)
-		udelay(5);
 		gpio_set_value(DISP_RST_GPIO, 0);
-		pr_info("%s: DISP_RST_GPIO low\n", __func__);
-		mdelay(25);
+		mdelay(20);
 		gpio_set_value(DISP_RST_GPIO, 1);
-		pr_info("%s: DISP_RST_GPIO high\n", __func__);
-		mdelay(25);
-		gpio_set_value(DISP_RST_GPIO, 0);
-		pr_info("%s: DISP_RST_GPIO low\n", __func__);
-		mdelay(25);
-		gpio_set_value(DISP_RST_GPIO, 1);
-		pr_info("%s: DISP_RST_GPIO high\n", __func__);
-		mdelay(120);
+		pr_debug("%s: DISP_RST_GPIO high\n", __func__);
+		mdelay(20);
 #elif defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT_PANEL)
 		msleep(15);
 		gpio_set_value(GPIO_MLCD_RST, 0);
@@ -325,7 +330,19 @@ void active_reset(int on)
 		}
 #endif
 #elif defined(CONFIG_FB_MSM_MIPI_HX8389B_VIDEO_QHD_PT_PANEL) || defined(CONFIG_FB_MSM_MIPI_LMS_HX8389B_VIDEO_QHD_PT_PANEL) \
-		|| defined(CONFIG_FB_MSM_MIPI_HX8369B_VIDEO_WVGA_PT_PANEL)
+		|| defined(CONFIG_FB_MSM_MIPI_HX8369B_VIDEO_WVGA_PT_PANEL) || defined(CONFIG_FB_MSM_MIPI_HX8389B_TFT_VIDEO_QHD_PT_PANEL)
+#if defined(CONFIG_MACH_WILCOX_EUR_LTE)
+		mdelay(5);
+		gpio_set_value(DISP_RST_GPIO, 1);
+		pr_debug("%s: DISP_RST_GPIO high\n", __func__);
+		mdelay(5);
+		gpio_set_value(DISP_RST_GPIO, 0);
+		pr_debug("%s: DISP_RST_GPIO high\n", __func__);
+		mdelay(5);
+		gpio_set_value(DISP_RST_GPIO, 1);
+		pr_debug("%s: DISP_RST_GPIO high\n", __func__);
+		mdelay(150);
+#else
 		mdelay(25);
 		gpio_set_value(DISP_RST_GPIO, 1);
 		pr_info("%s: DISP_RST_GPIO high\n", __func__);
@@ -337,11 +354,11 @@ void active_reset(int on)
 		pr_info("%s: DISP_RST_GPIO high\n", __func__);
 		mdelay(5);
 #endif
+#endif
 	} else {
 #if defined(CONFIG_FB_MSM_MIPI_HIMAX_TFT_VIDEO_WVGA_PT_PANEL)
 		msleep(10);
 #endif
-
 #if defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT_PANEL)
 #ifdef CONFIG_SAMSUNG_CMC624
 		if (samsung_has_cmc624()) {
@@ -358,7 +375,7 @@ void active_reset(int on)
 	}
 }
 
-#if defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT_PANEL)
+#if defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT_PANEL) || defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WSVGA_PT_PANEL)
 extern unsigned int system_rev;
 #endif
 #if defined(CONFIG_MIPI_SAMSUNG_ESD_REFRESH)
@@ -371,8 +388,7 @@ void set_esd_gpio_config(void)
 		gpio_free(GPIO_LCD_ESD_DET);
 		return;
 	}
-#if defined(CONFIG_MACH_MELIUS_EUR_OPEN) || defined(CONFIG_MACH_MELIUS_EUR_LTE)\
-	|| defined(CONFIG_MACH_MELIUS_SKT) || defined(CONFIG_MACH_MELIUS_KTT)\
+#if defined(CONFIG_MACH_MELIUS_SKT) || defined(CONFIG_MACH_MELIUS_KTT)\
 	|| defined(CONFIG_MACH_MELIUS_LGT) || defined(CONFIG_MACH_MELIUS_CHN_CTC)
 	if(system_rev >= 11) {
 	gpio_tlmm_config(GPIO_CFG(GPIO_LCD_ESD_DET,  0, GPIO_CFG_INPUT,
@@ -389,15 +405,314 @@ void set_esd_gpio_config(void)
 }
 #endif
 
-#if defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT_PANEL)
-int mipi_dsi_melius_panel_power(int on){
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WSVGA_PT_PANEL)
+#if defined(CONFIG_MACH_LT02_CHN_CTC)
+static int mipi_dsi2lvds_cdp_panel_power(int on)
+{
+        static struct regulator *reg_l2;
 
+	int rc;
+	
+	if(!dsi_power_on){
+	        reg_l2 = regulator_get(&msm_mipi_dsi1_device.dev,"dsi_vdda");
+			if (IS_ERR(reg_l2)) {
+				pr_err("could not get 8038_l2, rc = %ld\n",
+					PTR_ERR(reg_l2));
+				return -ENODEV;
+			}
+
+		dsi_power_on = true;
+	}
+
+	gpio_tlmm_config(GPIO_CFG(LCD_PWR_EN, 0, GPIO_CFG_OUTPUT,
+					GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 	GPIO_CFG_ENABLE); //LCD Power enable
+	gpio_tlmm_config(GPIO_CFG(LVDS_PWR_EN, 0, GPIO_CFG_OUTPUT,
+					GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 	GPIO_CFG_ENABLE); //LVDS Power enable
+	gpio_tlmm_config(GPIO_CFG(LCD_EN, 0, GPIO_CFG_OUTPUT,
+					GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 	GPIO_CFG_ENABLE);  //LCD Enable
+
+	
+	rc = regulator_set_voltage(reg_l2, 1200000, 1200000);
+	if (rc) {
+		pr_err("set_voltage l2 failed, rc=%d\n", rc);
+		return -EINVAL;
+	}
+
+	if(on){
+
+		rc = regulator_set_optimum_mode(reg_l2, 100000);
+		if (rc < 0) {
+			pr_err("set_optimum_mode l2 failed, rc=%d\n", rc);
+			return -EINVAL;
+		}
+
+		rc = regulator_enable(reg_l2);
+		if (rc) {
+			pr_err("enable l2 failed, rc=%d\n", rc);
+			return -ENODEV;
+		}
+		msleep(5);
+
+			
+		gpio_set_value(LVDS_PWR_EN, 1);
+		gpio_set_value(LCD_PWR_EN, 1);
+		gpio_set_value(LCD_EN, 1);
+		
+		printk("mipi2lvds_panel_power on \n");
+
+		
+		
+	}else{
+
+		rc = regulator_disable(reg_l2);
+		if (rc) {
+			pr_err("disable reg_l2 failed, rc=%d\n", rc);
+			return -ENODEV;
+		}
+		
+		gpio_tlmm_config(GPIO_CFG(LVDS_I2C_SDA, 0, GPIO_CFG_INPUT,     //LVDS SDA
+						GPIO_CFG_NO_PULL, GPIO_CFG_2MA),	GPIO_CFG_DISABLE); 
+		gpio_tlmm_config(GPIO_CFG(LVDS_I2C_SCL, 0, GPIO_CFG_INPUT,     //LVDS SCL
+						GPIO_CFG_NO_PULL, GPIO_CFG_2MA),	GPIO_CFG_DISABLE); 
+
+		gpio_set_value(LCD_PWR_EN, 0);
+		gpio_set_value(LVDS_PWR_EN, 0);
+		gpio_set_value(LCD_EN, 0);
+	
+		printk("mipi2lvds_panel_power off \n");
+	}
+	return 0;
+}
+#else
+
+static int mipi_dsi2lvds_cdp_panel_power(int on)
+{
+
+	static struct regulator *reg_l23, *reg_l2, *reg_l12, *reg_l35, *vreg_s1p8;
+	static struct msm_xo_voter *rfa_clock;/*create an XO vote*/
+	static const char *id = "RFA"; /*Create an ID for the driver */
+	int rc;
+
+	pr_info("%s: state : %d system_rev:%d\n", __func__, on,system_rev);
+
+	if (!dsi_power_on) {
+
+
+		reg_l2 = regulator_get(&msm_mipi_dsi1_device.dev,
+				"dsi_vdda");
+		if (IS_ERR(reg_l2)) {
+			pr_err("could not get 8038_l2, rc = %ld\n",
+				PTR_ERR(reg_l2));
+			return -ENODEV;
+		}
+		rc = regulator_set_voltage(reg_l2, 1200000, 1200000);
+		if (rc) {
+			pr_err("set_voltage l2 failed, rc=%d\n", rc);
+			return -EINVAL;
+		}
+
+		if(system_rev < 2) {
+
+			reg_l23 = regulator_get(&msm_mipi_dsi1_device.dev,
+					"dsi_vddio");
+			if (IS_ERR(reg_l23)) {
+				pr_err("could not get 8038_l23, rc = %ld\n",
+					PTR_ERR(reg_l23));
+				return -ENODEV;
+			}
+
+			rc = regulator_set_voltage(reg_l23, 1800000, 1800000);
+			if (rc) {
+				pr_err("set_voltage l23 failed, rc=%d\n", rc);
+				return -EINVAL;
+			}
+
+			reg_l12 = regulator_get(&msm_mipi_dsi1_device.dev, "dsi_vdc4");
+			
+			if (IS_ERR(reg_l12)) {
+				pr_err("could not get dsi_vdc4, rc = %ld\n",
+					PTR_ERR(reg_l12));
+				return -ENODEV;
+			}
+			
+			rc = regulator_set_voltage(reg_l12, 1200000, 1200000);
+			if (rc)
+				pr_err("error setting voltage for reg_l12\n");
+		}
+
+		reg_l35 = regulator_get(&msm_mipi_dsi1_device.dev, "dsi_vdc3");
+		rc = regulator_set_voltage(reg_l35, 3300000, 3300000);
+		if (rc)
+			pr_err("error setting voltage for reg_l35\n");
+
+		vreg_s1p8 = regulator_get(&msm_mipi_dsi1_device.dev, "dsi_vdc5");
+
+		rc = gpio_request(LCD_BLIC_ON, "LCD_BLIC_ON");
+		if (rc) {
+			pr_err("request gpio LCD_BLIC_ON failed, rc=%d\n",
+				rc);
+			gpio_free(LCD_BLIC_ON);
+			return -ENODEV;
+		}
+
+		gpio_tlmm_config(GPIO_CFG(LCD_BLIC_ON, 0, GPIO_CFG_OUTPUT,
+				GPIO_CFG_PULL_DOWN, GPIO_CFG_16MA),
+				GPIO_CFG_ENABLE);
+
+		gpio_set_value(LCD_BLIC_ON, 0);
+
+
+		rc = gpio_request(DISP_RST_GPIO, "disp_rst_n");
+		if (rc) {
+			pr_err("request gpio DISP_RST_GPIO failed, rc=%d\n",
+				rc);
+			gpio_free(DISP_RST_GPIO);
+			return -ENODEV;
+		}
+
+		gpio_tlmm_config(GPIO_CFG(DISP_RST_GPIO,  0, GPIO_CFG_OUTPUT,
+					GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+				GPIO_CFG_ENABLE);
+
+		rfa_clock = msm_xo_get(MSM_XO_TCXO_A1, id); /*create a handle for Aq buffer of XO*/ 
+
+		if(system_rev) {
+			rc = gpio_request(LVDS_I2C_SDA, "LVDS_I2C_SDA");
+			if (rc) {
+				pr_err("request gpio LVDS_I2C_SDA failed, rc=%d\n",
+					rc);
+				gpio_free(LVDS_I2C_SDA);
+			}
+
+			gpio_tlmm_config(GPIO_CFG(LVDS_I2C_CLK, 0, GPIO_CFG_OUTPUT,
+								GPIO_CFG_NO_PULL, GPIO_CFG_2MA),	GPIO_CFG_ENABLE); 
+
+			gpio_tlmm_config(GPIO_CFG(LVDS_I2C_SDA, 0, GPIO_CFG_OUTPUT,
+								GPIO_CFG_NO_PULL, GPIO_CFG_2MA),	GPIO_CFG_ENABLE); 
+			
+			gpio_set_value(LVDS_I2C_CLK, 1);
+			gpio_set_value(LVDS_I2C_SDA, 1);
+		}
+		else{
+			gpio_tlmm_config(GPIO_CFG(LVDS_I2C_CLK, 0, GPIO_CFG_INPUT,
+					GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+					GPIO_CFG_DISABLE);
+
+			gpio_tlmm_config(GPIO_CFG(LVDS_I2C_SDA, 0, GPIO_CFG_INPUT,
+					GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+					GPIO_CFG_DISABLE);
+
+			
+			gpio_set_value(LVDS_I2C_CLK, 0);
+			gpio_set_value(LVDS_I2C_SDA, 0);
+
+			gpio_tlmm_config(GPIO_CFG(LCD_BL_PWM, 0, GPIO_CFG_OUTPUT,
+				GPIO_CFG_PULL_DOWN, GPIO_CFG_16MA),
+				GPIO_CFG_ENABLE);
+					
+			gpio_set_value(LCD_BLIC_ON, 1);
+		}
+		msleep(1);
+
+		dsi_power_on = true;
+	}
+
+	if (on) {
+
+		rc = regulator_set_optimum_mode(reg_l2, 100000);
+		if (rc < 0) {
+			pr_err("set_optimum_mode l2 failed, rc=%d\n", rc);
+			return -EINVAL;
+		}
+
+		rc = regulator_enable(reg_l2);
+		if (rc) {
+			pr_err("enable l2 failed, rc=%d\n", rc);
+			return -ENODEV;
+		}
+		if(system_rev < 2) {
+
+			rc = regulator_set_optimum_mode(reg_l23, 100000);
+			if (rc < 0) {
+				pr_err("set_optimum_mode l23 failed, rc=%d\n", rc);
+				return -EINVAL;
+			}
+
+			rc = regulator_enable(reg_l23); /*1.8V*/
+			if (rc) {
+				pr_err("enable l23 failed, rc=%d\n", rc);
+				return -ENODEV;
+			}
+
+			rc = regulator_enable(reg_l12);
+			if (rc)
+				pr_err("error enabling regulator reg_l12\n");
+		}
+
+		rc = regulator_enable(reg_l35);
+		if (rc)
+			pr_err("error enabling regulator reg_l35\n");
+
+		rc = regulator_enable(vreg_s1p8);
+		if (rc)
+			pr_err("%s: error enabling regulator\n", __func__);
+
+		if(!system_rev)
+			gpio_set_value(LCD_BL_PWM, 1);
+
+		msm_xo_mode_vote(rfa_clock, MSM_XO_MODE_ON); /*Vote to turn ON the clock buffer*/ 
+	} else {
+
+		gpio_set_value(LCD_BLIC_ON, 0);
+
+		if(!system_rev)
+			gpio_set_value(LCD_BL_PWM, 0);
+		
+		msm_xo_mode_vote(rfa_clock, MSM_XO_MODE_OFF); /*Vote to turn OFF the clock buffer*/ 
+
+		rc = regulator_disable(vreg_s1p8); /*1.8V*/
+		if (rc) {
+			pr_err("disable vreg_s1p8 failed, rc=%d\n", rc);
+			return -ENODEV;
+		}
+		rc = regulator_disable(reg_l35); /*1.8V*/
+		if (rc) {
+			pr_err("disable reg_l35 failed, rc=%d\n", rc);
+			return -ENODEV;
+		}
+		if(system_rev < 2) {
+			rc = regulator_disable(reg_l12); /*1.2V*/
+			if (rc) {
+				pr_err("disable reg_l12 failed, rc=%d\n", rc);
+				return -ENODEV;
+			}
+			rc = regulator_disable(reg_l23); /*1.8V*/
+			if (rc) {
+				pr_err("disable reg_l23 failed, rc=%d\n", rc);
+				return -ENODEV;
+			}
+		}
+		rc = regulator_disable(reg_l2); /*1.2V*/
+		if (rc) {
+			pr_err("disable reg_l2 failed, rc=%d\n", rc);
+			return -ENODEV;
+
+		msleep(50);
+		}
+	}
+	return 0;
+}
+#endif
+#elif defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT_PANEL)
+int mipi_dsi_melius_panel_power(int on)
+{
 	static struct regulator *reg_l23, *reg_l2;
 #if defined(CONFIG_MACH_MELIUS_EUR_OPEN) || defined(CONFIG_MACH_MELIUS_EUR_LTE)\
 	|| defined(CONFIG_MACH_MELIUS_ATT) || defined(CONFIG_MACH_MELIUS_TMO)\
 	|| defined(CONFIG_MACH_MELIUS_SKT) || defined(CONFIG_MACH_MELIUS_KTT)\
 	|| defined(CONFIG_MACH_MELIUS_LGT) || defined(CONFIG_MACH_MELIUS_USC)\
-	|| defined(CONFIG_MACH_MELIUS_SPR) || defined(CONFIG_MACH_MELIUS_CHN_CTC)
+	|| defined(CONFIG_MACH_MELIUS_SPR) || defined(CONFIG_MACH_MELIUS_CHN_CTC)\
+	|| defined(CONFIG_MACH_MELIUS_MTR)
 	static struct regulator *reg_l30;
 #endif
 	int rc;
@@ -419,7 +734,8 @@ int mipi_dsi_melius_panel_power(int on){
 #if defined(CONFIG_MACH_MELIUS_EUR_OPEN) || defined(CONFIG_MACH_MELIUS_EUR_LTE)\
 	|| defined(CONFIG_MACH_MELIUS_ATT) || defined(CONFIG_MACH_MELIUS_TMO)\
 	|| defined(CONFIG_MACH_MELIUS_SKT) || defined(CONFIG_MACH_MELIUS_KTT)\
-	|| defined(CONFIG_MACH_MELIUS_LGT) || defined(CONFIG_MACH_MELIUS_CHN_CTC)
+	|| defined(CONFIG_MACH_MELIUS_LGT) || defined(CONFIG_MACH_MELIUS_CHN_CTC)\
+	|| defined(CONFIG_MACH_MELIUS_MTR)
 		if(system_rev >= 10) {
 			reg_l30 = regulator_get(&msm_mipi_dsi1_device.dev,
 					"8917_l30");
@@ -467,7 +783,8 @@ int mipi_dsi_melius_panel_power(int on){
 #if defined(CONFIG_MACH_MELIUS_EUR_OPEN) || defined(CONFIG_MACH_MELIUS_EUR_LTE)\
 	|| defined(CONFIG_MACH_MELIUS_ATT) || defined(CONFIG_MACH_MELIUS_TMO)\
 	|| defined(CONFIG_MACH_MELIUS_SKT) || defined(CONFIG_MACH_MELIUS_KTT)\
-	|| defined(CONFIG_MACH_MELIUS_LGT) || defined(CONFIG_MACH_MELIUS_CHN_CTC)
+	|| defined(CONFIG_MACH_MELIUS_LGT) || defined(CONFIG_MACH_MELIUS_CHN_CTC)\
+	|| defined(CONFIG_MACH_MELIUS_MTR)
 		if(system_rev >= 10) {
 			rc = regulator_set_voltage(reg_l30, 1800000, 1800000);
 			if (rc) {
@@ -517,7 +834,8 @@ int mipi_dsi_melius_panel_power(int on){
 #if defined(CONFIG_MACH_MELIUS_EUR_OPEN) || defined(CONFIG_MACH_MELIUS_EUR_LTE)\
 	|| defined(CONFIG_MACH_MELIUS_ATT) || defined(CONFIG_MACH_MELIUS_TMO)\
 	|| defined(CONFIG_MACH_MELIUS_SKT) || defined(CONFIG_MACH_MELIUS_KTT)\
-	|| defined(CONFIG_MACH_MELIUS_LGT) || defined(CONFIG_MACH_MELIUS_CHN_CTC)
+	|| defined(CONFIG_MACH_MELIUS_LGT) || defined(CONFIG_MACH_MELIUS_CHN_CTC)\
+	|| defined(CONFIG_MACH_MELIUS_MTR)
 		if(system_rev >= 10) {
 			rc = regulator_set_optimum_mode(reg_l30, 100000);
 			if (rc < 0) {
@@ -555,7 +873,8 @@ int mipi_dsi_melius_panel_power(int on){
 #if defined(CONFIG_MACH_MELIUS_EUR_OPEN) || defined(CONFIG_MACH_MELIUS_EUR_LTE)\
 	|| defined(CONFIG_MACH_MELIUS_ATT) || defined(CONFIG_MACH_MELIUS_TMO)\
 	|| defined(CONFIG_MACH_MELIUS_SKT) || defined(CONFIG_MACH_MELIUS_KTT)\
-	|| defined(CONFIG_MACH_MELIUS_LGT) || defined(CONFIG_MACH_MELIUS_CHN_CTC)
+	|| defined(CONFIG_MACH_MELIUS_LGT) || defined(CONFIG_MACH_MELIUS_CHN_CTC)\
+	|| defined(CONFIG_MACH_MELIUS_MTR)
 		if(system_rev >= 10) {
 			rc = regulator_enable(reg_l30);
 			if (rc) {
@@ -635,7 +954,8 @@ int mipi_dsi_melius_panel_power(int on){
 #if defined(CONFIG_MACH_MELIUS_EUR_OPEN) || defined(CONFIG_MACH_MELIUS_EUR_LTE)\
 	|| defined(CONFIG_MACH_MELIUS_ATT) || defined(CONFIG_MACH_MELIUS_TMO)\
 	|| defined(CONFIG_MACH_MELIUS_SKT) || defined(CONFIG_MACH_MELIUS_KTT)\
-	|| defined(CONFIG_MACH_MELIUS_LGT) || defined(CONFIG_MACH_MELIUS_CHN_CTC)
+	|| defined(CONFIG_MACH_MELIUS_LGT) || defined(CONFIG_MACH_MELIUS_CHN_CTC)\
+	|| defined(CONFIG_MACH_MELIUS_MTR)
 		if(system_rev >= 10) {
 			rc = regulator_disable(reg_l30);
 			if (rc) {
@@ -678,6 +998,175 @@ int mipi_dsi_melius_panel_power(int on){
 	return 0;
 }
 
+#elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT_PANEL)
+
+static struct regulator *reg_l8, *reg_l23, *reg_l2;
+
+static int mipi_golden_power_common(void)
+{
+	int rc;
+		
+	if (!dsi_power_on) {
+		pr_info("[lcd] DSI PANEL REGULATOR SET ...\n");
+
+		/* PANEL */
+		reg_l8 = regulator_get(&msm_mipi_dsi1_device.dev,
+				"dsi_vdc");
+		if (IS_ERR(reg_l8)) {
+			pr_err("could not get 8038_l8, rc = %ld\n",
+				PTR_ERR(reg_l8));
+			return -ENODEV;
+		}
+
+		/* VDD_PLL */
+		reg_l23 = regulator_get(&msm_mipi_dsi1_device.dev,
+				"dsi_vddio");
+		if (IS_ERR(reg_l23)) {
+			pr_err("could not get 8038_l23, rc = %ld\n",
+				PTR_ERR(reg_l23));
+			return -ENODEV;
+		}
+
+		/* VDD_MIPI */
+		reg_l2 = regulator_get(&msm_mipi_dsi1_device.dev,
+				"dsi_vdda");
+		if (IS_ERR(reg_l2)) {
+			pr_err("could not get 8038_l2, rc = %ld\n",
+				PTR_ERR(reg_l2));
+			return -ENODEV;
+		}
+
+		rc = regulator_set_voltage(reg_l8, 3000000, 3000000);
+		if (rc) {
+			pr_err("set_voltage l8 failed, rc=%d\n", rc);
+			return -EINVAL;
+		}
+
+		rc = regulator_set_voltage(reg_l23, 1800000, 1800000);
+		if (rc) {
+			pr_err("set_voltage l23 failed, rc=%d\n", rc);
+			return -EINVAL;
+		}
+
+		rc = regulator_set_voltage(reg_l2, 1200000, 1200000);
+		if (rc) {
+			pr_err("set_voltage l2 failed, rc=%d\n", rc);
+			return -EINVAL;
+		}
+
+		rc = gpio_request(DISP_RST_GPIO, "disp_rst_n");
+		if (rc) {
+			pr_err("request gpio DISP_RST_GPIO failed, rc=%d\n",
+				rc);
+			gpio_free(DISP_RST_GPIO);
+			return -ENODEV;
+		}
+
+		gpio_tlmm_config(GPIO_CFG(DISP_RST_GPIO,  0, GPIO_CFG_OUTPUT,
+					GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+				GPIO_CFG_ENABLE);
+
+		dsi_power_on = true;
+	}
+
+	return 0;
+}
+static int mipi_dsi_golden_dsi_power(int on)
+{ 
+	int rc;
+
+	if (on) {
+		pr_info("[lcd] DSI ON...\n");
+
+		/* VDD_PLL */
+		rc = regulator_set_optimum_mode(reg_l23, 100000);
+		if (rc < 0) {
+			pr_err("set_optimum_mode l23 failed, rc=%d\n", rc);
+			return -EINVAL;
+		}
+		/* VDD_MIPI */
+		rc = regulator_set_optimum_mode(reg_l2, 100000);
+		if (rc < 0) {
+			pr_err("set_optimum_mode l2 failed, rc=%d\n", rc);
+			return -EINVAL;
+		}
+
+		rc = regulator_enable(reg_l23); /*1.8V*/
+		if (rc) {
+			pr_err("enable l23 failed, rc=%d\n", rc);
+			return -ENODEV;
+		}
+		usleep(5000);
+		rc = regulator_enable(reg_l2);
+		if (rc) {
+			pr_err("enable l2 failed, rc=%d\n", rc);
+			return -ENODEV;
+		}
+
+	} else {	
+		pr_info("[lcd] DSI OFF...\n");
+		rc = regulator_set_optimum_mode(reg_l23, 100);
+		if (rc < 0) {
+			pr_err("set_optimum_mode l23 failed, rc=%d\n", rc);
+			return -EINVAL;
+		}
+		rc = regulator_set_optimum_mode(reg_l2, 100);
+		if (rc < 0) {
+			pr_err("set_optimum_mode l2 failed, rc=%d\n", rc);
+			return -EINVAL;
+		}
+
+		rc = regulator_disable(reg_l23);
+		if (rc) {
+			pr_err("disable reg_l23 failed, rc=%d\n", rc);
+			return -ENODEV;
+		}
+		rc = regulator_disable(reg_l2);
+		if (rc) {
+			pr_err("disable reg_l2 failed, rc=%d\n", rc);
+			return -ENODEV;
+		}
+	}
+	return 0;
+}
+static int mipi_golden_panel_power(int on)
+{
+	int rc;
+
+	if (on) {
+		pr_info("[lcd] PANEL ON\n");
+
+		/* PANEL */
+		rc = regulator_set_optimum_mode(reg_l8, 100000);
+		if (rc < 0) {
+			pr_err("set_optimum_mode l8 failed, rc=%d\n", rc);
+			return -EINVAL;
+		}
+
+		rc = regulator_enable(reg_l8);
+		if (rc) {
+			pr_err("enable l8 failed, rc=%d\n", rc);
+			return -ENODEV;
+		}
+
+	} else {
+		pr_info("[lcd] PANEL OFF\n");
+
+		rc = regulator_set_optimum_mode(reg_l8, 100);
+		if (rc < 0) {
+			pr_err("set_optimum_mode l8 failed, rc=%d\n", rc);
+			return -EINVAL;
+		}
+
+		rc = regulator_disable(reg_l8);
+		if (rc) {
+			pr_err("disable reg_l8 failed, rc=%d\n", rc);
+			return -ENODEV;
+		}		
+	}
+
+	return rc;
+}
 #else
 static int mipi_dsi_cdp_panel_power(int on)
 {
@@ -741,7 +1230,7 @@ static int mipi_dsi_cdp_panel_power(int on)
 				return -ENODEV;
 			}
 		}
-
+#if !defined(CONFIG_MACH_SERRANO)
 		if (!machine_is_msm8930_evt()) {
 			rc = gpio_request(DISP_3D_2D_MODE, "disp_3d_2d");
 			if (rc) {
@@ -757,6 +1246,7 @@ static int mipi_dsi_cdp_panel_power(int on)
 				return -ENODEV;
 			}
 		}
+#endif
 		if (socinfo_get_pmic_model() == PMIC_MODEL_PM8917) {
 			rc = gpio_request(gpio24, "disp_bl");
 			if (rc) {
@@ -803,18 +1293,24 @@ static int mipi_dsi_cdp_panel_power(int on)
 			return -ENODEV;
 		}
 		usleep(10000);
+/* Prevent the Reset to go high before MIPI Clock for Serrano and Wilcox */
+#if !defined(CONFIG_MACH_SERRANO) && !defined(CONFIG_MACH_WILCOX_EUR_LTE)
 		gpio_set_value(DISP_RST_GPIO, 1);
 		usleep(10);
 		gpio_set_value(DISP_RST_GPIO, 0);
 		usleep(20);
 		gpio_set_value(DISP_RST_GPIO, 1);
+#elif !defined(CONFIG_MACH_SERRANO)
+/* This mode is not to be executed for Serrano */
 		if (!machine_is_msm8930_evt())
 			gpio_set_value(DISP_3D_2D_MODE, 1);
+#endif
 		usleep(20);
 	} else {
-
+/* Prevent the Reset to go high before MIPI Clock for Serrano and Wilcox */
+#if !defined(CONFIG_MACH_SERRANO) && !defined(CONFIG_MACH_WILCOX_EUR_LTE)
 		gpio_set_value(DISP_RST_GPIO, 0);
-
+#endif
 		rc = regulator_disable(reg_l2);
 		if (rc) {
 			pr_err("disable reg_l2 failed, rc=%d\n", rc);
@@ -845,8 +1341,10 @@ static int mipi_dsi_cdp_panel_power(int on)
 			pr_err("set_optimum_mode l2 failed, rc=%d\n", rc);
 			return -EINVAL;
 		}
+#if !defined(CONFIG_MACH_SERRANO)
 		if (!machine_is_msm8930_evt())
 			gpio_set_value(DISP_3D_2D_MODE, 0);
+#endif
 		usleep(20);
 	}
 	return 0;
@@ -861,13 +1359,25 @@ static int mipi_dsi_panel_power(int on)
 	return mipi_dsi2lvds_cdp_panel_power(on);
 #elif defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT_PANEL)
 	return mipi_dsi_melius_panel_power(on);
+#elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT_PANEL)
+	mipi_dsi_golden_dsi_power(on);
+	return mipi_golden_panel_power(on);
 #else
 	return mipi_dsi_cdp_panel_power(on);
 #endif
 }
 
+static int mipi_dsi_panel_power_common(void)
+{
+	pr_debug("%s: ++\n", __func__);
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT_PANEL)
+	return mipi_golden_power_common();
+#endif
+	return 0;
+}
 static struct mipi_dsi_platform_data mipi_dsi_pdata = {
 	.vsync_gpio = MDP_VSYNC_GPIO,
+	.power_common = mipi_dsi_panel_power_common,
 	.dsi_power_save = mipi_dsi_panel_power,
 	.splash_is_enabled = mipi_dsi_splash_is_enabled,
 	.lcd_rst_down = pull_ldi_reset_down,
@@ -1015,12 +1525,7 @@ static struct msm_panel_common_pdata mdp_pdata = {
 	.mem_hid = MEMTYPE_EBI1,
 #endif
 	.mdp_iommu_split_domain = 0,
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WSVGA_PT_PANEL)
-/*Temporarilydisabled cont_splash*/
-	.cont_splash_enabled = 0x00,
-#else
 	.cont_splash_enabled = 0x01,
-#endif
 	.splash_screen_addr = 0x00,
 	.splash_screen_size = 0x00,
 };
@@ -1058,9 +1563,15 @@ static struct platform_device mipi_dsi_himax_panel_device = {
 	.id = 0,
 	.dev.platform_data = &mipi_dsi_pdata,
 };
-#elif defined(CONFIG_FB_MSM_MIPI_LMS_HX8389B_VIDEO_QHD_PT_PANEL)
+#elif defined(CONFIG_FB_MSM_MIPI_LMS_HX8389B_VIDEO_QHD_PT_PANEL) || defined(CONFIG_FB_MSM_MIPI_HX8389B_TFT_VIDEO_QHD_PT_PANEL)
 static struct platform_device mipi_dsi_himax8389b_panel_device = {
 	.name = "mipi_hx8389b",
+	.id = 0,
+	.dev.platform_data = &mipi_dsi_pdata,
+};
+#elif defined(CONFIG_MACH_LT02_CHN_CTC) || defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WSVGA_PT_PANEL)
+static struct platform_device mipi2dsi_vx5b3d_panel_device = {
+	.name = "mipi2lvds_vx5b3d",
 	.id = 0,
 	.dev.platform_data = &mipi_dsi_pdata,
 };
@@ -1070,7 +1581,6 @@ static struct platform_device mipi_dsi_novatek_nt35596_panel_device = {
 	.id = 0,
 	.dev.platform_data = &mipi_dsi_pdata,
 };
-
 #else
 static struct platform_device mipi_dsi_samsung_panel_device = {
 	.name = "mipi_samsung",
@@ -1423,8 +1933,10 @@ void __init msm8930_init_fb(void)
 	platform_device_register(&mipi_dsi_ams367_panel_device);
 #elif defined(CONFIG_FB_MSM_MIPI_HIMAX_TFT_VIDEO_WVGA_PT_PANEL)
 	platform_device_register(&mipi_dsi_himax_panel_device);
-#elif defined(CONFIG_FB_MSM_MIPI_LMS_HX8389B_VIDEO_QHD_PT_PANEL)
+#elif defined(CONFIG_FB_MSM_MIPI_LMS_HX8389B_VIDEO_QHD_PT_PANEL) || defined(CONFIG_FB_MSM_MIPI_HX8389B_TFT_VIDEO_QHD_PT_PANEL)
 	platform_device_register(&mipi_dsi_himax8389b_panel_device);
+#elif defined(CONFIG_MACH_LT02_CHN_CTC) || defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WSVGA_PT_PANEL)
+	platform_device_register(&mipi2dsi_vx5b3d_panel_device);
 #elif defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT_PANEL)
 	platform_device_register(&mipi_dsi_novatek_nt35596_panel_device);
 #else

@@ -37,6 +37,11 @@
 
 #include <mach/iommu_domains.h>
 
+#if defined (CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_QHD_PT) || defined (CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
+/* Check if LCD was connected. */
+#include "mipi_samsung_oled-8930.h"
+#endif
+
 #define DSI_VIDEO_BASE	0xE0000
 
 static int first_pixel_start_x;
@@ -367,6 +372,7 @@ void mdp4_dsi_video_wait4vsync(int cndx)
 	struct mdp4_overlay_pipe *pipe;
 	int ret;
 
+
 	if (cndx >= MAX_CONTROLLER) {
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
 		return;
@@ -564,6 +570,10 @@ static void mdp4_dsi_video_tg_off(struct vsycn_ctrl *vctrl)
 	msleep(20);
 }
 
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT) \
+|| defined (CONFIG_MACH_LT02_SPR) || defined (CONFIG_MACH_LT02_ATT) || defined(CONFIG_MACH_LT02_TMO)
+void pull_reset_low(void);
+#endif
 int mdp4_dsi_video_on(struct platform_device *pdev)
 {
 	int dsi_width;
@@ -618,6 +628,10 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
 
+#if defined (CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_QHD_PT)
+	if (get_lcd_attached() == 0)
+		return -ENODEV;
+#endif
 	mutex_lock(&mfd->dma->ov_mutex);
 
 	vctrl->mfd = mfd;
@@ -666,7 +680,15 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 
 		atomic_set(&vctrl->suspend, 0);
 
+#if defined(CONFIG_FEATURE_FLIPLR)
+	pipe->mfd = mfd;
+#endif
+/* QC Patch for LCD black out Issue */
 	if (!(mfd->cont_splash_done)) {
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT) \
+|| defined (CONFIG_MACH_LT02_SPR) || defined (CONFIG_MACH_LT02_ATT) || defined(CONFIG_MACH_LT02_TMO)
+	pull_reset_low();
+#endif
 		mfd->cont_splash_done = 1;
 		mdp4_dsi_video_wait4vsync(0);
 		MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0);

@@ -55,6 +55,29 @@ static struct gpiomux_setting gsbi3_active_cfg = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
+#ifdef CONFIG_NFC_PN544
+static struct gpiomux_setting nfc_i2c_cfg = {
+    .func = GPIOMUX_FUNC_GPIO,
+    .drv = GPIOMUX_DRV_2MA,
+    .pull = GPIOMUX_PULL_NONE,
+    .dir = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting nfc_irq_cfg = {
+    .func = GPIOMUX_FUNC_GPIO,
+    .drv = GPIOMUX_DRV_2MA,
+    .pull = GPIOMUX_PULL_NONE,
+    .dir = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting nfc_firmware_cfg = {
+    .func = GPIOMUX_FUNC_GPIO,
+    .drv = GPIOMUX_DRV_2MA,
+    .pull = GPIOMUX_PULL_DOWN,
+    .dir = GPIOMUX_OUT_LOW,
+};
+#endif
+
 static struct gpiomux_setting gsbi6_active_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -476,6 +499,34 @@ static struct msm_gpiomux_config msm8960_gsbi_configs[] __initdata = {
 			[GPIOMUX_ACTIVE]    = &gsbi6_active_cfg,
 		},
 	},
+#ifdef CONFIG_NFC_PN544
+   {
+        .gpio     = 32,	/* GSBI7 I2C QUP NFC SDA */
+        .settings = {
+             [GPIOMUX_SUSPENDED] = &nfc_i2c_cfg,
+        },
+    },
+    {
+        .gpio     = 33,	/* GSBI7 I2C QUP NFC SCL */
+        .settings = {
+            [GPIOMUX_SUSPENDED] = &nfc_i2c_cfg,
+        },
+	},
+    {
+        .gpio	  = 92,     /*NFC Firmware  */
+        .settings = {
+            [GPIOMUX_ACTIVE]	= &nfc_firmware_cfg,
+            [GPIOMUX_SUSPENDED] = &nfc_firmware_cfg,
+        },
+    },
+    {
+        .gpio     = 106,	/* NFC IRQ */
+        .settings = {
+            [GPIOMUX_ACTIVE]	= &nfc_irq_cfg,
+            [GPIOMUX_SUSPENDED] = &nfc_irq_cfg,
+        },
+    },
+#endif
 	{
 		.gpio      = 44,	/* GSBI12 I2C QUP SDA */
 		.settings = {

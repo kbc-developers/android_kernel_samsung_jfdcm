@@ -41,6 +41,14 @@ struct vibrator_platform_data {
 	enum vibrator_model vib_model;
 	void (*power_onoff)(int onoff);
 	struct clk *gp2_clk;
+	#if defined (CONFIG_MACH_SERRANO) || defined (CONFIG_MACH_CANE)
+	unsigned int is_no_haptic_pwr;	/* 1 -> no need haptic_pwr_en_gpio */
+	#endif
 };
-
+	
+#if defined (CONFIG_MACH_SERRANO) || defined (CONFIG_MACH_CANE)
+struct vibrator_platform_data_motor {
+	void (*power_onoff)(int onoff);
+};
+#endif
 #endif

@@ -152,6 +152,8 @@ source "drivers/coresight/Kconfig"
 
 source "drivers/battery/Kconfig"
 
+source "drivers/samsung/Kconfig"
+
 source "drivers/sensors/Kconfig"
 
 source "drivers/sensorhub/Kconfig"
@@ -165,4 +167,6 @@ source "drivers/irda/Kconfig"
 source "drivers/felica/Kconfig"
 
 source "drivers/motor_msm8930/Kconfig"
+
+source "drivers/secfilter/Kconfig"
 endmenu

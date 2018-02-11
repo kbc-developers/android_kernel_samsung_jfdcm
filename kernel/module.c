@@ -86,6 +86,7 @@ DEFINE_MUTEX(lkmauth_mutex);
 extern int qseecom_start_app(struct qseecom_handle **handle, char *app_name, uint32_t size);
 extern int qseecom_shutdown_app(struct qseecom_handle **handle);
 extern int qseecom_send_command(struct qseecom_handle *handle, void *send_buf, uint32_t sbuf_len, void *resp_buf, uint32_t rbuf_len);
+extern int qseecom_set_bandwidth(struct qseecom_handle *handle, bool high);
 extern struct device *tima_uevent_dev;
 
 #define SVC_LKMAUTH_ID              0x00050000
@@ -2473,8 +2474,9 @@ static int lkmauth(Elf_Ehdr *hdr, int len)
                 req (0x%08X), rsp(0x%08X), module_start_addr(0x%08X) module_len %d\n", \
 		app_name, sizeof(lkmauth_req_t), req_len, sizeof(lkmauth_rsp_t), rsp_len, \
 		kreq->cmd_id, (int)kreq, (int)krsp, kreq->module_addr_start, kreq->module_len);
-
+	qseecom_set_bandwidth(qhandle,true);
 	qsee_ret = qseecom_send_command(qhandle, kreq, req_len, krsp, rsp_len);
+	qseecom_set_bandwidth(qhandle,false);
 
 	if (qsee_ret) {
 		pr_err("TIMA: lkmauth--failed to send cmd to qseecom; qsee_ret = %d.\n", qsee_ret);

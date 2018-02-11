@@ -5191,9 +5191,6 @@ static void migrate_tasks(unsigned int dead_cpu)
 	 */
 	rq->stop = NULL;
 
-	/* Ensure any throttled groups are reachable by pick_next_task */
-	unthrottle_offline_cfs_rqs(rq);
-
 	/* if there is one or more rt threads on the rq and if throttled,
 	 * we will deadlock in below loop. rt sched hrtimer have to run to
 	 * unthrottle the rt rq but irq is disabled in this context. Thus,
@@ -6935,6 +6932,7 @@ int in_sched_functions(unsigned long addr)
 
 #ifdef CONFIG_CGROUP_SCHED
 struct task_group root_task_group;
+LIST_HEAD(task_groups);
 #endif
 
 DECLARE_PER_CPU(cpumask_var_t, load_balance_tmpmask);
@@ -6943,10 +6941,10 @@ void __init sched_init(void)
 {
 	int i, j;
 	unsigned long alloc_size = 0, ptr;
-#if !defined(CONFIG_MACH_MELIUS)
+
     sec_gaf_supply_rqinfo(offsetof(struct rq, curr),
                           offsetof(struct cfs_rq, rq));
-#endif
+
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	alloc_size += 2 * nr_cpu_ids * sizeof(void **);
 #endif

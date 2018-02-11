@@ -1671,6 +1671,11 @@ static const struct snd_kcontrol_new pri_rx_voice_mixer_controls[] = {
 	SOC_SINGLE_EXT("Voice2", MSM_BACKEND_DAI_PRI_I2S_RX,
 	MSM_FRONTEND_DAI_VOICE2, 1, 0, msm_routing_get_voice_mixer,
 	msm_routing_put_voice_mixer),
+#ifdef CONFIG_PCM_ROUTE_VOICE_STUB
+	SOC_SINGLE_EXT("Voice Stub", MSM_BACKEND_DAI_PRI_I2S_RX ,
+	MSM_FRONTEND_DAI_VOICE_STUB, 1, 0, msm_routing_get_voice_mixer,
+	msm_routing_put_voice_mixer),
+#endif
 };
 
 static const struct snd_kcontrol_new sec_i2s_rx_voice_mixer_controls[] = {
@@ -2061,7 +2066,24 @@ static const struct snd_kcontrol_new sbus_0_rx_port_mixer_controls[] = {
 	MSM_BACKEND_DAI_MI2S_TX, 1, 0, msm_routing_get_port_mixer,
 	msm_routing_put_port_mixer),
 };
-
+static const struct snd_kcontrol_new pri_i2s_rx_port_mixer_controls[] = {
+	SOC_SINGLE_EXT("INTERNAL_FM_TX", MSM_BACKEND_DAI_PRI_I2S_RX,
+	MSM_BACKEND_DAI_INT_FM_TX, 1, 0, msm_routing_get_port_mixer,
+	msm_routing_put_port_mixer),
+#ifdef CONFIG_RADIO_USE_MI2S
+	SOC_SINGLE_EXT("MI2S_TX", MSM_BACKEND_DAI_PRI_I2S_RX,
+	MSM_BACKEND_DAI_MI2S_TX, 1, 0, msm_routing_get_port_mixer,
+	msm_routing_put_port_mixer),
+#endif
+#ifdef CONFIG_PCM_ROUTE_VOICE_STUB
+	SOC_SINGLE_EXT("PRIMARY_I2S_TX", MSM_BACKEND_DAI_PRI_I2S_RX, 
+	MSM_BACKEND_DAI_PRI_I2S_TX, 1, 0, msm_routing_get_port_mixer, 
+	msm_routing_put_port_mixer), 
+	SOC_SINGLE_EXT("AUX_PCM_UL_TX", MSM_BACKEND_DAI_PRI_I2S_RX, 
+	MSM_BACKEND_DAI_AUXPCM_TX, 1, 0, msm_routing_get_port_mixer, 
+	msm_routing_put_port_mixer), 
+#endif 
+};
 static const struct snd_kcontrol_new auxpcm_rx_port_mixer_controls[] = {
 	SOC_SINGLE_EXT("AUX_PCM_UL_TX", MSM_BACKEND_DAI_AUXPCM_RX,
 	MSM_BACKEND_DAI_AUXPCM_TX, 1, 0, msm_routing_get_port_mixer,
@@ -2530,6 +2552,13 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 	/* Switch Definitions */
 	SND_SOC_DAPM_SWITCH("SLIMBUS_DL_HL", SND_SOC_NOPM, 0, 0,
 				&fm_switch_mixer_controls),
+#ifdef CONFIG_RADIO_USE_MI2S
+	SND_SOC_DAPM_SWITCH("PRI_I2S_RX_DL_HL", SND_SOC_NOPM, 0, 0,
+				&fm_switch_mixer_controls),
+#else
+	SND_SOC_DAPM_SWITCH("PRI_I2S_RX_DL_HL", SND_SOC_NOPM, 0, 0,
+				&fm_switch_mixer_controls),
+#endif
 	SND_SOC_DAPM_SWITCH("PCM_RX_DL_HL", SND_SOC_NOPM, 0, 0,
 				&pcm_rx_switch_mixer_controls),
 	/* Mixer definitions */
@@ -2629,6 +2658,9 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 	SND_SOC_DAPM_MIXER("SLIMBUS_0_RX Port Mixer",
 	SND_SOC_NOPM, 0, 0, sbus_0_rx_port_mixer_controls,
 	ARRAY_SIZE(sbus_0_rx_port_mixer_controls)),
+	SND_SOC_DAPM_MIXER("PRI_I2S_RX Port Mixer",
+	SND_SOC_NOPM, 0, 0, pri_i2s_rx_port_mixer_controls,
+	ARRAY_SIZE(pri_i2s_rx_port_mixer_controls)),
 	SND_SOC_DAPM_MIXER("AUXPCM_RX Port Mixer",
 	SND_SOC_NOPM, 0, 0, auxpcm_rx_port_mixer_controls,
 	ARRAY_SIZE(auxpcm_rx_port_mixer_controls)),
@@ -2789,6 +2821,9 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"PRI_RX_Voice Mixer", "VoLTE", "VoLTE_DL"},
 	{"PRI_RX_Voice Mixer", "Voice2", "VOICE2_DL"},
 	{"PRI_RX_Voice Mixer", "Voip", "VOIP_DL"},
+#ifdef CONFIG_PCM_ROUTE_VOICE_STUB
+	{"PRI_RX_Voice Mixer", "Voice Stub", "VOICE_STUB_DL"},	
+#endif
 	{"PRI_I2S_RX", NULL, "PRI_RX_Voice Mixer"},
 
 	{"SEC_RX_Voice Mixer", "CSVoice", "CS-VOICE_DL1"},
@@ -2871,7 +2906,15 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"VOIP_UL", NULL, "Voip_Tx Mixer"},
 	{"SLIMBUS_DL_HL", "Switch", "SLIM0_DL_HL"},
 	{"SLIMBUS_0_RX", NULL, "SLIMBUS_DL_HL"},
+#ifdef CONFIG_RADIO_USE_MI2S
+	{"PRI_I2S_RX_DL_HL", "Switch", "SLIM0_DL_HL" },
+	{"PRI_I2S_RX", NULL, "PRI_I2S_RX_DL_HL" },
 	{"SLIM0_UL_HL", NULL, "SLIMBUS_0_TX"},
+#else
+	{"PRI_I2S_RX_DL_HL", "Switch", "SLIM0_DL_HL" },
+	{"PRI_I2S_RX", NULL, "PRI_I2S_RX_DL_HL" },
+	{"SLIM0_UL_HL", NULL, "PRI_I2S_TX"},
+#endif
 	{"INT_FM_RX", NULL, "INTFM_DL_HL"},
 	{"INTFM_UL_HL", NULL, "INT_FM_TX"},
 	{"AUX_PCM_RX", NULL, "AUXPCM_DL_HL"},
@@ -2888,10 +2931,23 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"AFE_PCM_RX Port Mixer", "INTERNAL_FM_TX", "INT_FM_TX"},
 	{"AFE_PCM_RX Port Mixer", "SLIM_1_TX", "SLIMBUS_1_TX"},
 	{"PCM_RX", NULL, "AFE_PCM_RX Port Mixer"},
-
+#ifdef CONFIG_PCM_ROUTE_VOICE_STUB
+	{"PRI_I2S_RX Port Mixer", "PRIMARY_I2S_TX", "PRI_I2S_TX"},
+	{"PRI_I2S_RX Port Mixer", "AUX_PCM_UL_TX", "AUX_PCM_TX"},
+#endif	
+#ifdef CONFIG_RADIO_USE_MI2S
+	{"PRI_I2S_RX Port Mixer", "MI2S_TX", "MI2S_TX"},
+#else
+	{"PRI_I2S_RX Port Mixer", "INTERNAL_FM_TX", "INT_FM_TX"},
+	{"PRI_I2S_RX", NULL, "PRI_I2S_RX Port Mixer"},
+#endif
 	{"AUXPCM_RX Port Mixer", "AUX_PCM_UL_TX", "AUX_PCM_TX"},
 	{"AUXPCM_RX Port Mixer", "SLIM_0_TX", "SLIMBUS_0_TX"},
-	{"AUXPCM_RX Port Mixer", "SLIM_1_TX", "SLIMBUS_1_TX"},	
+	{"AUXPCM_RX Port Mixer", "SLIM_1_TX", "SLIMBUS_1_TX"},
+#ifdef CONFIG_PCM_ROUTE_VOICE_STUB
+	{"AUXPCM_RX Port Mixer", "PRIMARY_I2S_TX", "PRI_I2S_TX"},
+	{"AUXPCM_RX Port Mixer", "INTERNAL_BT_SCO_TX", "INT_BT_SCO_TX"},
+#endif
 	{"AUX_PCM_RX", NULL, "AUXPCM_RX Port Mixer"},
 
 	{"Voice Stub Tx Mixer", "AUX_PCM_UL_TX", "AUX_PCM_TX"},
@@ -2903,6 +2959,9 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"Voice Stub Tx Mixer", "SLIM_3_TX", "SLIMBUS_3_TX"},
 	{"Voice Stub Tx Mixer", "PRIMARY_I2S_TX", "PRI_I2S_TX"},
 	{"Voice Stub Tx Mixer", "AFE_PCM_TX", "PCM_TX"},
+#ifdef CONFIG_PCM_ROUTE_VOICE_STUB
+	{"Voice Stub Tx Mixer", "AUX_PCM_UL_TX", "AUX_PCM_TX"},
+#endif
 	{"VOICE_STUB_UL", NULL, "Voice Stub Tx Mixer"},
 
 	{"VoLTE Stub Tx Mixer", "STUB_TX_HL", "STUB_TX"},

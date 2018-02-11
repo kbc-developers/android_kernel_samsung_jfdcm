@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -89,6 +89,7 @@ struct msm_fb_data_type {
 	boolean sw_currently_refreshing;
 	boolean sw_refreshing_enable;
 	boolean hw_refresh;
+	boolean shutdown_pending;
 #ifdef CONFIG_FB_MSM_OVERLAY
 	int overlay_play_enable;
 #endif
@@ -195,6 +196,8 @@ struct msm_fb_data_type {
 	u32 mdp_rev;
 	u32 writeback_state;
 	bool writeback_active_cnt;
+	bool writeback_initialized;
+	boolean backlight_ctrl_ongoing;
 	int cont_splash_done;
 	void *cpu_pm_hdl;
 	u32 acq_fen_cnt;
@@ -257,6 +260,8 @@ int msm_fb_check_frame_rate(struct msm_fb_data_type *mfd,
 #ifdef CONFIG_FB_MSM_LOGO
 #define INIT_IMAGE_FILE "/initlogo.rle"
 int load_565rle_image(char *filename, bool bf_supported);
+extern int draw_rgb888_screen(void);
 #endif
+extern int poweroff_charging;
 
 #endif /* MSM_FB_H */

@@ -40,11 +40,11 @@
 #include <linux/memory.h>
 #include <linux/memory_hotplug.h>
 #include <linux/ratelimit.h>
-
-#ifdef CONFIG_RUNTIME_COMPCACHE
-#include <linux/fs.h>
+#if defined(CONFIG_RUNTIME_COMPCACHE) || defined(CONFIG_ZSWAP)
 #include <linux/swap.h>
-#endif /* CONFIG_RUNTIME_COMPCACHE */
+#include <linux/fs.h>
+#endif /* CONFIG_RUNTIME_COMPCACHE || CONFIG_ZSWAP */
+
 #define ENHANCED_LMK_ROUTINE
 #define LMK_COUNT_READ
 
@@ -152,6 +152,10 @@ int can_use_cma_pages(gfp_t gfp_mask)
 	return can_use;
 }
 
+#if defined(CONFIG_ZSWAP)
+extern atomic_t zswap_pool_pages;
+extern atomic_t zswap_stored_pages;
+#endif
 
 static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 {
@@ -181,15 +185,26 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	int selected_tasksize = 0;
 	int selected_oom_score_adj;
 #endif
+#ifdef CONFIG_SAMP_HOTNESS
+	int selected_hotness_adj = 0;
+#endif
 	int array_size = ARRAY_SIZE(lowmem_adj);
-#if !defined(CONFIG_MACH_JF)
+#if (!defined(CONFIG_MACH_JF) \
+	&& !defined(CONFIG_SEC_PRODUCT_8960)\
+	)
 	unsigned long nr_to_scan = sc->nr_to_scan;
 #endif
+	struct reclaim_state *reclaim_state = current->reclaim_state;
+#ifndef CONFIG_CMA
 	int other_free = global_page_state(NR_FREE_PAGES);
+#else
+	int other_free = global_page_state(NR_FREE_PAGES) -
+				global_page_state(NR_FREE_CMA_PAGES);
+#endif
 	int other_file = global_page_state(NR_FILE_PAGES) - global_page_state(NR_SHMEM);
-#ifdef CONFIG_RUNTIME_COMPCACHE
+#if defined(CONFIG_RUNTIME_COMPCACHE) || defined(CONFIG_ZSWAP)
 	other_file -= total_swapcache_pages;
-#endif /* CONFIG_RUNTIME_COMPCACHE */
+#endif /* CONFIG_RUNTIME_COMPCACHE || CONFIG_ZSWAP */
 	if (lowmem_adj_size < array_size)
 		array_size = lowmem_adj_size;
 	if (lowmem_minfree_size < array_size)
@@ -229,7 +244,9 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 #ifdef ENHANCED_LMK_ROUTINE
 		int is_exist_oom_task = 0;
 #endif
-
+#ifdef CONFIG_SAMP_HOTNESS
+		int hotness_adj = 0;
+#endif
 		if (tsk->flags & PF_KTHREAD)
 			continue;
 
@@ -250,6 +267,18 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 			continue;
 		}
 		tasksize = get_mm_rss(p->mm);
+#if defined(CONFIG_ZSWAP)
+		if (atomic_read(&zswap_stored_pages)) {
+			lowmem_print(3, "shown tasksize : %d\n", tasksize);
+			tasksize += atomic_read(&zswap_pool_pages) * get_mm_counter(p->mm, MM_SWAPENTS)
+				/ atomic_read(&zswap_stored_pages);
+			lowmem_print(3, "real tasksize : %d\n", tasksize);
+		}
+#endif
+
+#ifdef CONFIG_SAMP_HOTNESS
+		hotness_adj = p->signal->hotness_adj;
+#endif
 		task_unlock(p);
 		if (tasksize <= 0)
 			continue;
@@ -293,15 +322,29 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		}
 #else
 		if (selected) {
+#ifdef CONFIG_SAMP_HOTNESS
+			if (min_score_adj <= lowmem_adj[4]) {
+#endif
 			if (oom_score_adj < selected_oom_score_adj)
 				continue;
 			if (oom_score_adj == selected_oom_score_adj &&
 			    tasksize <= selected_tasksize)
 				continue;
+#ifdef CONFIG_SAMP_HOTNESS
+			} else {
+				if (hotness_adj > selected_hotness_adj)
+					continue;
+				if (hotness_adj == selected_hotness_adj && tasksize <= selected_tasksize)
+					continue;
+			}
+#endif
 		}
 		selected = p;
 		selected_tasksize = tasksize;
 		selected_oom_score_adj = oom_score_adj;
+#ifdef CONFIG_SAMP_HOTNESS
+		selected_hotness_adj = hotness_adj;
+#endif
 		lowmem_print(2, "select %d (%s), adj %d, size %d, to kill\n",
 			     p->pid, p->comm, oom_score_adj, tasksize);
 #endif
@@ -309,15 +352,28 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 #ifdef ENHANCED_LMK_ROUTINE
 	for (i = 0; i < LOWMEM_DEATHPENDING_DEPTH; i++) {
 		if (selected[i]) {
+#ifdef CONFIG_SAMP_HOTNESS			
 			lowmem_print(1, "send sigkill to %d (%s), adj %d,\
-				     size %d\n",
+				     size %d, free memory = %d, reclaimable memory = %d ,hotness %d\n",
 				     selected[i]->pid, selected[i]->comm,
 				     selected_oom_score_adj[i],
-				     selected_tasksize[i]);
+				     selected_tasksize[i],
+					 other_free, other_file,
+					 selected_hotness_adj);
+#else
+			lowmem_print(1, "send sigkill to %d (%s), adj %d,\
+				     size %d, free memory = %d, reclaimable memory = %d\n",
+				     selected[i]->pid, selected[i]->comm,
+				     selected_oom_score_adj[i],
+				     selected_tasksize[i],
+					 other_free, other_file);
+#endif
 			lowmem_deathpending_timeout = jiffies + HZ;
 			send_sig(SIGKILL, selected[i], 0);
 			set_tsk_thread_flag(selected[i], TIF_MEMDIE);
 			rem -= selected_tasksize[i];
+			if(reclaim_state)
+				reclaim_state->reclaimed_slab += selected_tasksize[i];
 #ifdef LMK_COUNT_READ
 			lmk_count++;
 #endif
@@ -325,13 +381,21 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	}
 #else
 	if (selected) {
+#ifdef CONFIG_SAMP_HOTNESS
+		lowmem_print(1, "send sigkill to %d (%s), adj %d, size %d ,hotness %d\n",
+			     selected->pid, selected->comm,
+			     selected_oom_score_adj, selected_tasksize,selected_hotness_adj);
+#else
 		lowmem_print(1, "send sigkill to %d (%s), adj %d, size %d\n",
 			     selected->pid, selected->comm,
 			     selected_oom_score_adj, selected_tasksize);
+#endif
 		lowmem_deathpending_timeout = jiffies + HZ;
 		send_sig(SIGKILL, selected, 0);
 		set_tsk_thread_flag(selected, TIF_MEMDIE);
 		rem -= selected_tasksize;
+		if(reclaim_state)
+			reclaim_state->reclaimed_slab = selected_tasksize;
 #ifdef LMK_COUNT_READ
 		lmk_count++;
 #endif
@@ -644,11 +708,9 @@ module_param_named(debug_level, lowmem_debug_level, uint, S_IRUGO | S_IWUSR);
 #ifdef LMK_COUNT_READ
 module_param_named(lmkcount, lmk_count, uint, S_IRUGO);
 #endif
-
 #ifdef OOM_COUNT_READ
 module_param_named(oomcount, oom_count, uint, S_IRUGO);
 #endif
-
 module_init(lowmem_init);
 module_exit(lowmem_exit);
 

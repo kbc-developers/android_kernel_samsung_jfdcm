@@ -1219,7 +1219,7 @@ static char STANDARD_VIDEO_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x01, //sharpen cc gamma 00 0 0
+	0x0d, //sharpen cc gamma 00 0 0
 };
 
 static char STANDARD_VIDEO_2[] = {
@@ -1338,7 +1338,7 @@ static char NATURAL_VIDEO_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x01, //sharpen cc gamma 00 0 0
+	0x09, //sharpen cc gamma 00 0 0
 };
 
 static char NATURAL_VIDEO_2[] = {
@@ -1457,7 +1457,7 @@ static char DYNAMIC_VIDEO_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x03, //sharpen cc gamma 00 0 0
+	0x0f, //sharpen cc gamma 00 0 0
 };
 
 static char DYNAMIC_VIDEO_2[] = {
@@ -1576,7 +1576,7 @@ static char MOVIE_VIDEO_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x01, //sharpen cc gamma 00 0 0
+	0x09, //sharpen cc gamma 00 0 0
 };
 
 static char MOVIE_VIDEO_2[] = {
@@ -1695,7 +1695,7 @@ char AUTO_VIDEO_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x01, //sharpen cc gamma 00 0 0
+	0x0d, //sharpen cc gamma 00 0 0
 };
 
 char AUTO_VIDEO_2[] = {
@@ -2922,11 +2922,11 @@ static char NEGATIVE_2[] = {
 	0xff, //scr Bg Rg
 	0xff, //scr Yb Cr
 	0x00, //scr Bb Rr
-	0x08, //scr Wr Wb
+	0x00, //scr Wr Wb
 	0xff, //scr Kr Kb
-	0x08, //scr Wg Wg
+	0x00, //scr Wg Wg
 	0xff, //scr Kg Kg
-	0x08, //scr Wb Wr
+	0x00, //scr Wb Wr
 	0xff, //scr Kb Kr
 	0x00, //curve 1 b
 	0x20, //curve 1 a
@@ -3927,9 +3927,9 @@ char AUTO_EBOOK_2[] = {
 	0xff, //scr Bb Rr
 	0xff, //scr Wr Wb
 	0x00, //scr Kr Kb
-	0xf7, //scr Wg Wg
+	0xf8, //scr Wg Wg
 	0x00, //scr Kg Kg
-	0xe1, //scr Wb Wr
+	0xec, //scr Wb Wr
 	0x00, //scr Kb Kr
 	0x00, //curve 1 b
 	0x20, //curve 1 a

@@ -189,8 +189,8 @@ void lcd_hsync_onoff(bool onoff)
 	if (unlikely(mfd->key != MFD_KEY)) { pr_err("%s : panel mfd invlaid",__func__); return;}
 //		return -EINVAL;
 
-#if defined(CONFIG_MACH_JACTIVE_EUR) /* HW DEFECT under REV 0.5 */
-	if( system_rev > 15 )
+#if defined(CONFIG_MACH_JACTIVE_EUR) /* HW DEFECT under REV 0.6 */
+	if( system_rev > 16 )
 		return;
 #endif
 
@@ -288,7 +288,6 @@ static void execute_panel_init(struct msm_fb_data_type *mfd)
 
 	mipi_samsung_disp_send_cmd(mfd, PANEL_MTP_DISABLE, false);
 }
-
 #if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 static int mipi_samsung_disp_on_in_video_engine(struct platform_device *pdev)
 {
@@ -362,7 +361,6 @@ static int mipi_samsung_disp_on(struct platform_device *pdev)
 			mipi_samsung_disp_send_cmd(mfd,
 						PANEL_NEED_FLIP, false);
 	}
-
 #if !defined(CONFIG_MACH_JACTIVE_ATT) && !defined(CONFIG_MACH_JACTIVE_EUR)
 	mipi_samsung_disp_send_cmd(mfd, PANEL_ON, false);
 	mfd->resume_state = MIPI_RESUME_STATE;
@@ -457,6 +455,10 @@ static void __devinit mipi_samsung_disp_shutdown(struct platform_device *pdev)
 		mipi_dsi_pdata->active_reset(0); /* low */
 
 	usleep(2000); /*1ms delay(minimum) required between reset low and AVDD off*/
+
+#if defined(CONFIG_MACH_JACTIVE_EUR)
+	msleep ( 10 ); // need more delay for POWER OFF SIGNAL
+#endif
 
 	if (mipi_dsi_pdata && mipi_dsi_pdata->panel_power_save)
 		mipi_dsi_pdata->panel_power_save(0);

@@ -41,6 +41,7 @@
 #include "mdp.h"
 #include "msm_fb.h"
 #include "mdp4.h"
+#include <./mhl_v2/sii8240/sii8240_driver.h>
 
 struct ion_handle {
 	struct kref ref;
@@ -50,6 +51,8 @@ struct ion_handle {
 	unsigned int kmap_cnt;
 	unsigned int iommu_map_cnt;
 };
+
+extern struct sii8240_data *g1_sii8240;
 
 #define VERSION_KEY_MASK	0xFFFFFF00
 
@@ -881,6 +884,27 @@ void mdp4_overlay_rgb_setup(struct mdp4_overlay_pipe *pipe)
 	mask = 0xFFFEFFFF;
 	pipe->op_mode = (pipe->op_mode & mask) | (curr & ~mask);
 
+#if defined(CONFIG_FEATURE_FLIPLR)
+	if (!pipe->mfd)
+	pr_err("rgb mfd is not set\n");
+
+	if((pipe->mfd->panel_info.type != DTV_PANEL)&&(pipe->mfd->panel_info.type != WRITEBACK_PANEL)){
+		if ((pipe->pipe_num == OVERLAY_PIPE_RGB1 || pipe->pipe_num == OVERLAY_PIPE_RGB2)){
+			uint32 op_mode = pipe->op_mode | MDP4_OP_FLIP_LR | MDP4_OP_SCALEY_EN;
+			if (pipe->ext_flag & MDP_FLIP_LR){
+				op_mode &= ~MDP4_OP_FLIP_LR;
+				dst_xy = ((pipe->dst_y << 16) | (pipe->mfd->panel_info.xres - pipe->dst_x -pipe->dst_w));
+			}
+				pipe->op_mode = op_mode;
+		}
+
+		if ((pipe->op_mode & MDP4_OP_FLIP_LR) && pipe->mfd){
+			dst_xy = ((pipe->dst_y << 16) | (pipe->mfd->panel_info.xres - pipe->dst_x -pipe->dst_w));
+		}
+	}
+	
+#endif
+
 	outpdw(rgb_base + 0x0000, src_size);	/* MDP_RGB_SRC_SIZE */
 	outpdw(rgb_base + 0x0004, src_xy);	/* MDP_RGB_SRC_XY */
 	outpdw(rgb_base + 0x0008, dst_size);	/* MDP_RGB_DST_SIZE */
@@ -1075,6 +1099,25 @@ void mdp4_overlay_vg_setup(struct mdp4_overlay_pipe *pipe)
 			src_xy &= 0xFFFF0000;
 		}
 	}
+
+#if defined(CONFIG_FEATURE_FLIPLR)
+	if (!pipe->mfd) 
+	pr_err("vg mfd is not set\n"); 
+
+	if((pipe->mfd->panel_info.type != DTV_PANEL) && (pipe->mfd->panel_info.type != WRITEBACK_PANEL)){ 
+		uint32 op_mode = pipe->op_mode | MDP4_OP_FLIP_LR; 
+		if (pipe->ext_flag & MDP_FLIP_LR){ 
+			op_mode &= ~MDP4_OP_FLIP_LR; 
+			dst_xy = ((pipe->dst_y << 16) | (pipe->mfd->panel_info.xres - pipe->dst_x -pipe->dst_w));			
+		}
+		pipe->op_mode = op_mode; 
+
+		if ((pipe->op_mode & MDP4_OP_FLIP_LR) && pipe->mfd){
+			dst_xy = ((pipe->dst_y << 16) | (pipe->mfd->panel_info.xres - pipe->dst_x -pipe->dst_w));						
+			outpdw(MDP_BASE + 0xE0044, 0xe0fff); 
+		} 
+	} 
+#endif
 
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 
@@ -2698,8 +2741,8 @@ static int mdp4_overlay_req2pipe(struct mdp_overlay *req, int mixer,
 		int xres;
 		int yres;
 
-		xres = mfd->panel_info.xres;
-		yres = mfd->panel_info.yres;
+		xres = mfd->var_xres;
+		yres = mfd->var_yres;
 
 		if (((req->dst_rect.x + req->dst_rect.w) > xres) ||
 			((req->dst_rect.y + req->dst_rect.h) > yres)) {
@@ -2785,6 +2828,10 @@ static int mdp4_overlay_req2pipe(struct mdp_overlay *req, int mixer,
 
 	pipe->op_mode = 0;
 
+#if defined(CONFIG_FEATURE_FLIPLR)
+	pipe->ext_flag = req->flags;
+#endif
+
 	if (req->flags & MDP_FLIP_LR)
 		pipe->op_mode |= MDP4_OP_FLIP_LR;
 
@@ -2807,14 +2854,13 @@ static int mdp4_overlay_req2pipe(struct mdp_overlay *req, int mixer,
 
 	pipe->transp = req->transp_mask;
 
-
 	if ((pipe->flags & MDP_SECURE_OVERLAY_SESSION) &&
 		(!(req->flags & MDP_SECURE_OVERLAY_SESSION))) {
 		pr_err("%s Switch secure %d", __func__, pipe->pipe_ndx);
 		mfd->sec_active = FALSE;
 	}
-	pipe->flags = req->flags;
 
+	pipe->flags = req->flags;
 	*ppipe = pipe;
 
 	return 0;
@@ -2956,16 +3002,13 @@ static int mdp4_calc_req_mdp_clk(struct msm_fb_data_type *mfd,
 	pr_debug("%s: the right %d shifted xscale is %d.\n",
 		 __func__, shift, xscale);
 
-	if (src_h > dst_h) {
-		yscale = src_h;
-		yscale <<= shift;
-		yscale /= dst_h;
-	} else {		/* upscale */
-		yscale = dst_h;
-		yscale <<= shift;
-		yscale /= dst_h;
-	}
+	if (src_h > dst_h)
+	        yscale = src_h;
+	else
+                yscale = dst_h;
 
+        yscale <<= shift;
+        yscale /= dst_h;
 	yscale *= src_w;
 	yscale /= hsync;
 
@@ -2990,7 +3033,11 @@ static int mdp4_calc_req_mdp_clk(struct msm_fb_data_type *mfd,
 	    (src_h != dst_h) &&
 	    (mfd->panel_info.lcdc.v_back_porch)) {
 		u32 clk = 0;
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
+		clk = 6 * (pclk >> shift) / mfd->panel_info.lcdc.v_back_porch;
+#else
 		clk = 4 * (pclk >> shift) / mfd->panel_info.lcdc.v_back_porch;
+#endif
 		clk <<= shift;
 		pr_debug("%s: mdp clk rate %d based on low vbp %d\n",
 			 __func__, clk, mfd->panel_info.lcdc.v_back_porch);
@@ -3004,7 +3051,13 @@ static int mdp4_calc_req_mdp_clk(struct msm_fb_data_type *mfd,
 	 * factor. Ideally this factor is passed from board file.
 	 */
 	if (rst < pclk) {
-		rst = ((pclk >> shift) * 23 / 20) << shift;
+		if(g1_sii8240 != NULL && g1_sii8240->mhl_connected == true)
+		{
+			rst = ((pclk >> shift) * 27 / 20) << shift;
+		}
+		else
+			rst = ((pclk >> shift) * 23 / 20) << shift;
+			
 		pr_debug("%s calculated mdp clk is less than pclk.\n",
 			__func__);
 	}
@@ -3411,6 +3464,20 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd,
 		}
 	}
 
+#if defined(CONFIG_MACH_SERRANO)
+	if(cnt <= 3 && ((src_h_total  < 350 ) && (yuvcount == 0))) {
+
+
+		pr_debug(" Append Extra BW S-Cover Issue\n");
+
+		ab_quota_port0 += (minimum_ab>>2);
+		ib_quota_port0 += (minimum_ib>>2);
+
+		ab_quota_port1 += (minimum_ab>>2);
+		ib_quota_port1 += (minimum_ib>>2);
+
+	}
+#endif
 	perf_req->mdp_ab_bw = roundup(ab_quota_total, MDP_BUS_SCALE_AB_STEP);
 	perf_req->mdp_ib_bw = roundup(ib_quota_total, MDP_BUS_SCALE_AB_STEP);
 
@@ -3422,7 +3489,21 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd,
 		roundup(ab_quota_port1, MDP_BUS_SCALE_AB_STEP);
 	perf_req->mdp_ib_port1_bw =
 		roundup(ib_quota_total, MDP_BUS_SCALE_AB_STEP);
+#if defined(CONFIG_MACH_SERRANO) || defined(CONFIG_MACH_M2)
+if(cnt > 3) {
+	perf_req->mdp_ab_port0_bw = perf_req->mdp_ab_port0_bw*11;
+	perf_req->mdp_ab_port0_bw = perf_req->mdp_ab_port0_bw>>3;
 
+	perf_req->mdp_ib_port0_bw = perf_req->mdp_ib_port0_bw*11;
+	perf_req->mdp_ib_port0_bw = perf_req->mdp_ib_port0_bw>>3;
+
+	perf_req->mdp_ab_port1_bw = perf_req->mdp_ab_port1_bw*11;
+	perf_req->mdp_ab_port1_bw = perf_req->mdp_ab_port1_bw>>3;
+
+	perf_req->mdp_ib_port1_bw = perf_req->mdp_ib_port1_bw*11;
+	perf_req->mdp_ib_port1_bw = perf_req->mdp_ib_port1_bw>>3;
+}
+#endif
 	pr_debug("%s %d: ab_quota_total=(%llu, %llu) ib_quota_total=(%llu, %llu)\n",
 		 __func__, __LINE__,
 		 ab_quota_total, perf_req->mdp_ab_bw,
@@ -3835,12 +3916,11 @@ int mdp4_overlay_unset(struct fb_info *info, int ndx)
 		return -EINTR;
 
 	pipe = mdp4_overlay_ndx2pipe(ndx);
-	xlog(__func__, pipe->pipe_ndx, 0, 0, 0, 0);
 	if (pipe == NULL) {
 		mutex_unlock(&mfd->dma->ov_mutex);
 		return -ENODEV;
 	}
-
+	xlog(__func__, pipe->pipe_ndx, 0, 0, 0, 0);
 	if (pipe->pipe_type == OVERLAY_TYPE_BF) {
 		mdp4_overlay_borderfill_stage_down(pipe);
 		mutex_unlock(&mfd->dma->ov_mutex);
@@ -4161,7 +4241,9 @@ int mdp4_overlay_play(struct fb_info *info, struct msmfb_overlay_data *req)
 	}
 
 	mdp4_overlay_mdp_perf_req(mfd, ctrl->plist);
-
+#if defined(CONFIG_FEATURE_FLIPLR)
+	pipe->mfd = mfd;
+#endif
 	if (pipe->mixer_num == MDP4_MIXER0) {
 		if (ctrl->panel_mode & MDP4_PANEL_DSI_CMD) {
 			/* cndx = 0 */

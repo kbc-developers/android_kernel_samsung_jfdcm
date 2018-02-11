@@ -96,10 +96,6 @@ int32_t g_nforce_32;
 #define GP_CLK_D_DEFAULT			86  /* 50% duty cycle */
 #define IMM_PWM_MULTIPLIER			172 /* Must be integer */
 
-#if defined(CONFIG_MACH_JFVE_EUR_LTE)
-#define MISC_TSPDRV_MINOR			210
-#endif
-
 /*
  * ** Global variables for LRA PWM M,N and D values.
  * */

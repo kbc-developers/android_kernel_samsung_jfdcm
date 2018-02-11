@@ -361,7 +361,7 @@ fl_create(struct net *net, struct sock *sk, struct in6_flowlabel_req *freq,
 		msg.msg_control = (void*)(fl->opt+1);
 		memset(&flowi6, 0, sizeof(flowi6));
 
-		err = datagram_send_ctl(net, sk, &msg, &flowi6, fl->opt, &junk,
+		err = ip6_datagram_send_ctl(net, sk, &msg, &flowi6, fl->opt, &junk,
 					&junk, &junk);
 		if (err)
 			goto done;

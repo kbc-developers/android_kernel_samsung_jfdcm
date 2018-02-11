@@ -40,7 +40,13 @@ static unsigned msm_gpiomux_ngpio;
 /****************************************************************/
 /* Define value in accordance with
 	the specification of each BB vendor. */
+#if defined(CONFIG_MACH_MELIUS) || defined(CONFIG_MACH_SERRANO) || defined(CONFIG_MACH_GOLDEN) || defined(CONFIG_MACH_LT02)
+#define AP_GPIO_COUNT	152
+#elif defined(CONFIG_MACH_M2)
+#define AP_GPIO_COUNT	150
+#else
 #define AP_GPIO_COUNT	90
+#endif
 /****************************************************************/
 
 enum {

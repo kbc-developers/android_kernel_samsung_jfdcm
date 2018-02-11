@@ -26,6 +26,7 @@
 #include <linux/android_pmem.h>
 #include <linux/io.h>
 #include <mach/scm.h>
+//#include <linux/tzcom.h>
 #include <linux/types.h>
 
 #define TZIC_DEV "tzic"
@@ -37,6 +38,9 @@ static dev_t tzic_device_no;
 static struct cdev tzic_cdev;
 
 #define HLOS_IMG_TAMPER_FUSE    0
+#ifndef SCM_SVC_FUSE
+#define SCM_SVC_FUSE            0x08
+#endif
 #define SCM_BLOW_SW_FUSE_ID     0x01
 #define SCM_IS_SW_FUSE_BLOWN_ID 0x02
 #define TZIC_IOC_MAGIC          0x9E
@@ -48,8 +52,11 @@ static struct cdev tzic_cdev;
 
 #define LOG printk
 
+static int ic = STATE_IC_GOOD;
+static int set_tamper_fuse_cmd(void);
+static uint8_t get_tamper_fuse_cmd(void);
 
-static int set_tamper_fuse_cmd(void)
+static int set_tamper_fuse_cmd()
 {
 	uint32_t fuse_id = HLOS_IMG_TAMPER_FUSE;
 
@@ -57,20 +64,32 @@ static int set_tamper_fuse_cmd(void)
 		sizeof(fuse_id), NULL, 0);
 }
 
-static uint8_t get_tamper_fuse_cmd(void)
+static uint8_t get_tamper_fuse_cmd()
 {
 	uint32_t fuse_id = HLOS_IMG_TAMPER_FUSE;
-	uint8_t resp_buf;
 
-	scm_call(SCM_SVC_FUSE, SCM_IS_SW_FUSE_BLOWN_ID, &fuse_id,
-		sizeof(fuse_id), &resp_buf, sizeof(resp_buf));
+	void *cmd_buf;
+	size_t cmd_len;
+	size_t resp_len = 0;
+	uint8_t resp_buf;
+	cmd_buf = (void *)&fuse_id;
+	cmd_len = sizeof(fuse_id);
+
+	resp_len = sizeof(resp_buf);
+
+	scm_call(SCM_SVC_FUSE, SCM_IS_SW_FUSE_BLOWN_ID, cmd_buf,
+		cmd_len, &resp_buf, resp_len);
+	ic = resp_buf;
 	return resp_buf;
 }
 
-static long tzic_ioctl(struct file *file, unsigned cmd, unsigned long arg)
+static long tzic_ioctl(struct file *file, unsigned cmd,
+		unsigned long arg)
 {
 	int ret = 0;
-	LOG(KERN_INFO "tzic_ioctl called");
+
+	ret = get_tamper_fuse_cmd();
+	LOG(KERN_INFO "tamper_fuse before = %x\n", ret);
 
 	switch (cmd) {
 	case TZIC_IOCTL_GET_FUSE_REQ: {
@@ -80,15 +99,14 @@ static long tzic_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		break;
 	}
 	case TZIC_IOCTL_SET_FUSE_REQ: {
+		LOG(KERN_INFO "ioctl set_fuse\n");
 		mutex_lock(&tzic_mutex);
 		ret = set_tamper_fuse_cmd();
 		mutex_unlock(&tzic_mutex);
-		
 		if (ret)
 			LOG(KERN_INFO "failed tzic_set_fuse_cmd: %d\n", ret);
 		ret = get_tamper_fuse_cmd();
-		LOG(KERN_INFO "tamper_fuse value = %x\n", ret);
-		
+		LOG(KERN_INFO "tamper_fuse after = %x\n", ret);
 		break;
 	}
 	default:
@@ -97,22 +115,10 @@ static long tzic_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 	return ret;
 }
 
-static ssize_t tzic_read(struct file *file, char __user *buf, size_t len, loff_t *ppos)
-{
-	uint8_t tzic_value;
-	int ret = sizeof(tzic_value);
-	LOG(KERN_INFO "tzic_read called");
-
-	tzic_value = get_tamper_fuse_cmd();
-	memcpy((void *)buf, (void *)&tzic_value, sizeof(tzic_value));
-	
-	return ret;
-}
 
 static const struct file_operations tzic_fops = {
 	.owner = THIS_MODULE,
 	.unlocked_ioctl = tzic_ioctl,
-	.read = tzic_read,
 };
 
 static int __init tzic_init(void)
@@ -171,28 +177,6 @@ static void __exit tzic_exit(void)
 	unregister_chrdev_region(tzic_device_no, 1);
 }
 
-int tzic_get_tamper_flag(void)
-{
-	return get_tamper_fuse_cmd();
-}
-EXPORT_SYMBOL(tzic_get_tamper_flag);
-
-int tzic_set_tamper_flag(void)
-{
-	int ret;
-	
-	mutex_lock(&tzic_mutex);
-	ret = set_tamper_fuse_cmd();
-	mutex_unlock(&tzic_mutex);
-		
-	if (ret)
-	{
-		LOG(KERN_INFO "failed tzic_set_fuse_cmd: %d\n", ret);
-		return -1;
-	}
-	return ret;
-}
-EXPORT_SYMBOL(tzic_set_tamper_flag);
 
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("Samsung TZIC Driver");

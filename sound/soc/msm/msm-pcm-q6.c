@@ -485,8 +485,13 @@ static int msm_pcm_playback_close(struct snd_pcm_substream *substream)
 	pr_debug("%s\n", __func__);
 
 	dir = IN;
+#ifdef CONFIG_MACH_M2
+	ret = wait_event_timeout(the_locks.eos_wait,
+				prtd->cmd_ack, 1 * HZ);
+#else
 	ret = wait_event_timeout(the_locks.eos_wait,
 				prtd->cmd_ack, 5 * HZ);
+#endif
 	if (!ret)
 		pr_err("%s: CMD_EOS failed\n", __func__);
 	q6asm_cmd(prtd->audio_client, CMD_CLOSE);

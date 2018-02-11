@@ -240,11 +240,7 @@ static const struct file_operations fops = {
 
 #ifndef IMPLEMENT_AS_CHAR_DRIVER
 static struct miscdevice miscdev = {
-#if defined(CONFIG_MACH_JFVE_EUR_LTE)
-	.minor =    MISC_TSPDRV_MINOR,
-#else
 	.minor =    MISC_DYNAMIC_MINOR,
-#endif
 	.name =     MODULE_NAME,
 	.fops =     &fops
 };
@@ -619,8 +615,10 @@ static long ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		** If a stop was requested, ignore the request as the amp
 		** will be disabled by the timer proc when it's ready
 		*/
-		if (!g_bstoprequested)
-			ImmVibeSPI_ForceOut_AmpDisable(arg);
+		g_bstoprequested = true;
+		/* Last data processing to disable amp and stop timer */
+		VibeOSKernelProcessData(NULL);
+		g_bisplaying = false;
 		wake_unlock(&vib_wake_lock);
 		break;
 

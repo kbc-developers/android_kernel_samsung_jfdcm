@@ -37,6 +37,10 @@ struct sec_jack_buttons_zone {
 };
 
 struct sec_jack_platform_data {
+#if  defined (CONFIG_MACH_CANE)
+        int     (*get_det_jack_state) (void);
+#endif
+
 #if defined(CONFIG_SAMSUNG_JACK_GNDLDET)
 	int	(*get_l_jack_state) (void);
 #endif
@@ -44,13 +48,28 @@ struct sec_jack_platform_data {
 	void	(*set_micbias_state) (bool);
 	int	(*get_adc_value) (void);
 	struct sec_jack_zone			*zones;
+#if defined(CONFIG_MACH_SERRANO_ATT) ||defined(CONFIG_MACH_SERRANO_VZW) || defined(CONFIG_MACH_SERRANO_USC) || defined(CONFIG_MACH_SERRANO_LRA)
+        struct sec_jack_zone      *zones_rev03;
+#endif	
 	struct sec_jack_buttons_zone	*buttons_zones;
+#if defined(CONFIG_MACH_SERRANO_ATT) || defined(CONFIG_MACH_SERRANO_VZW) || defined(CONFIG_MACH_SERRANO_USC) || defined(CONFIG_MACH_SERRANO_LRA)
+        struct sec_jack_buttons_zone *buttons_zones_rev03;
+#endif
+
+#if defined (CONFIG_MACH_CANE)
+        int det_int;
+        int send_int;
+#endif
+
 	int	num_zones;
 	int	num_buttons_zones;
 	int	det_gpio;
 	int	send_end_gpio;
 	bool	det_active_high;
 	bool	send_end_active_high;
+#if defined (CONFIG_MACH_MELIUS_EUR_OPEN)
+	struct sec_jack_buttons_zone    *buttons_zones_rev06;
+#endif
 };
 
 #endif

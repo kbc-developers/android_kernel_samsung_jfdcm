@@ -127,7 +127,7 @@ module_param(ep_addr_txdbg_mask, uint, S_IRUGO | S_IWUSR);
 #define DBG_MSG_LEN   128UL
 
 /* Maximum number of messages */
-#define DBG_MAX_MSG   256UL
+#define DBG_MAX_MSG   768UL
 
 #define TIME_BUF_LEN  20
 #define HEX_DUMP_LEN  72
@@ -560,6 +560,7 @@ static int msm_hsic_reset(struct msm_hsic_hcd *mehci)
 	struct usb_hcd *hcd = hsic_to_hcd(mehci);
 	int ret;
 	struct msm_hsic_host_platform_data *pdata = mehci->dev->platform_data;
+	u32 temp;
 
 	msm_hsic_clk_reset(mehci);
 
@@ -616,6 +617,10 @@ static int msm_hsic_reset(struct msm_hsic_hcd *mehci)
 		/* Enable HSIC mode in HSIC_CFG register */
 		ulpi_write(mehci, 0xA9, 0x30);
 	}
+
+	temp = readl_relaxed(USB_GENCONFIG2);
+	temp &= ~GENCFG2_SYS_CLK_HOST_DEV_GATE_EN;
+	writel_relaxed(temp, USB_GENCONFIG2);
 
 	/*disable auto resume*/
 	ulpi_write(mehci, ULPI_IFC_CTRL_AUTORESUME, ULPI_CLR(ULPI_IFC_CTRL));

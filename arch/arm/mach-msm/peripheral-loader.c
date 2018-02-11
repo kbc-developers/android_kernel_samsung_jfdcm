@@ -53,6 +53,10 @@ static const char *pil_states[] = {
 	[PIL_ONLINE] = "ONLINE",
 };
 
+#ifdef CONFIG_SEC_PERIPHERAL_SECURE_CHK
+#include <mach/sec_debug.h>
+#endif
+
 struct pil_device {
 	struct pil_desc *desc;
 	int count;
@@ -257,6 +261,11 @@ static int load_image(struct pil_device *pil)
 	const struct firmware *fw;
 	unsigned long proxy_timeout = pil->desc->proxy_timeout;
 
+#ifdef CONFIG_SEC_PERIPHERAL_SECURE_CHK
+	static int load_count_fwd;
+	static int load_count_auth;
+#endif
+
 	down_read(&pil_pm_rwsem);
 	snprintf(fw_name, sizeof(fw_name), "%s.mdt", pil->desc->name);
 	ret = request_firmware(&fw, fw_name, &pil->dev);
@@ -299,7 +308,18 @@ static int load_image(struct pil_device *pil)
 	if (ret) {
 		dev_err(&pil->dev, "%s: Invalid firmware metadata\n",
 				pil->desc->name);
+#ifdef CONFIG_SEC_PERIPHERAL_SECURE_CHK
+		load_count_fwd++;
+		if (load_count_fwd > 10) {
+			release_firmware(fw);
+			up_read(&pil_pm_rwsem);
+			sec_peripheral_secure_check_fail();
+		} else {
+			goto release_fw;
+		}
+#else
 		goto release_fw;
+#endif
 	}
 
 	phdr = (const struct elf32_phdr *)(fw->data + sizeof(struct elf32_hdr));
@@ -324,13 +344,26 @@ static int load_image(struct pil_device *pil)
 
 	ret = pil->desc->ops->auth_and_reset(pil->desc);
 	if (ret) {
-		dev_err(&pil->dev, "%s: Failed to bring out of reset\n",
-				pil->desc->name);
+		dev_err(&pil->dev, "%s: Failed to bring out of reset %d\n",
+				pil->desc->name, ret);
 		proxy_timeout = 0; /* Remove proxy vote immediately on error */
+#ifdef CONFIG_SEC_PERIPHERAL_SECURE_CHK
+		load_count_auth++;
+		if (load_count_auth > 10) {
+			release_firmware(fw);
+			up_read(&pil_pm_rwsem);
+			sec_peripheral_secure_check_fail();
+		} else {
+			goto release_fw;
+		}
+#else
 		goto err_boot;
+#endif
 	}
 	dev_info(&pil->dev, "%s: Brought out of reset\n", pil->desc->name);
+#ifndef CONFIG_SEC_PERIPHERAL_SECURE_CHK
 err_boot:
+#endif
 	pil_proxy_unvote(pil, proxy_timeout);
 release_fw:
 	release_firmware(fw);
@@ -432,8 +465,15 @@ void pil_put(void *peripheral_handle)
 	if (WARN(!pil->count, "%s: %s: Reference count mismatch\n",
 			pil->desc->name, __func__))
 		goto err_out;
+
+	if( (!strncmp(pil->desc->name, "modem", 5)) || (!strncmp(pil->desc->name, "q6", 2)) ) {
+		printk(KERN_DEBUG "%s: %s::pil->count[%d]", __func__,pil->desc->name, pil->count);
+	if (pil->count == 1)
+		goto unlock;
+	}
 	if (!--pil->count)
 		pil_shutdown(pil);
+unlock:
 	mutex_unlock(&pil->lock);
 
 	pil_d = find_peripheral(pil->desc->depends_on);

@@ -131,6 +131,11 @@ ecryptfs_get_key_payload_data(struct key *key)
 		return auth_tok;
 }
 
+#if defined(CONFIG_CRYPTO_FIPS) && !defined(CONFIG_FORCE_DISABLE_FIPS)
+#define ECRYPTFS_MAX_CIPHER_MODE_SIZE 4
+#define ECRYPTFS_AES_CBC_MODE "cbc"
+#define ECRYPTFS_AES_ECB_MODE "ecb"
+#endif
 #define ECRYPTFS_MAX_KEYSET_SIZE 1024
 #define ECRYPTFS_MAX_CIPHER_NAME_SIZE 32
 #define ECRYPTFS_MAX_NUM_ENC_KEYS 64
@@ -315,6 +320,9 @@ struct ecryptfs_key_tfm {
 	struct mutex key_tfm_mutex;
 	struct list_head key_tfm_list;
 	unsigned char cipher_name[ECRYPTFS_MAX_CIPHER_NAME_SIZE + 1];
+#if defined(CONFIG_CRYPTO_FIPS) && !defined(CONFIG_FORCE_DISABLE_FIPS)
+	unsigned char cipher_mode[ECRYPTFS_MAX_CIPHER_MODE_SIZE];
+#endif
 };
 
 extern struct mutex key_tfm_list_mutex;
@@ -339,8 +347,12 @@ struct ecryptfs_mount_crypt_stat {
 #define ECRYPTFS_ENABLE_FILTERING              0x00000100
 #define ECRYPTFS_ENABLE_NEW_PASSTHROUGH        0x00000200
 #endif
-#ifdef CONFIG_CRYPTO_FIPS
+#if defined(CONFIG_CRYPTO_FIPS) && !defined(CONFIG_FORCE_DISABLE_FIPS)
 #define ECRYPTFS_ENABLE_CC                     0x00000400
+#define ECRYPTFS_HASH_SHA256                   0x00000800
+#define ECRYPTFS_HASH_MD5                      0x00001000
+#define ECRYPTFS_FILENAME_AES_CBC              0x00002000
+#define ECRYPTFS_FILENAME_AES_ECB              0x00004000
 #endif
 
 	u32 flags;
@@ -681,7 +693,7 @@ ecryptfs_add_global_auth_tok(struct ecryptfs_mount_crypt_stat *mount_crypt_stat,
 int ecryptfs_get_global_auth_tok_for_sig(
 	struct ecryptfs_global_auth_tok **global_auth_tok,
 	struct ecryptfs_mount_crypt_stat *mount_crypt_stat, char *sig);
-#ifdef CONFIG_CRYPTO_FIPS
+#if defined(CONFIG_CRYPTO_FIPS) && !defined(CONFIG_FORCE_DISABLE_FIPS)
 int
 ecryptfs_add_new_key_tfm(struct ecryptfs_key_tfm **key_tfm, char *cipher_name,
 			 size_t key_size, u32 mount_flags);
@@ -692,13 +704,14 @@ ecryptfs_add_new_key_tfm(struct ecryptfs_key_tfm **key_tfm, char *cipher_name,
 #endif
 int ecryptfs_init_crypto(void);
 int ecryptfs_destroy_crypto(void);
-int ecryptfs_tfm_exists(char *cipher_name, struct ecryptfs_key_tfm **key_tfm);
-#ifdef CONFIG_CRYPTO_FIPS
+#if defined(CONFIG_CRYPTO_FIPS) && !defined(CONFIG_FORCE_DISABLE_FIPS)
+int ecryptfs_tfm_exists(char *cipher_name, char *cipher_mode, struct ecryptfs_key_tfm **key_tfm);
 int ecryptfs_get_tfm_and_mutex_for_cipher_name(struct crypto_blkcipher **tfm,
 					       struct mutex **tfm_mutex,
 					       char *cipher_name,
 					       u32 mount_flags);
 #else
+int ecryptfs_tfm_exists(char *cipher_name, struct ecryptfs_key_tfm **key_tfm);
 int ecryptfs_get_tfm_and_mutex_for_cipher_name(struct crypto_blkcipher **tfm,
 					       struct mutex **tfm_mutex,
 					       char *cipher_name);
@@ -763,6 +776,28 @@ extern int is_file_name_match(struct ecryptfs_mount_crypt_stat *mcs,
 			      struct dentry *fp_dentry);
 extern int is_file_ext_match(struct ecryptfs_mount_crypt_stat *mcs,
 			     char *str);
+#endif
+
+#if defined(CONFIG_CRYPTO_FIPS) && !defined(CONFIG_FORCE_DISABLE_FIPS)
+#define ENABLE_CC_BUT_USE_MD5                  -1
+#define ENABLE_CC_BUT_USE_ECB                  -2
+#define DISABLE_CC_BUT_USE_CBC                 -3
+#define INVALID_FLAG_WITH_CC                   -4
+static inline int ecryptfs_cc_mode_validation(u32 flags)
+{
+	if ((flags & ECRYPTFS_ENABLE_CC) && (flags & ECRYPTFS_HASH_MD5)) {
+		return ENABLE_CC_BUT_USE_MD5;
+	} else if ((flags & ECRYPTFS_ENABLE_CC) && (flags & ECRYPTFS_FILENAME_AES_ECB)) {
+		return ENABLE_CC_BUT_USE_ECB;
+	} else if (!(flags & ECRYPTFS_ENABLE_CC) && (flags & ECRYPTFS_FILENAME_AES_CBC)) {
+		return DISABLE_CC_BUT_USE_CBC;
+	} else if (flags & (ECRYPTFS_HASH_MD5|ECRYPTFS_HASH_SHA256) &&
+		flags & (ECRYPTFS_FILENAME_AES_ECB|ECRYPTFS_FILENAME_AES_CBC)) {
+		return 0;
+	} else {
+		return INVALID_FLAG_WITH_CC;
+	}
+}
 #endif
 
 #endif /* #ifndef ECRYPTFS_KERNEL_H */

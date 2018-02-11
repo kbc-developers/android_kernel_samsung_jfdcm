@@ -84,6 +84,12 @@ enum {
 	POWER_SUPPLY_SCOPE_DEVICE,
 };
 
+/* for SAMSUNG OTG */
+enum {
+	POWER_SUPPLY_CAPACITY_OTG_ENABLE = 0,
+	POWER_SUPPLY_CAPACITY_OTG_DISABLE,
+};
+
 enum power_supply_property {
 	/* Properties of type `int' */
 	POWER_SUPPLY_PROP_STATUS = 0,
@@ -126,7 +132,14 @@ enum power_supply_property {
 	POWER_SUPPLY_PROP_TIME_TO_FULL_NOW,
 	POWER_SUPPLY_PROP_TIME_TO_FULL_AVG,
 	POWER_SUPPLY_PROP_TYPE, /* use power_supply.type instead */
+	POWER_SUPPLY_PROP_OTG,    /* for SAMSUNG OTG */
 	POWER_SUPPLY_PROP_SCOPE,
+	POWER_SUPPLY_TYPE_SMART_DOCK, /* for SAMSUNG Smart dock */
+	POWER_SUPPLY_PROP_CURRENT_ADJ, /* for SAMSUNG Charging */
+	POWER_SUPPLY_PROP_FUELGAUGE_STATE, /*for SAMSUNG fuelgauging */
+#ifdef CONFIG_WIRELESS_CHARGING
+	POWER_SUPPLY_PROP_WIRELESS_CHARGING, /* for SAMSUNG Wireless Charging */
+#endif
 	/* Properties of type `const char *' */
 	POWER_SUPPLY_PROP_MODEL_NAME,
 	POWER_SUPPLY_PROP_MANUFACTURER,
@@ -144,11 +157,25 @@ enum power_supply_type {
 	POWER_SUPPLY_TYPE_USB_ACA,	/* Accessory Charger Adapters */
 	POWER_SUPPLY_TYPE_MISC,
 	POWER_SUPPLY_TYPE_CARDOCK,
+#ifdef CONFIG_SEC_PRODUCT_8960
+#ifdef CONFIG_WIRELESS_CHARGING
+	POWER_SUPPLY_TYPE_WPC,		/* Wireless Charging should be 10 */
+#else
+	POWER_SUPPLY_TYPE_DUMMY,	/* # 10 is assigned for wireless */
+#endif
+#else
 	POWER_SUPPLY_TYPE_WIRELESS,
+#endif
+#ifdef CONFIG_MACH_COMANCHE
+	POWER_SUPPLY_TYPE_WIRELESS,
+#endif
 	POWER_SUPPLY_TYPE_UARTOFF,
 	POWER_SUPPLY_TYPE_OTG,
 	POWER_SUPPLY_TYPE_BMS,
-	POWER_SUPPLY_TYPE_POWER_SHARING,		/* power sharing clable */
+#if defined(CONFIG_MACH_SERRANO) || defined(CONFIG_MACH_CANE)
+	POWER_SUPPLY_TYPE_DESK_DOCK,
+#endif
+	POWER_SUPPLY_TYPE_POWER_SHARING,		/* power sharing clable, 14 */
 };
 
 /*

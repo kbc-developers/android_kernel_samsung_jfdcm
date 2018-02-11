@@ -225,8 +225,13 @@ struct msm_otg_platform_data {
 	int ovp_ctrl_gpio;
 	int otg_power_irq;
 #endif
-
+#if defined(CONFIG_SEC_PRODUCT_8960)
+    bool smb347s;
+#endif
 	const char *mhl_dev_name;
+#ifdef CONFIG_USB_SWITCH_TSU6721
+        int (*get_usb_state)(int data);
+#endif
 };
 
 /* Timeout (in msec) values (min - max) associated with OTG timers */
@@ -353,6 +358,7 @@ struct msm_otg {
 	unsigned notify_state;
 	struct delayed_work late_power_work;
 	struct work_struct otg_power_work;
+	bool init_state;
 #endif
 	bool smartdock;
 	bool disable_peripheral;

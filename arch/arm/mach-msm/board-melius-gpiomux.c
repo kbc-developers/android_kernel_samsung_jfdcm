@@ -101,12 +101,21 @@ static struct gpiomux_setting gsbi9 = {
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
-
+#if defined(CONFIG_MACH_MELIUS_ATT) || \
+	defined(CONFIG_MACH_MELIUS_SKT) || defined(CONFIG_MACH_MELIUS_KTT) || defined(CONFIG_MACH_MELIUS_LGT)
+static struct gpiomux_setting gsbi10 = {
+	.func = GPIOMUX_FUNC_2,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_IN,
+};
+#else
 static struct gpiomux_setting gsbi10 = {
 	.func = GPIOMUX_FUNC_2,
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
+#endif
 
 #if defined(CONFIG_GSM_MODEM_SPRD6500)
 static struct gpiomux_setting gsbi12 = {
@@ -306,7 +315,6 @@ static struct gpiomux_setting hdmi_suspend_cfg = {
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_DOWN,
 };
-
 static struct gpiomux_setting hdmi_active_1_cfg = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_2MA,
@@ -361,10 +369,16 @@ static struct gpiomux_setting  mi2s_act_ws_cfg = {
 #endif
 
 #if defined(CONFIG_VIDEO_MHL_V2)
-static struct gpiomux_setting mhl_suspend_cfg = {
+static struct gpiomux_setting mhl_suspend_1_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct gpiomux_setting mhl_suspend_2_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
 };
 
 static struct gpiomux_setting mhl_active_1_cfg = {
@@ -374,6 +388,45 @@ static struct gpiomux_setting mhl_active_1_cfg = {
 	.dir = GPIOMUX_OUT_LOW,
 };
 #endif
+
+#if (defined(CONFIG_MACH_MELIUS_SPR) ||  defined(CONFIG_MACH_MELIUS_USC))
+static struct gpiomux_setting active_fgchg_scl_cfg = {
+        .func = GPIOMUX_FUNC_GPIO,
+        .drv = GPIOMUX_DRV_2MA,
+        .pull = GPIOMUX_PULL_NONE,
+        .dir = GPIOMUX_OUT_HIGH,
+};
+
+static struct gpiomux_setting suspend_fgchg_scl_cfg = {
+        .func = GPIOMUX_FUNC_GPIO,
+        .drv = GPIOMUX_DRV_2MA,
+        .pull = GPIOMUX_PULL_NONE,
+        .dir = GPIOMUX_OUT_LOW,
+};
+#endif
+
+static struct gpiomux_setting suspend_98_19 = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_IN,
+};
+
+static struct msm_gpiomux_config msm8930_suspend_melius_configs[] = {
+	{
+		.gpio = 19,     /* LCD_ESD_DET1 */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &suspend_98_19,
+		},
+	},
+	{
+		.gpio = 98,     /* BATT_ALARM */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &suspend_98_19,
+		},
+	},
+};
+
 
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 static struct msm_gpiomux_config msm8960_ethernet_configs[] = {
@@ -438,7 +491,7 @@ static struct msm_gpiomux_config msm8960_gsbi_configs[] __initdata = {
 	},
 #endif
 
-#if !defined(CONFIG_MACH_MELIUS_CHN_CTC)	
+#if !defined(CONFIG_MACH_MELIUS_CHN_CTC)
 	{
 		.gpio      = 8,		/* GSBI1 QUP SPI_CS_N */
 		.settings = {
@@ -679,7 +732,6 @@ static struct msm_gpiomux_config msm8960_mi2s_configs[] __initdata = {
 			[GPIOMUX_ACTIVE] = &mi2s_act_cfg,
 		},
 	},
-	
 };
 #endif
 #ifdef CONFIG_SLIMBUS_MSM_CTRL
@@ -1275,28 +1327,45 @@ static struct msm_gpiomux_config msm8930_mhl_configs[] __initdata = {
 		.gpio = GPIO_MHL_RST,
 		.settings = {
 			[GPIOMUX_ACTIVE]	= &mhl_active_1_cfg,
-			[GPIOMUX_SUSPENDED] = &mhl_suspend_cfg,
+			[GPIOMUX_SUSPENDED] = &mhl_suspend_1_cfg,
 		},
 	},
 	{
 		.gpio = GPIO_MHL_WAKE_UP,
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &mhl_active_1_cfg,
-			[GPIOMUX_SUSPENDED] = &mhl_suspend_cfg,
+			[GPIOMUX_SUSPENDED] = &mhl_suspend_1_cfg,
 		},
 	},
 	{
 		.gpio = GPIO_MHL_SDA,
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &mhl_suspend_cfg,
+			[GPIOMUX_ACTIVE]    = &mhl_active_1_cfg,
+			[GPIOMUX_SUSPENDED] = &mhl_suspend_2_cfg,
 		},
 	},
 	{
 		.gpio = GPIO_MHL_SCL,
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &mhl_suspend_cfg,
+			[GPIOMUX_ACTIVE]    = &mhl_active_1_cfg,
+			[GPIOMUX_SUSPENDED] = &mhl_suspend_2_cfg,
 		},
 	},
+};
+#endif
+
+#if (defined(CONFIG_MACH_MELIUS_SPR) ||  defined(CONFIG_MACH_MELIUS_USC))
+static struct msm_gpiomux_config msm8930_fgchg_configs[] = {
+
+	{
+                .gpio     = GPIO_FUELGAUGE_I2C_SCL,         /* fgchg SCL line */
+                .settings = {
+                        [GPIOMUX_ACTIVE] = &active_fgchg_scl_cfg,
+                        [GPIOMUX_SUSPENDED] = &suspend_fgchg_scl_cfg,
+                },
+
+        },
+
 };
 #endif
 
@@ -1457,7 +1526,7 @@ static struct gpiomux_setting cmc624_active_cfg = {
 static struct gpiomux_setting cmc624_suspend_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv  = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
+	.pull = GPIOMUX_PULL_NONE,
 	.dir  = GPIOMUX_IN,
 };
 static struct msm_gpiomux_config msm8x30_cmc624_configs[] __initdata = {
@@ -1503,7 +1572,7 @@ static struct gpiomux_setting gpio_input_pull_up_suspend_cfg = {
 };
 #endif
 
-#if defined(CONFIG_MACH_MELIUS_CHN_CTC) 
+#if defined(CONFIG_MACH_MELIUS_CHN_CTC)
 static struct gpiomux_setting uartsel_active_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -1512,7 +1581,7 @@ static struct gpiomux_setting uartsel_active_cfg = {
 };
 static struct msm_gpiomux_config msm8x30_uartsel_configs[] __initdata = {
 	{
-		.gpio	   = GPIO_UART_SEL, 
+		.gpio	   = GPIO_UART_SEL,
 		.settings = {
 			[GPIOMUX_ACTIVE]	= &uartsel_active_cfg,
 			[GPIOMUX_SUSPENDED] = &uartsel_active_cfg,
@@ -1522,7 +1591,7 @@ static struct msm_gpiomux_config msm8x30_uartsel_configs[] __initdata = {
 #endif
 
 #if defined(CONFIG_MACH_MELIUS_SKT) || defined(CONFIG_MACH_MELIUS_KTT) || \
-	defined(CONFIG_MACH_MELIUS_LGT)
+	defined(CONFIG_MACH_MELIUS_LGT) || defined(CONFIG_MACH_MELIUS_MTR)
 static struct msm_gpiomux_config msm8x30_melius_gpio_configs[] __initdata = {
 	{
 		.gpio	   = 15, //NC
@@ -1557,7 +1626,7 @@ static struct msm_gpiomux_config msm8x30_melius_gpio_configs[] __initdata = {
 	},
 };
 
-#if defined(CONFIG_MACH_MELIUS_EUR_LTE) || defined(CONFIG_MACH_MELIUS_EUR_OPEN)
+#if defined(CONFIG_MACH_MELIUS_EUR_LTE) || defined(CONFIG_MACH_MELIUS_EUR_OPEN) || defined(CONFIG_MACH_MELIUS_ATT)
 static struct msm_gpiomux_config msm8x30_melius_03_gpio_configs[] __initdata = {
 	{
 		.gpio	   = 15, //NC
@@ -1581,7 +1650,40 @@ static struct msm_gpiomux_config msm8x30_melius_05_gpio_configs[] __initdata = {
 };
 #endif
 #endif
-#if defined(CONFIG_MACH_MELIUS_CHN_CTC)	
+#if defined(CONFIG_MACH_MELIUS_SPR)
+static struct msm_gpiomux_config msm8x30_melius_03_gpio_configs[] __initdata = {
+	{
+		.gpio		= 11, //NC
+		.settings = {
+			[GPIOMUX_ACTIVE]	= &gpio_input_pull_down_active_cfg,
+			[GPIOMUX_SUSPENDED] = &gpio_input_pull_down_suspend_cfg,
+		},
+	},
+	{
+		.gpio		= 15, //NC
+		.settings = {
+			[GPIOMUX_ACTIVE]	= &gpio_input_pull_down_active_cfg,
+			[GPIOMUX_SUSPENDED] = &gpio_input_pull_down_suspend_cfg,
+		},
+	},
+	{
+		.gpio		= 59, //NC
+		.settings = {
+			[GPIOMUX_ACTIVE]	= &gpio_input_pull_down_active_cfg,
+			[GPIOMUX_SUSPENDED] = &gpio_input_pull_down_suspend_cfg,
+		},
+	},
+	{
+		.gpio		= 82, //NC
+		.settings = {
+			[GPIOMUX_ACTIVE]	= &gpio_input_pull_down_active_cfg,
+			[GPIOMUX_SUSPENDED] = &gpio_input_pull_down_suspend_cfg,
+		},
+
+	},
+};
+#endif
+#if defined(CONFIG_MACH_MELIUS_CHN_CTC)
 
 static struct gpiomux_setting sensor_active = {
 	.func = GPIOMUX_FUNC_1,
@@ -1634,6 +1736,25 @@ static struct msm_gpiomux_config msm8x30_simsel_configs[] __initdata = {
 };
 #endif
 
+#if defined (CONFIG_MACH_MELIUS_SPR)
+
+static struct gpiomux_setting pmic_gpio_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+	.dir  = GPIOMUX_IN,
+};
+
+static struct msm_gpiomux_config pmic_gpio_configs[] __initdata = {
+	{
+		.gpio	   = 104,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &pmic_gpio_cfg,
+		},
+	},
+};
+#endif
+
 struct melius_init_sleep_table {
 	struct msm_gpiomux_config *ptr;
 	int size;
@@ -1653,10 +1774,14 @@ static struct melius_init_sleep_table melius_init_sleep_table[] = {
 	GPIO_TABLE(msm8x30_melius_gpio_configs),
 	GPIO_TABLE_NULL,
 	GPIO_TABLE_NULL,
+#if defined (CONFIG_MACH_MELIUS_SPR)
+	GPIO_TABLE(msm8x30_melius_03_gpio_configs),
+#else
+	GPIO_TABLE_NULL,
+#endif
 	GPIO_TABLE_NULL,
 	GPIO_TABLE_NULL,
-	GPIO_TABLE_NULL,
-#if defined(CONFIG_MACH_MELIUS_EUR_LTE) || defined(CONFIG_MACH_MELIUS_EUR_OPEN)
+#if defined(CONFIG_MACH_MELIUS_EUR_LTE) || defined(CONFIG_MACH_MELIUS_EUR_OPEN) || defined(CONFIG_MACH_MELIUS_ATT)
 	GPIO_TABLE(msm8x30_melius_03_gpio_configs),
 #else
 	GPIO_TABLE_NULL,
@@ -1694,7 +1819,7 @@ int __init msm8930_init_gpiomux(void)
 		pr_err(KERN_ERR "msm_gpiomux_init failed %d\n", rc);
 		return rc;
 	}
-#if defined(CONFIG_MACH_MELIUS_CHN_CTC)	
+#if defined(CONFIG_MACH_MELIUS_CHN_CTC)
 		msm_gpiomux_install(sensor_config,
 				ARRAY_SIZE(sensor_config));
 #endif
@@ -1706,13 +1831,13 @@ int __init msm8930_init_gpiomux(void)
 
 	msm_gpiomux_install(msm8960_gsbi_configs,
 			ARRAY_SIZE(msm8960_gsbi_configs));
-#ifdef CONFIG_RADIO_USE_MI2S			
+#ifdef CONFIG_RADIO_USE_MI2S
 	msm_gpiomux_install(msm8960_mi2s_configs,
 			ARRAY_SIZE(msm8960_mi2s_configs));
 #endif
 #if !defined(CONFIG_MACH_MELIUS_SKT) && !defined(CONFIG_MACH_MELIUS_KTT) && \
 	!defined(CONFIG_MACH_MELIUS_LGT) && !defined(CONFIG_MACH_MELIUS_CHN_CTC) && \
-    !defined(CONFIG_MACH_MELIUS_EUR_LTE) && !defined(CONFIG_MACH_MELIUS_EUR_OPEN) && !defined(CONFIG_MACH_CRATER_CHN_CTC) 
+    !defined(CONFIG_MACH_MELIUS_EUR_LTE) && !defined(CONFIG_MACH_MELIUS_EUR_OPEN) && !defined(CONFIG_MACH_CRATER_CHN_CTC)
 	msm_gpiomux_install(msm8960_atmel_configs,
 			ARRAY_SIZE(msm8960_atmel_configs));
 #endif
@@ -1783,6 +1908,11 @@ int __init msm8930_init_gpiomux(void)
 		msm_gpiomux_install(msm8930_mhl_configs,
 				ARRAY_SIZE(msm8930_mhl_configs));
 #endif
+/* requested by HW team for IORA test */
+#if (defined(CONFIG_MACH_MELIUS_SPR) ||  defined(CONFIG_MACH_MELIUS_USC))
+	msm_gpiomux_install(msm8930_fgchg_configs,
+			ARRAY_SIZE(msm8930_fgchg_configs));
+#endif
 
 	msm_gpiomux_install(msm8960_mdp_vsync_configs,
 			ARRAY_SIZE(msm8960_mdp_vsync_configs));
@@ -1822,6 +1952,12 @@ int __init msm8930_init_gpiomux(void)
 #if defined(CONFIG_MACH_MELIUS_CHN_CTC) || defined(CONFIG_MACH_CRATER_CHN_CTC)
 	msm_gpiomux_install(msm8x30_simsel_configs,
 		ARRAY_SIZE(msm8x30_simsel_configs));
+#endif
+	msm_gpiomux_install(msm8930_suspend_melius_configs,
+			ARRAY_SIZE(msm8930_suspend_melius_configs));
+#if defined (CONFIG_MACH_MELIUS_SPR)
+	msm_gpiomux_install(pmic_gpio_configs,
+			ARRAY_SIZE(pmic_gpio_configs));
 #endif
 
 	config_melius_gpio_init_sleep_gpio();

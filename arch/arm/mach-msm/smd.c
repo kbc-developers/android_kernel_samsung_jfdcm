@@ -1869,8 +1869,7 @@ int smd_named_open_on_edge(const char *name, uint32_t edge,
 		return -ENODEV;
 	}
 
-//	SMD_DBG("smd_open('%s', %p, %p)\n", name, priv, notify);
-	printk(KERN_ERR "smd_open('%s', %p, %p)\n", name, priv, notify);
+	SMD_DBG("smd_open('%s', %p, %p)\n", name, priv, notify);
 
 	ch = smd_get_channel(name, edge);
 	if (!ch) {
@@ -1881,7 +1880,6 @@ int smd_named_open_on_edge(const char *name, uint32_t edge,
 				(edge == ch->type)) {
 				/* channel exists, but is being closed */
 				spin_unlock_irqrestore(&smd_lock, flags);
-				printk(KERN_ERR "channel exists, but is being closed - closing list");
 				return -EAGAIN;
 			}
 		}
@@ -1892,7 +1890,6 @@ int smd_named_open_on_edge(const char *name, uint32_t edge,
 				(edge == ch->type)) {
 				/* channel exists, but is being closed */
 				spin_unlock_irqrestore(&smd_lock, flags);
-				printk(KERN_ERR "channel exists, but is being closed - closing workqueue");
 				return -EAGAIN;
 			}
 		}
@@ -3565,6 +3562,11 @@ static int restart_notifier_cb(struct notifier_block *this,
 				  unsigned long code,
 				  void *data)
 {
+	/*
+	 * Some SMD or SMSM clients assume SMD/SMSM SSR handling will be
+	 * done in the AFTER_SHUTDOWN level.  If this ever changes, extra
+	 * care should be taken to verify no clients are broken.
+	 */
 	if (code == SUBSYS_AFTER_SHUTDOWN) {
 		struct restart_notifier_block *notifier;
 

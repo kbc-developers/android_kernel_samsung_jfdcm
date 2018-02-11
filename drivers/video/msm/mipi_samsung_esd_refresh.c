@@ -319,7 +319,8 @@ static int __devinit mipi_esd_refresh_probe(struct platform_device *pdev)
 #if defined(CONFIG_MACH_MELIUS_EUR_OPEN) || defined(CONFIG_MACH_MELIUS_EUR_LTE)\
 	|| defined(CONFIG_MACH_MELIUS_SKT) || defined(CONFIG_MACH_MELIUS_KTT)\
 	|| defined(CONFIG_MACH_MELIUS_LGT) || defined(CONFIG_MACH_MELIUS_CHN_CTC)\
-	|| defined(CONFIG_MACH_MELIUS_SPR) || defined(CONFIG_MACH_MELIUS_USC)
+	|| defined(CONFIG_MACH_MELIUS_SPR) || defined(CONFIG_MACH_MELIUS_USC) \
+	|| defined(CONFIG_MACH_MELIUS_MTR) || defined(CONFIG_MACH_MELIUS_ATT)
 
 #if defined(CONFIG_MACH_MELIUS_SPR)
 	if(system_rev >= 3) {		

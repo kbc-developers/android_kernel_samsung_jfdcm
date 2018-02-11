@@ -41,6 +41,32 @@ enum pm8xxx_leds {
 	PM8XXX_ID_MAX,
 };
 
+#ifdef CONFIG_SEC_PRODUCT_8960
+enum pm8xxx_led_pats {
+	PM8XXX_LED_PAT1_RED = 0,
+	PM8XXX_LED_PAT1_GREEN,
+	PM8XXX_LED_PAT2_RED,
+	PM8XXX_LED_PAT2_GREEN,
+	PM8XXX_LED_PAT3_RED,
+	PM8XXX_LED_PAT3_GREEN,
+	PM8XXX_LED_PAT3_BLUE,
+	PM8XXX_LED_PAT4_RED,
+	PM8XXX_LED_PAT4_GREEN,
+	PM8XXX_LED_PAT5_RED,
+	PM8XXX_LED_PAT5_GREEN,
+	PM8XXX_LED_PAT5_BLUE,
+	PM8XXX_LED_PAT6_GREEN,
+	PM8XXX_LED_PAT6_BLUE,
+	PM8XXX_LED_PAT7_RED,
+	PM8XXX_LED_PAT7_GREEN,
+	PM8XXX_LED_PAT7_BLUE,
+	PM8XXX_LED_PAT8_RED,
+	PM8XXX_LED_PAT8_GREEN,
+	PM8XXX_LED_PAT8_BLUE,
+	PM8XXX_LED_KB_LED,
+};
+#endif
+
 /**
  * pm8xxx_led_modes - Operating modes of LEDs
  */
@@ -137,5 +163,12 @@ struct pm8xxx_led_platform_data {
 	struct	pm8xxx_led_config	*configs;
 	u32				num_configs;
 	int				use_pwm;
+#ifdef CONFIG_SEC_PRODUCT_8960
+	void (*led_power_on)(int);	
+#endif
 };
+
+#ifdef CONFIG_SEC_PRODUCT_8960
+extern struct class *sec_class;
+#endif
 #endif /* __LEDS_PM8XXX_H__ */

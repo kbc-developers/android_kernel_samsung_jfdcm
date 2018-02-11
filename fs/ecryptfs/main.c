@@ -186,8 +186,12 @@ enum { ecryptfs_opt_sig, ecryptfs_opt_ecryptfs_sig,
 #ifdef CONFIG_WTL_ENCRYPTION_FILTER
 	ecryptfs_opt_enable_filtering,
 #endif
-#ifdef CONFIG_CRYPTO_FIPS
+#if defined(CONFIG_CRYPTO_FIPS) && !defined(CONFIG_FORCE_DISABLE_FIPS)
 	ecryptfs_opt_enable_cc,
+	ecryptfs_opt_ecryptfs_hash_sha256,
+	ecryptfs_opt_ecryptfs_hash_md5,
+	ecryptfs_opt_ecryptfs_fn_aes_mode_cbc,
+	ecryptfs_opt_ecryptfs_fn_aes_mode_ecb,
 #endif
        ecryptfs_opt_err };
 
@@ -209,8 +213,12 @@ static const match_table_t tokens = {
 #ifdef CONFIG_WTL_ENCRYPTION_FILTER
 	{ecryptfs_opt_enable_filtering, "ecryptfs_enable_filtering=%s"},
 #endif
-#ifdef CONFIG_CRYPTO_FIPS
+#if defined(CONFIG_CRYPTO_FIPS) && !defined(CONFIG_FORCE_DISABLE_FIPS)
 	{ecryptfs_opt_enable_cc, "ecryptfs_enable_cc"},
+	{ecryptfs_opt_ecryptfs_hash_sha256, "ecryptfs_hash_sha256"},
+	{ecryptfs_opt_ecryptfs_hash_md5, "ecryptfs_hash_md5"},
+	{ecryptfs_opt_ecryptfs_fn_aes_mode_cbc, "ecryptfs_fn_aes_mode_cbc"},
+	{ecryptfs_opt_ecryptfs_fn_aes_mode_ecb, "ecryptfs_fn_aes_mode_ecb"},
 #endif
 	{ecryptfs_opt_err, NULL}
 };
@@ -349,6 +357,10 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 	char *cipher_key_bytes_src;
 	char *fn_cipher_key_bytes_src;
 	u8 cipher_code;
+#if defined(CONFIG_CRYPTO_FIPS) && !defined(CONFIG_FORCE_DISABLE_FIPS)
+	char cipher_mode[ECRYPTFS_MAX_CIPHER_MODE_SIZE];
+	strncpy(cipher_mode, ECRYPTFS_AES_ECB_MODE, ECRYPTFS_MAX_CIPHER_MODE_SIZE);
+#endif
 
 	*check_ruid = 0;
 
@@ -472,9 +484,23 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 			mount_crypt_stat->flags |= ECRYPTFS_ENABLE_FILTERING;
 			break;
 #endif
-#ifdef CONFIG_CRYPTO_FIPS
+#if defined(CONFIG_CRYPTO_FIPS) && !defined(CONFIG_FORCE_DISABLE_FIPS)
 		case ecryptfs_opt_enable_cc:
-            mount_crypt_stat->flags |= ECRYPTFS_ENABLE_CC;
+			mount_crypt_stat->flags |= ECRYPTFS_ENABLE_CC;
+			break;
+		case ecryptfs_opt_ecryptfs_hash_sha256:
+			mount_crypt_stat->flags |= ECRYPTFS_HASH_SHA256;
+			break;
+		case ecryptfs_opt_ecryptfs_hash_md5:
+			mount_crypt_stat->flags |= ECRYPTFS_HASH_MD5;
+			break;
+		case ecryptfs_opt_ecryptfs_fn_aes_mode_cbc:
+			mount_crypt_stat->flags |= ECRYPTFS_FILENAME_AES_CBC;
+			strncpy(cipher_mode, ECRYPTFS_AES_CBC_MODE, ECRYPTFS_MAX_CIPHER_MODE_SIZE);
+			break;
+		case ecryptfs_opt_ecryptfs_fn_aes_mode_ecb:
+			mount_crypt_stat->flags |= ECRYPTFS_FILENAME_AES_ECB;
+			strncpy(cipher_mode, ECRYPTFS_AES_ECB_MODE, ECRYPTFS_MAX_CIPHER_MODE_SIZE);
 			break;
 #endif
 		case ecryptfs_opt_err:
@@ -484,6 +510,24 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 			       __func__, p);
 		}
 	}
+#if defined(CONFIG_CRYPTO_FIPS) && !defined(CONFIG_FORCE_DISABLE_FIPS)
+	if (!(mount_crypt_stat->flags &
+		(ECRYPTFS_HASH_SHA256 | ECRYPTFS_HASH_MD5 | ECRYPTFS_FILENAME_AES_CBC | ECRYPTFS_FILENAME_AES_ECB))) {
+		if (mount_crypt_stat->flags & ECRYPTFS_ENABLE_CC) {
+			mount_crypt_stat->flags |= ECRYPTFS_HASH_SHA256 | ECRYPTFS_FILENAME_AES_CBC;
+			strncpy(cipher_mode, ECRYPTFS_AES_CBC_MODE, ECRYPTFS_MAX_CIPHER_MODE_SIZE);
+		} else {
+			mount_crypt_stat->flags |= ECRYPTFS_HASH_MD5 | ECRYPTFS_FILENAME_AES_ECB;
+			strncpy(cipher_mode, ECRYPTFS_AES_ECB_MODE, ECRYPTFS_MAX_CIPHER_MODE_SIZE);
+		}
+	}
+
+	if (ecryptfs_cc_mode_validation(mount_crypt_stat->flags)) {
+		rc = -EINVAL;
+		ecryptfs_printk(KERN_ERR, "Invalid mount flags for CC mode(parsing); flags = [0x%08x]\n", mount_crypt_stat->flags);
+		goto out;
+	}
+#endif
 	if (!sig_set) {
 		rc = -EINVAL;
 		ecryptfs_printk(KERN_ERR, "You must supply at least one valid "
@@ -521,18 +565,14 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 	}
 
 	mutex_lock(&key_tfm_list_mutex);
-	if (!ecryptfs_tfm_exists(mount_crypt_stat->global_default_cipher_name,
-				 NULL)) {
-#ifdef CONFIG_CRYPTO_FIPS
+#if defined(CONFIG_CRYPTO_FIPS) && !defined(CONFIG_FORCE_DISABLE_FIPS)
+	if (!ecryptfs_tfm_exists(mount_crypt_stat->global_default_cipher_name, cipher_mode,
+			NULL)) {
+
 		rc = ecryptfs_add_new_key_tfm(
 			NULL, mount_crypt_stat->global_default_cipher_name,
 			mount_crypt_stat->global_default_cipher_key_size,
 			mount_crypt_stat->flags);
-#else
-		rc = ecryptfs_add_new_key_tfm(
-			NULL, mount_crypt_stat->global_default_cipher_name,
-			mount_crypt_stat->global_default_cipher_key_size);
-#endif
 		if (rc) {
 			printk(KERN_ERR "Error attempting to initialize "
 			       "cipher with name = [%s] and key size = [%td]; "
@@ -545,19 +585,54 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 			goto out;
 		}
 	}
+
 	if ((mount_crypt_stat->flags & ECRYPTFS_GLOBAL_ENCRYPT_FILENAMES)
-	    && !ecryptfs_tfm_exists(
-		    mount_crypt_stat->global_default_fn_cipher_name, NULL)) {
-#ifdef CONFIG_CRYPTO_FIPS
+		&& !ecryptfs_tfm_exists(
+			mount_crypt_stat->global_default_fn_cipher_name, cipher_mode, NULL)) {
 		rc = ecryptfs_add_new_key_tfm(
 			NULL, mount_crypt_stat->global_default_fn_cipher_name,
 			mount_crypt_stat->global_default_fn_cipher_key_bytes,
 			mount_crypt_stat->flags);
+
+		if (rc) {
+			printk(KERN_ERR "Error attempting to initialize "
+				   "cipher with name = [%s] and key size = [%td]; "
+				   "rc = [%d]\n",
+				   mount_crypt_stat->global_default_fn_cipher_name,
+				   mount_crypt_stat->global_default_fn_cipher_key_bytes,
+				   rc);
+			rc = -EINVAL;
+			mutex_unlock(&key_tfm_list_mutex);
+			goto out;
+		}
+	}
 #else
+	if (!ecryptfs_tfm_exists(mount_crypt_stat->global_default_cipher_name,
+				NULL)) {
+
+		rc = ecryptfs_add_new_key_tfm(
+			NULL, mount_crypt_stat->global_default_cipher_name,
+			mount_crypt_stat->global_default_cipher_key_size);
+
+		if (rc) {
+			printk(KERN_ERR "Error attempting to initialize "
+				   "cipher with name = [%s] and key size = [%td]; "
+				   "rc = [%d]\n",
+				   mount_crypt_stat->global_default_cipher_name,
+				   mount_crypt_stat->global_default_cipher_key_size,
+				   rc);
+			rc = -EINVAL;
+			mutex_unlock(&key_tfm_list_mutex);
+			goto out;
+		}
+	}
+
+	if ((mount_crypt_stat->flags & ECRYPTFS_GLOBAL_ENCRYPT_FILENAMES)
+	    && !ecryptfs_tfm_exists(
+		    mount_crypt_stat->global_default_fn_cipher_name, NULL)) {
 		rc = ecryptfs_add_new_key_tfm(
 			NULL, mount_crypt_stat->global_default_fn_cipher_name,
 			mount_crypt_stat->global_default_fn_cipher_key_bytes);
-#endif
 		if (rc) {
 			printk(KERN_ERR "Error attempting to initialize "
 			       "cipher with name = [%s] and key size = [%td]; "
@@ -570,6 +645,7 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 			goto out;
 		}
 	}
+#endif
 	mutex_unlock(&key_tfm_list_mutex);
 	rc = ecryptfs_init_global_auth_toks(mount_crypt_stat);
 	if (rc)

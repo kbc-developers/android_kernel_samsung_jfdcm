@@ -63,6 +63,7 @@
 #include <mach/msm_dsps.h>
 #endif
 
+#include <mach/msm8960-gpio.h>
 
 /* Address of GSBI blocks */
 #define MSM_GSBI1_PHYS		0x16000000
@@ -514,6 +515,14 @@ static struct resource resources_uart_gsbi5[] = {
 		.name	= "gsbi_resource",
 		.flags	= IORESOURCE_MEM,
 	},
+#if defined(CONFIG_UART_RX_WAKEUP)
+	{
+		.start = 23,	/* GSBI5[2] UART_RX */
+		.end   = 23,
+		.name  = "wakeup_gpio",
+		.flags = IORESOURCE_IO,
+	},
+#endif
 };
 
 struct platform_device msm8960_device_uart_gsbi5 = {
@@ -1166,7 +1175,11 @@ struct msm_vidc_platform_data vidc_platform_data = {
 	.disable_dmx = 0,
 	.disable_fullhd = 0,
 	.cont_mode_dpb_count = 18,
+#if !defined(CONFIG_MSM_IOMMU) && defined(CONFIG_SEC_PRODUCT_8960)
+	.fw_addr = 0xafe00000,
+#else
 	.fw_addr = 0x9fe00000,
+#endif
 	.enable_sec_metadata = 0,
 };
 
@@ -1721,7 +1734,7 @@ struct platform_device msm_device_bam_dmux = {
 
 static struct msm_watchdog_pdata msm_watchdog_pdata = {
 	.pet_time = 10000,
-	.bark_time = 11000,
+	.bark_time = 20000,
 	.has_secure = true,
 	.base = MSM_TMR0_BASE + WDT0_OFFSET,
 };
@@ -1770,6 +1783,29 @@ struct platform_device msm8960_device_dmov = {
 		.platform_data = &msm_dmov_pdata,
 	},
 };
+#define MSM_UIO_RMTFS_BASE	0x8FB00000
+#define MSM_UIO_RMTFS_END	(MSM_UIO_RMTFS_BASE + 0x300000)
+
+static struct resource msm_device_uio_rmtfs_rsc[] = {
+	{
+		.name	= "rmtfs",
+		.flags	= IORESOURCE_MEM,
+		.start	= MSM_UIO_RMTFS_BASE,
+		.end	= MSM_UIO_RMTFS_END - 1,
+	},
+};
+
+struct platform_device msm_device_uio_rmtfs = {
+	.name		= "msm_sharedmem",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(msm_device_uio_rmtfs_rsc),
+	.resource	= msm_device_uio_rmtfs_rsc,
+};
+
+int __init msm_add_uio()
+{
+	return platform_device_register(&msm_device_uio_rmtfs);
+}
 
 static struct platform_device *msm_sdcc_devices[] __initdata = {
 	&msm_device_sdc1,
@@ -1791,6 +1827,33 @@ int __init msm_add_sdcc(unsigned int controller, struct mmc_platform_data *plat)
 	return platform_device_register(pdev);
 }
 
+static struct resource resources_qup_i2c_gsbi7[] = {
+	{
+		.name	= "gsbi_qup_i2c_addr",
+		.start	= MSM_GSBI7_PHYS,
+		.end	= MSM_GSBI7_PHYS + MSM_QUP_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "qup_phys_addr",
+		.start	= MSM_GSBI7_QUP_PHYS,
+		.end	= MSM_GSBI7_QUP_PHYS + 4 - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "qup_err_intr",
+		.start	= GSBI7_QUP_IRQ,
+		.end	= GSBI7_QUP_IRQ,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+struct platform_device msm8960_device_qup_i2c_gsbi7 = {
+	.name		= "qup_i2c",
+	.id		= 7,
+	.num_resources	= ARRAY_SIZE(resources_qup_i2c_gsbi7),
+	.resource	= resources_qup_i2c_gsbi7,
+};
 static struct resource resources_qup_i2c_gsbi4[] = {
 	{
 		.name	= "gsbi_qup_i2c_addr",
@@ -1818,6 +1881,48 @@ struct platform_device msm8960_device_qup_i2c_gsbi4 = {
 	.num_resources	= ARRAY_SIZE(resources_qup_i2c_gsbi4),
 	.resource	= resources_qup_i2c_gsbi4,
 };
+
+#ifdef CONFIG_VP_A2220
+static struct resource resources_qup_i2c_gsbi1[] = {
+	{
+		.name	= "gsbi_qup_i2c_addr",
+		.start	= MSM_GSBI1_PHYS,
+		.end	= MSM_GSBI1_PHYS + 4 - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "qup_phys_addr",
+		.start	= MSM_GSBI1_QUP_PHYS,
+		.end	= MSM_GSBI1_QUP_PHYS + MSM_QUP_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "qup_err_intr",
+		.start	= MSM8960_GSBI1_QUP_IRQ,
+		.end	= MSM8960_GSBI1_QUP_IRQ,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name	= "i2c_clk",
+		.start	= GPIO_CODEC_I2C_SCL,
+		.end	= GPIO_CODEC_I2C_SCL,
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.name	= "i2c_sda",
+		.start	= GPIO_CODEC_I2C_SDA,
+		.end	= GPIO_CODEC_I2C_SDA,
+		.flags	= IORESOURCE_IO,
+	},
+};
+
+struct platform_device msm8960_device_qup_i2c_gsbi1 = {
+	.name		= "qup_i2c",
+	.id		= 1,
+	.num_resources	= ARRAY_SIZE(resources_qup_i2c_gsbi1),
+	.resource	= resources_qup_i2c_gsbi1,
+};
+#endif
 
 static struct resource resources_qup_i2c_gsbi8[] = {
 	{
@@ -2444,6 +2549,57 @@ struct platform_device msm8960_device_qup_spi_gsbi1 = {
 	.resource	= resources_qup_spi_gsbi1,
 };
 #if !defined(CONFIG_MACH_KS02)
+static struct resource resources_qup_spi_gsbi2[] = {
+	{
+		.name = "spi_base",
+		.start = MSM_GSBI2_QUP_PHYS,
+		.end = MSM_GSBI2_QUP_PHYS + SZ_4K - 1,
+		.flags = IORESOURCE_MEM,
+	},
+	{
+		.name = "gsbi_base",
+		.start = MSM_GSBI2_PHYS,
+		.end = MSM_GSBI2_PHYS + 4 - 1,
+		.flags = IORESOURCE_MEM,
+	},
+	{
+		.name = "spi_irq_in",
+		.start = MSM8960_GSBI2_QUP_IRQ,
+		.end = MSM8960_GSBI2_QUP_IRQ,
+		.flags = IORESOURCE_IRQ,
+	},
+	{
+		.name = "spi_clk",
+		.start = 13,
+		.end = 13,
+		.flags = IORESOURCE_IO,
+	},
+	{
+		.name = "spi_cs",
+		.start = 12,
+		.end = 12,
+		.flags = IORESOURCE_IO,
+	},
+	{
+		.name = "spi_miso",
+		.start = 11,
+		.end = 11,
+		.flags = IORESOURCE_IO,
+	},
+	{
+		.name = "spi_mosi",
+		.start = 10,
+		.end = 10,
+		.flags = IORESOURCE_IO,
+	},
+};
+
+struct platform_device msm8960_device_qup_spi_gsbi2 = {
+	.name	= "spi_qsd",
+	.id		= 2,
+	.num_resources	= ARRAY_SIZE(resources_qup_spi_gsbi2),
+	.resource	= resources_qup_spi_gsbi2,
+};
 static struct resource resources_qup_spi_gsbi11[] = {
 	{
 		.name = "spi_base",
@@ -2463,6 +2619,21 @@ static struct resource resources_qup_spi_gsbi11[] = {
 		.end = GSBI11_QUP_IRQ,
 		.flags = IORESOURCE_IRQ,
 	},
+#ifdef CONFIG_S5C73M3
+	/*test: Qualcomm, DMA SPI, start */
+	{
+		.name	= "spidm_channels",
+		.start	= 3,
+		.end	= 4,
+		.flags	= IORESOURCE_DMA,
+	},
+	{
+		.name	= "spidm_crci",
+		.start	= 12,
+		.end	= 13,
+		.flags	= IORESOURCE_DMA,
+	},
+#endif
 	{
 		.name = "spi_clk",
 		.start = 41,
@@ -2500,11 +2671,29 @@ static struct resource resources_qup_spi_gsbi11[] = {
 		.flags = IORESOURCE_DMA,
 	},
 #endif
+#ifdef CONFIG_VP_A2220
+	{
+		.name   = "a2220_sda",
+		.start  = GPIO_A2220_I2C_SDA,
+		.end    = GPIO_A2220_I2C_SDA,
+		.flags  = IORESOURCE_IO,
+	},
+	{
+		.name   = "a2220_sck",
+		.start  = GPIO_A2220_I2C_SCL,
+		.end    = GPIO_A2220_I2C_SCL,
+		.flags  = IORESOURCE_IO,
+	},
+#endif
 };
 
 struct platform_device msm8960_device_qup_spi_gsbi11 = {
 	.name = "spi_qsd",
+#ifdef CONFIG_SEC_PRODUCT_8960
+	.id = 0,
+#else
 	.id = 11,
+#endif
 	.num_resources = ARRAY_SIZE(resources_qup_spi_gsbi11),
 	.resource = resources_qup_spi_gsbi11,
 };

@@ -153,6 +153,7 @@
 	|| defined(CONFIG_MACH_MELIUS_LGT) \
 	|| defined(CONFIG_MACH_MELIUS_ATT) || defined(CONFIG_MACH_MELIUS_TMO) \
 	|| defined(CONFIG_MACH_MELIUS_VZW) || defined(CONFIG_MACH_MELIUS_SPR) \
+	|| defined(CONFIG_MACH_MELIUS_MTR) \
 	|| (defined(CONFIG_MACH_MELIUS_USC) && !defined(CONFIG_MACH_MELIUS_USC_00))
 #define GPIO_AUDIO_MCLK			66
 #else

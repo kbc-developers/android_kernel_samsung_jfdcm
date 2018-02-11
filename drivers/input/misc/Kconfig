@@ -675,5 +675,6 @@ config BMP18X_I2C
          module will be called bmp18x-i2c.
 
 source "drivers/input/misc/mpu6050/Kconfig"
+source "drivers/input/misc/mpu6500/Kconfig"
 
 endif

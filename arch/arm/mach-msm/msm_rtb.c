@@ -73,7 +73,7 @@ static atomic_t msm_rtb_idx;
 
 struct msm_rtb_state msm_rtb = {
 	.filter = 0,
-	.enabled = 1,
+	.enabled = 0,
 };
 
 module_param_named(filter, msm_rtb.filter, uint, 0644);
@@ -85,6 +85,18 @@ static int msm_rtb_panic_notifier(struct notifier_block *this,
 	msm_rtb.enabled = 0;
 	return NOTIFY_DONE;
 }
+//for rtb enable
+static int __init sec_rtb_level(char *str)
+{
+        int new_rtb_level = 0;
+        if(get_option(&str, &new_rtb_level))
+        {
+                msm_rtb.enabled = new_rtb_level;
+                return 0;
+        }
+        return -EINVAL;
+}
+__setup("msm_rtb.enabled=", sec_rtb_level);
 
 static struct notifier_block msm_rtb_panic_blk = {
 	.notifier_call  = msm_rtb_panic_notifier,

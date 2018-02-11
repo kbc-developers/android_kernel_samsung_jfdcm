@@ -193,7 +193,7 @@ static void get_encap_work(struct work_struct *w)
 		dev->get_encap_failure_cnt++;
 		return;
 	}
-
+	init_completion(&dev->rx_wait);
 	usb_fill_control_urb(dev->rcvurb, udev,
 				usb_rcvctrlpipe(udev, 0),
 				(unsigned char *)dev->in_ctlreq,
@@ -214,7 +214,13 @@ static void get_encap_work(struct work_struct *w)
 			__func__, status);
 		goto resubmit_int_urb;
 	}
-
+	status = wait_for_completion_timeout(&dev->rx_wait,
+	msecs_to_jiffies(1000));
+	if (!status) {
+		dev->rcvurb_killed++;
+		dev_err(dev->devicep, "killing the rcvurb\n");
+		usb_kill_urb(dev->rcvurb);
+	}
 	return;
 
 resubmit_int_urb:
@@ -318,9 +324,10 @@ static void resp_avail_cb(struct urb *urb)
 	void				*cpkt;
 	int				ch_id, status = 0;
 	size_t				cpkt_size = 0;
-	unsigned int 		iface_num;
+	unsigned int		iface_num;
 
 	udev = interface_to_usbdev(dev->intf);
+	complete(&dev->rx_wait);
 	iface_num = dev->intf->cur_altsetting->desc.bInterfaceNumber;
 
 	usb_autopm_put_interface_async(dev->intf);
@@ -328,11 +335,12 @@ static void resp_avail_cb(struct urb *urb)
 	switch (urb->status) {
 	case 0:
 		/*success*/
+	case -ENOENT:
+		/* rcvurb killed upon timeout */
 		break;
 
 	/*do not resubmit*/
 	case -ESHUTDOWN:
-	case -ENOENT:
 	case -ECONNRESET:
 	case -EPROTO:
 		return;

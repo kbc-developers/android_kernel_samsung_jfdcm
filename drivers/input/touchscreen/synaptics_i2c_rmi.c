@@ -29,7 +29,7 @@
 #include "synaptics_i2c_rmi.h"
 
 #define DRIVER_NAME "synaptics_rmi4_i2c"
-
+//#undef CONFIG_HAS_EARLYSUSPEND
 #define PROXIMITY
 #define TYPE_B_PROTOCOL
 #define SURFACE_TOUCH
@@ -97,8 +97,8 @@
 #define EDGE_SWIPE_DATA_OFFSET	8
 
 #define EDGE_SWIPE_WIDTH_MAX	255
-#define EDGE_SWIPE_ANGLE_MIN	(-90)
-#define EDGE_SWIPE_ANGLE_MAX	90
+//#define EDGE_SWIPE_ANGLE_MIN	(-90)
+//#define EDGE_SWIPE_ANGLE_MAX	90
 #define EDGE_SWIPE_PALM_MAX		1
 #endif
 
@@ -152,9 +152,9 @@ static ssize_t synaptics_rmi4_full_pm_cycle_store(struct device *dev,
 static void synaptics_rmi4_early_suspend(struct early_suspend *h);
 
 static void synaptics_rmi4_late_resume(struct early_suspend *h);
+#endif /* CONFIG_HAS_EARLYSUSPEND */
 
-#else
-
+#if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND) && !defined(USE_OPEN_CLOSE)
 static int synaptics_rmi4_suspend(struct device *dev);
 
 static int synaptics_rmi4_resume(struct device *dev);
@@ -1525,8 +1525,8 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 				if (f51->proximity_controls & HAS_EDGE_SWIPE) {
 					input_report_abs(rmi4_data->input_dev,
 							ABS_MT_WIDTH_MAJOR, f51->surface_data.width_major);
-					input_report_abs(rmi4_data->input_dev,
-							ABS_MT_ANGLE, f51->surface_data.angle);
+					/*input_report_abs(rmi4_data->input_dev,
+							ABS_MT_ANGLE, f51->surface_data.angle); */
 					input_report_abs(rmi4_data->input_dev,
 							ABS_MT_PALM, f51->surface_data.palm);
 				}
@@ -1700,7 +1700,7 @@ static int synaptics_rmi4_f51_edge_swipe(struct synaptics_rmi4_data *rmi4_data,
 	if (!f51)
 		return -ENODEV;
 
-	if (data->edge_swipe_dg >= 90 && data->edge_swipe_dg <= 180)
+	/*if (data->edge_swipe_dg >= 90 && data->edge_swipe_dg <= 180)
 #if defined(CONFIG_MACH_JACTIVE_EUR)
 		f51->surface_data.angle = data->edge_swipe_dg - 90;
 #else
@@ -1716,7 +1716,7 @@ static int synaptics_rmi4_f51_edge_swipe(struct synaptics_rmi4_data *rmi4_data,
 		dev_err(&rmi4_data->i2c_client->dev,
 				"Skip wrong edge swipe angle [%d]\n",
 				data->edge_swipe_dg);
-
+*/
 	f51->surface_data.width_major = data->edge_swipe_mm;
 	f51->surface_data.wx = data->edge_swipe_wx;
 	f51->surface_data.wy = data->edge_swipe_wy;
@@ -3267,9 +3267,10 @@ static int synaptics_rmi4_set_input_device
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_WIDTH_MAJOR, 0,
 			EDGE_SWIPE_WIDTH_MAX, 0, 0);
-	input_set_abs_params(rmi4_data->input_dev,
+	/*input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_ANGLE, 0,
 			EDGE_SWIPE_ANGLE_MAX, 0, 0);
+	*/
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_PALM, 0,
 			EDGE_SWIPE_PALM_MAX, 0, 0);
@@ -3747,7 +3748,7 @@ int synaptics_rmi4_new_function(enum exp_fn fn_type,
 
 	return 0;
 }
-
+#ifdef CONFIG_HAS_EARLYSUSPEND
 static void synaptics_init_power_on(struct work_struct *work)
 {
 	struct synaptics_rmi4_data *rmi4_data =
@@ -3767,7 +3768,7 @@ static void synaptics_init_power_on(struct work_struct *work)
 	synaptics_rmi4_late_resume(&rmi4_data->early_suspend);
 #endif
 }
-
+#endif
  /**
  * synaptics_rmi4_probe()
  *
@@ -4235,6 +4236,7 @@ static void synaptics_rmi4_early_suspend(struct early_suspend *h)
  * This function goes through the sensor wake process if the system wakes
  * up from early suspend (without going into suspend).
  */
+
 static void synaptics_rmi4_late_resume(struct early_suspend *h)
 {
 	struct synaptics_rmi4_data *rmi4_data =
@@ -4296,8 +4298,10 @@ static void synaptics_rmi4_late_resume(struct early_suspend *h)
 #endif
 	return;
 }
-#else
+#endif /* CONFIG_HAS_EARLYSUSPEND */
 
+/* Use only for CONFIG_PM */
+#if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND) && !defined(USE_OPEN_CLOSE)
  /**
  * synaptics_rmi4_suspend()
  *
@@ -4308,6 +4312,7 @@ static void synaptics_rmi4_late_resume(struct early_suspend *h)
  * sleep (if not already done so during the early suspend phase),
  * disables the interrupt, and turns off the power to the sensor.
  */
+
 static int synaptics_rmi4_suspend(struct device *dev)
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
@@ -4345,6 +4350,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
  * from sleep, enables the interrupt, and starts finger data
  * acquisition.
  */
+
 static int synaptics_rmi4_resume(struct device *dev)
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
@@ -4380,7 +4386,8 @@ static int synaptics_rmi4_resume(struct device *dev)
 }
 #endif
 
-#ifdef CONFIG_PM
+
+#if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND) && !defined(USE_OPEN_CLOSE)
 static const struct dev_pm_ops synaptics_rmi4_dev_pm_ops = {
 	.suspend = synaptics_rmi4_suspend,
 	.resume  = synaptics_rmi4_resume,
@@ -4397,7 +4404,7 @@ static struct i2c_driver synaptics_rmi4_driver = {
 	.driver = {
 		.name = DRIVER_NAME,
 		.owner = THIS_MODULE,
-#ifdef CONFIG_PM
+#if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND) && !defined(USE_OPEN_CLOSE)
 		.pm = &synaptics_rmi4_dev_pm_ops,
 #endif
 	},

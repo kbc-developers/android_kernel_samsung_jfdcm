@@ -18,7 +18,11 @@ obj-$(CONFIG_LEDS_COBALT_QUBE)		+= leds-cobalt-qube.o
 obj-$(CONFIG_LEDS_COBALT_RAQ)		+= leds-cobalt-raq.o
 obj-$(CONFIG_LEDS_SUNFIRE)		+= leds-sunfire.o
 obj-$(CONFIG_LEDS_PCA9532)		+= leds-pca9532.o
+ifdef CONFIG_SEC_PRODUCT_8960
+obj-$(CONFIG_LEDS_PM8XXX)		+= leds-pm8xxx_8960.o
+else
 obj-$(CONFIG_LEDS_PM8XXX)		+= leds-pm8xxx.o
+endif
 obj-$(CONFIG_LEDS_QPNP)			+= leds-qpnp.o
 obj-$(CONFIG_LEDS_GPIO_REGISTER)	+= leds-gpio-register.o
 obj-$(CONFIG_LEDS_GPIO)			+= leds-gpio.o
@@ -56,7 +60,8 @@ obj-$(CONFIG_LEDS_MSM_PDM)		+= leds-msm-pdm.o
 obj-$(CONFIG_LEDS_MSM_TRICOLOR)		+= leds-msm-tricolor.o
 obj-$(CONFIG_LEDS_AN30259A)		+= leds-an30259a.o
 obj-$(CONFIG_LEDS_MAX77693)		+= leds-max77693.o
-
+obj-$(CONFIG_LEDS_AAT1290A)		+= leds-aat1290a.o
+obj-$(CONFIG_LEDS_RT8547)		+= leds-rt8547.o
 # LED SPI Drivers
 obj-$(CONFIG_LEDS_DAC124S085)		+= leds-dac124s085.o
 

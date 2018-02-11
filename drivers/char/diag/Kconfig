@@ -8,6 +8,12 @@ config DIAG_CHAR
 	help
 	 Char driver interface for diag user space and diag-forwarding to modem ARM and back.
 	 This enables diagchar for maemo usb gadget or android usb gadget based on config selected.
+
+config DISABLE_DIAG_ON_SHIP_BUILD
+	depends on DIAG_CHAR
+	default y
+	bool "Disable diag driver in ship build"
+
 endmenu
 
 menu "DIAG traffic over USB"

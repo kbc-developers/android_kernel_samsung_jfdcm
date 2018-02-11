@@ -296,14 +296,11 @@ EXPORT_SYMBOL(sysctl_tcp_wmem);
 
 atomic_long_t tcp_memory_allocated;	/* Current allocated memory. */
 EXPORT_SYMBOL(tcp_memory_allocated);
-
-#if defined(CONFIG_MACH_JFVE_EUR) // getrit 558622
 int sysctl_tcp_delack_seg __read_mostly = TCP_DELACK_SEG;
 EXPORT_SYMBOL(sysctl_tcp_delack_seg);
 
-int sysctl_tcp_use_userconfig __read_mostly = 1;
+int sysctl_tcp_use_userconfig __read_mostly;
 EXPORT_SYMBOL(sysctl_tcp_use_userconfig);
-#endif
 
 /*
  * Current number of TCP sockets.
@@ -493,14 +490,12 @@ int tcp_ioctl(struct sock *sk, int cmd, unsigned long arg)
 			 !tp->urg_data ||
 			 before(tp->urg_seq, tp->copied_seq) ||
 			 !before(tp->urg_seq, tp->rcv_nxt)) {
-			struct sk_buff *skb;
 
 			answ = tp->rcv_nxt - tp->copied_seq;
 
-			/* Subtract 1, if FIN is in queue. */
-			skb = skb_peek_tail(&sk->sk_receive_queue);
-			if (answ && skb)
-				answ -= tcp_hdr(skb)->fin;
+			/* Subtract 1, if FIN was received */
+			if (answ && sock_flag(sk, SOCK_DONE))
+				answ--;
 		} else
 			answ = tp->urg_seq - tp->copied_seq;
 		release_sock(sk);
@@ -1223,16 +1218,11 @@ void tcp_cleanup_rbuf(struct sock *sk, int copied)
 		   /* Delayed ACKs frequently hit locked sockets during bulk
 		    * receive. */
 		if (icsk->icsk_ack.blocked ||
-#if !defined(CONFIG_MACH_JFVE_EUR) // getrit 558622
-		    /* Once-per-two-segments ACK was not sent by tcp_input.c */
-		    tp->rcv_nxt - tp->rcv_wup > icsk->icsk_ack.rcv_mss ||
-#else
-		    /* Once-per-sysctl_tcp_delack_seg segments
-			  * ACK was not sent by tcp_input.c
-			  */
+		    /* Once-per-sysctl_tcp_delack_segments
+			* ACK was not sent by tcp_input.c
+			*/
 		    tp->rcv_nxt - tp->rcv_wup > (icsk->icsk_ack.rcv_mss) *
-						sysctl_tcp_delack_seg ||
-#endif
+						 sysctl_tcp_delack_seg ||
 		    /*
 		     * If this read emptied read buffer, we send ACK, if
 		     * connection is not bidirectional, user drained
@@ -3368,10 +3358,16 @@ void __init tcp_init(void)
 static int tcp_is_local(struct net *net, __be32 addr) {
 	struct rtable *rt;
 	struct flowi4 fl4 = { .daddr = addr };
+	int res = 0;
 	rt = ip_route_output_key(net, &fl4);
 	if (IS_ERR_OR_NULL(rt))
 		return 0;
-	return rt->dst.dev && (rt->dst.dev->flags & IFF_LOOPBACK);
+
+	res = rt->dst.dev && (rt->dst.dev->flags & IFF_LOOPBACK);
+	/* Arp_cache entry increase to 1024 whenever WIFI <-> LTE.
+	So dst_release() is needed to release undestroy dst_entry */
+	dst_release(&rt->dst);
+	return res;
 }
 
 #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)

@@ -33,8 +33,10 @@ MODULE_DESCRIPTION("Input core");
 MODULE_LICENSE("GPL");
 
 #define INPUT_DEVICES	256
+#if !defined (CONFIG_SEC_PRODUCT_8930)
 #ifdef CONFIG_SAMSUNG_LPM_MODE
 extern int poweroff_charging;
+#endif
 #endif
 
 static LIST_HEAD(input_dev_list);
@@ -517,12 +519,14 @@ int input_open_device(struct input_handle *handle)
 	}
 
 	handle->open++;
-
-	if (!dev->users++ && dev->open)
+	dev->users_private++;
+	if (!dev->disabled && !dev->users++ && dev->open)
 		retval = dev->open(dev);
 
 	if (retval) {
-		dev->users--;
+		dev->users_private--;
+		if (!dev->disabled)
+			dev->users--;
 		if (!--handle->open) {
 			/*
 			 * Make sure we are not delivering any more events
@@ -570,7 +574,8 @@ void input_close_device(struct input_handle *handle)
 
 	__input_release_device(handle);
 
-	if (!--dev->users && dev->close)
+	--dev->users_private;
+	if (!dev->disabled && !--dev->users && dev->close)
 		dev->close(dev);
 
 	if (!--handle->open) {
@@ -590,6 +595,50 @@ EXPORT_SYMBOL(input_close_device);
  * Simulate keyup events for all keys that are marked as pressed.
  * The function must be called with dev->event_lock held.
  */
+static int input_enable_device(struct input_dev *dev)
+{
+	int retval;
+
+	retval = mutex_lock_interruptible(&dev->mutex);
+	if (retval)
+		return retval;
+
+	if (!dev->disabled)
+		goto out;
+
+	if (dev->users_private && dev->open) {
+		retval = dev->open(dev);
+		if (retval)
+			goto out;
+	}
+	dev->users = dev->users_private;
+	dev->disabled = false;
+
+out:
+	mutex_unlock(&dev->mutex);
+
+	return retval;
+}
+
+static int input_disable_device(struct input_dev *dev)
+{
+	int retval;
+
+	retval = mutex_lock_interruptible(&dev->mutex);
+	if (retval)
+		return retval;
+
+	if (!dev->disabled) {
+		dev->disabled = true;
+		if (dev->users && dev->close)
+			dev->close(dev);
+		dev->users = 0;
+	}
+
+	mutex_unlock(&dev->mutex);
+	return 0;
+}
+
 static void input_dev_release_keys(struct input_dev *dev)
 {
 	int code;
@@ -1292,7 +1341,40 @@ static ssize_t input_dev_show_properties(struct device *dev,
 				     INPUT_PROP_MAX, true);
 	return min_t(int, len, PAGE_SIZE);
 }
+
+static ssize_t input_dev_show_enabled(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
+{
+	struct input_dev *input_dev = to_input_dev(dev);
+	return scnprintf(buf, PAGE_SIZE, "%d\n", !input_dev->disabled);
+}
+
+static ssize_t input_dev_store_enabled(struct device *dev,
+				       struct device_attribute *attr,
+				       const char *buf, size_t size)
+{
+	int ret;
+	bool enable;
+	struct input_dev *input_dev = to_input_dev(dev);
+
+	ret = strtobool(buf, &enable);
+	if (ret)
+		return ret;
+
+	if (enable)
+		ret = input_enable_device(input_dev);
+	else
+		ret = input_disable_device(input_dev);
+	if (ret)
+		return ret;
+
+	return size;
+}
 static DEVICE_ATTR(properties, S_IRUGO, input_dev_show_properties, NULL);
+
+static DEVICE_ATTR(enabled, S_IRUGO | S_IWUSR,
+		   input_dev_show_enabled, input_dev_store_enabled);
 
 static struct attribute *input_dev_attrs[] = {
 	&dev_attr_name.attr,
@@ -1300,6 +1382,7 @@ static struct attribute *input_dev_attrs[] = {
 	&dev_attr_uniq.attr,
 	&dev_attr_modalias.attr,
 	&dev_attr_properties.attr,
+	&dev_attr_enabled.attr,
 	NULL
 };
 
@@ -1577,6 +1660,8 @@ void input_reset_device(struct input_dev *dev)
 		 * Keys that have been pressed at suspend time are unlikely
 		 * to be still pressed when we resume.
 		 */
+#if 0     /* to avoid release of keys in long press at sleep time and keep the previous state of keys on the resume */
+#if !defined (CONFIG_SEC_PRODUCT_8930)
 #ifdef CONFIG_SAMSUNG_LPM_MODE
 		if (!poweroff_charging) {
 			spin_lock_irq(&dev->event_lock);
@@ -1585,6 +1670,8 @@ void input_reset_device(struct input_dev *dev)
 #endif
 			spin_unlock_irq(&dev->event_lock);
 		}
+#endif
+#endif
 #endif
 	}
 

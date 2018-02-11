@@ -37,6 +37,13 @@
 #define SITAR_IS_1P1(ver) \
 	((ver == SITAR_VERSION_1P1) ? 1 : 0)
 
+#define TAIKO_VERSION_1_0	0
+#define TAIKO_IS_1_0(ver) \
+	((ver == TAIKO_VERSION_1_0) ? 1 : 0)
+
+#define TAPAN_VERSION_1_0	0
+#define TAPAN_IS_1_0(ver) \
+	((ver == TAIKO_VERSION_1_0) ? 1 : 0)
 enum {
 	TABLA_IRQ_SLIMBUS = 0,
 	TABLA_IRQ_MBHC_REMOVAL,
@@ -120,6 +127,31 @@ enum {
 	TAIKO_NUM_IRQS,
 };
 
+enum {
+	TAPAN_IRQ_SLIMBUS = 0,
+	TAPAN_IRQ_MBHC_REMOVAL,
+	TAPAN_IRQ_MBHC_SHORT_TERM,
+	TAPAN_IRQ_MBHC_PRESS,
+	TAPAN_IRQ_MBHC_RELEASE,
+	TAPAN_IRQ_MBHC_POTENTIAL,
+	TAPAN_IRQ_MBHC_INSERTION,
+	TAPAN_IRQ_BG_PRECHARGE,
+	TAPAN_IRQ_PA1_STARTUP,
+	TAPAN_IRQ_PA2_STARTUP,
+	TAPAN_IRQ_PA3_STARTUP,
+	TAPAN_IRQ_PA4_STARTUP,
+	TAPAN_IRQ_PA5_STARTUP,
+	TAPAN_IRQ_MICBIAS1_PRECHARGE,
+	TAPAN_IRQ_MICBIAS2_PRECHARGE,
+	TAPAN_IRQ_MICBIAS3_PRECHARGE,
+	TAPAN_IRQ_HPH_PA_OCPL_FAULT,
+	TAPAN_IRQ_HPH_PA_OCPR_FAULT,
+	TAPAN_IRQ_EAR_PA_OCPL_FAULT,
+	TAPAN_IRQ_HPH_L_PA_STARTUP,
+	TAPAN_IRQ_HPH_R_PA_STARTUP,
+	TAPAN_IRQ_EAR_PA_STARTUP,
+	TAPAN_NUM_IRQS,
+};
 
 enum wcd9xxx_pm_state {
 	WCD9XXX_PM_SLEEPABLE,
@@ -155,6 +187,9 @@ struct wcd9xxx_ch {
 
 struct wcd9xxx_codec_dai_data {
 	u32 rate;				/* sample rate          */
+	u32 *ch_num;
+	u32 ch_act;
+	u32 ch_tot;
 	u32 bit_width;				/* sit width 16,24,32   */
 	struct list_head wcd9xxx_ch_list;	/* channel list         */
 	u16 grph;				/* slimbus group handle */
@@ -254,6 +289,11 @@ static inline int wcd9xxx_request_irq(struct wcd9xxx *wcd9xxx, int irq,
 				     irq_handler_t handler, const char *name,
 				     void *data)
 {
+// For D2, request_irq is failing, so temporarily added return.
+// This will be removed later
+#if defined (CONFIG_ARCH_MSM8960) && !defined (CONFIG_SND_SOC_APQ8064) 
+	return 0;
+#endif
 	if (!wcd9xxx->irq_base)
 		return -EINVAL;
 	return request_threaded_irq(wcd9xxx->irq_base + irq, NULL, handler,

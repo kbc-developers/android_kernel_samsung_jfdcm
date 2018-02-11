@@ -42,6 +42,18 @@ config TOUCHSCREEN_ADS7846
 	  To compile this driver as a module, choose M here: the
 	  module will be called ads7846.
 
+config TOUCHSCREEN_MMS144
+	tristate "Melfas MMS144 Touchscreen"
+	depends on I2C
+	help
+	  Say Y here if you have Melfas MMS144 series I2C touchscreen,
+	   connected to your system.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called mms_ts.
+
 config TOUCHSCREEN_AD7877
 	tristate "AD7877 based touchscreens"
 	depends on SPI_MASTER
@@ -107,6 +119,32 @@ config TOUCHSCREEN_ATMEL_MXTS
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called mxts.
+config TOUCHSCREEN_MXTS
+	tristate "Atmel MaxTouch S"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable support for the Atmel  MaxTouch S
+	  controller.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called mxts.
+	  
+config TOUCHSCREEN_MXT336S
+	tristate "Atmel MaxTouch 336S"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable support for the Atmel MaxTouch 336 touch
+	  controller.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called mxt336S.
+	  
 config TOUCHSCREEN_ATMEL_MXT540S
 	  tristate "Atmel MXT540S Touchscreen Interface"
 	  depends on I2C
@@ -128,6 +166,18 @@ config TOUCHSCREEN_ATMEL_MXT
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called atmel_mxt_ts.
+config TOUCHSCREEN_MXT224S_NEW
+	tristate "Atmel MaxTouch 224S new"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable support for the Atmel MaxTouch 224 touch
+	  controller.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called mxt224S.
 
 config TOUCHSCREEN_AUO_PIXCIR
 	tristate "AUO in-cell touchscreen using Pixcir ICs"
@@ -996,7 +1046,7 @@ config TOUCH_REG_MAP_TM2000
 	default y
 	help
 	  Synaptics Register map TM2000.
-	  
+
 config TOUCHSCREEN_SYNAPTICS_I2C_RMI4
 	tristate "Synaptics DSX I2C touchscreen"
 	depends on I2C
@@ -1008,6 +1058,43 @@ config TOUCHSCREEN_SYNAPTICS_I2C_RMI4
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called synaptics_i2c_rmi4.
+
+config TOUCHSCREEN_MXT224
+	tristate "Atmel MaxTouch 224"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable support for the Atmel MaxTouch 224 touch
+	  controller.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called mxt224.	  
+	  
+config TOUCHSCREEN_CYPRESS_TMA46X
+	tristate "CYPRESS TMA46X I2C Touchscreen"
+	depends on I2C
+	help
+	  Say Y here if you have Cypress tma46x I2C touchscreen,
+	  such as TMA46x, connected to your system.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tma46x.
+
+config TOUCHSCREEN_CYPRESS_TMA46X_SUPPORT_BUTTON
+	tristate "CYPRESS TMA46X I2C Touchscreen Button"
+	depends on TOUCHSCREEN_CYPRESS_TMA46X
+	help
+	  Say Y here if you have Cypress tma46x I2C touchscreen Button,
+	  such as TMA46x, connected to your system.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tma46x button.
 
 config TOUCHSCREEN_SYNAPTICS_DSX_RMI4_DEV
 	tristate "Synaptics I2C touchscreen rmi device"
@@ -1038,5 +1125,17 @@ config TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called synaptics_dsx_fw_update.
+
+config TOUCHSCREEN_ZINITIX_BT532
+	tristate "ZINITIX BT532 I2C Touchscreen"
+	depends on I2C
+	help
+	  Say Y here if you have Zinitix BT532 I2C touchscreen,
+	  such as BT532, connected to your system.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called BT532.
 
 endif

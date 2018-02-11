@@ -45,6 +45,16 @@
 #include "sd_ops.h"
 #include "sdio_ops.h"
 
+#ifdef CONFIG_MMC_SUPPORT_STLOG
+#include <linux/stlog.h>
+#else
+#define ST_LOG(fmt,...)
+#endif
+
+#if defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE)
+#include "../host/msm_sdcc.h"
+#endif
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/mmc.h>
 
@@ -962,7 +972,11 @@ void mmc_set_data_timeout(struct mmc_data *data, const struct mmc_card *card)
 	if (data->flags & MMC_DATA_WRITE)
 		mult <<= card->csd.r2w_factor;
 
-	data->timeout_ns = card->csd.tacc_ns * mult;
+	/* max time value is 4.2s */
+	if ((card->csd.tacc_ns/1000 * mult) > 4294967)
+		data->timeout_ns = 0xffffffff;
+	else
+		data->timeout_ns = card->csd.tacc_ns * mult;
 	data->timeout_clks = card->csd.tacc_clks * mult;
 
 	/*
@@ -2820,6 +2834,7 @@ int _mmc_detect_card_removed(struct mmc_host *host)
 	if (ret) {
 		mmc_card_set_removed(host->card);
 		pr_debug("%s: card remove detected\n", mmc_hostname(host));
+		ST_LOG("<%s> %s: card remove detected\n", __func__,mmc_hostname(host));
 	}
 
 	return ret;
@@ -2915,6 +2930,8 @@ void mmc_rescan(struct work_struct *work)
 
 	if (host->ops->get_cd && host->ops->get_cd(host) == 0)
 		goto out;
+
+	ST_LOG("<%s> %s insertion detected",__func__,host->class_dev.kobj.name);
 
 	mmc_claim_host(host);
 	if (!mmc_rescan_try_freq(host, host->f_min))
@@ -3298,6 +3315,9 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 {
 	struct mmc_host *host = container_of(
 		notify_block, struct mmc_host, pm_notify);
+#if defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE)
+	struct msmsdcc_host *msmhost = mmc_priv(host);
+#endif
 	unsigned long flags;
 
 	int err = 0;
@@ -3352,6 +3372,12 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 		host->rescan_disable = 0;
 		spin_unlock_irqrestore(&host->lock, flags);
 
+#if defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE)
+		if (host->card && msmhost && msmhost->pdev_id == 4)
+			printk(KERN_INFO"%s(): WLAN SKIP DETECT CHANGE\n",
+					__func__);
+		else
+#endif
 		mmc_detect_change(host, 0);
 
 	}

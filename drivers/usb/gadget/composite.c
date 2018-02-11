@@ -857,10 +857,17 @@ int usb_remove_config(struct usb_composite_dev *cdev,
 
 	if (cdev->config == config)
 		reset_config(cdev);
+    /* Incase the Bind fails we have already deleted the config list */
+    /* Avoid kernel Panic */
+#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
+    if(config->cdev) {
+#endif
+    list_del(&config->list);
+#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
+   }
+#endif
 
-	list_del(&config->list);
-
-	spin_unlock_irqrestore(&cdev->lock, flags);
+    spin_unlock_irqrestore(&cdev->lock, flags);
 
 	return unbind_config(cdev, config);
 }

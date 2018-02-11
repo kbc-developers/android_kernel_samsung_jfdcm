@@ -42,6 +42,8 @@
 #define MODEL_NAME	"SCH-I545"
 #elif defined(CONFIG_MACH_JFTDD_EUR)
 #define MODEL_NAME	"GT-I9507"
+#elif defined(CONFIG_MACH_JFTDD_CHN_CU)
+#define MODEL_NAME	"GT-I9507V"
 #elif defined(CONFIG_MACH_JF_EUR)
 #define MODEL_NAME	"GT-I9505"
 #elif defined(CONFIG_MACH_JFVE_EUR)

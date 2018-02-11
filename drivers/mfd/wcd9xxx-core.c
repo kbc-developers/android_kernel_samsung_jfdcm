@@ -20,6 +20,7 @@
 #include <linux/mfd/wcd9xxx/core.h>
 #include <linux/mfd/wcd9xxx/pdata.h>
 #include <linux/mfd/wcd9xxx/wcd9xxx_registers.h>
+#include <linux/mfd/pm8xxx/pm8921.h>
 #if defined(CONFIG_MACH_MELIUS) || defined(CONFIG_MACH_KS02) || defined(CONFIG_MACH_LT02_CHN_CTC)
 #include <linux/mfd/pm8xxx/pm8921.h>
 #endif
@@ -277,13 +278,13 @@ static struct mfd_cell taiko_devs[] = {
 		.name = "taiko_codec",
 	},
 };
-/*
+
 static struct mfd_cell tapan_devs[] = {
 	{
 		.name = "tapan_codec",
 	},
 };
-*/
+
 static struct wcd9xx_codec_type {
 	u8 byte[4];
 	struct mfd_cell *dev;
@@ -302,13 +303,13 @@ static struct wcd9xx_codec_type {
 	 SITAR_NUM_IRQS},
 	{{0x2, 0x0, 0x1, 0x1}, sitar_devs, ARRAY_SIZE(sitar_devs),
 	 SITAR_NUM_IRQS},
-/*	 
+	 
 	{{0x0, 0x0, 0x3, 0x1}, tapan_devs, ARRAY_SIZE(tapan_devs),
 	
 	 TAPAN_NUM_IRQS},
 	{{0x1, 0x0, 0x3, 0x1}, tapan_devs, ARRAY_SIZE(tapan_devs),
 	 TAPAN_NUM_IRQS},	 
-*/	 
+	 
 };
 
 static void wcd9xxx_bring_up(struct wcd9xxx *wcd9xxx)
@@ -331,8 +332,13 @@ static void wcd9xxx_bring_down(struct wcd9xxx *wcd9xxx)
 static int wcd9xxx_reset(struct wcd9xxx *wcd9xxx)
 {
 	int ret;
-#if defined(CONFIG_MACH_MELIUS) || defined(CONFIG_MACH_KS02) \
-	|| defined(CONFIG_MACH_LT02_CHN_CTC)
+#if defined(CONFIG_ARCH_MSM8930) || defined(CONFIG_MACH_KS02) \
+	|| defined(CONFIG_MACH_LT02_CHN_CTC) || defined(CONFIG_ARCH_MSM8960)
+#if !defined(CONFIG_MACH_SERRANO_EUR_LTE) && !defined(CONFIG_MACH_SERRANO_ATT) && !defined(CONFIG_MACH_GOLDEN_VZW) \
+	&& !defined(CONFIG_MACH_SERRANO_VZW) && !defined(CONFIG_MACH_SERRANO_SPR) && !defined (CONFIG_MACH_SERRANO_USC) \
+	&& !defined(CONFIG_MACH_SERRANO_LRA) && !defined(CONFIG_MACH_LT02_ATT) && !defined(CONFIG_MACH_GOLDEN_ATT) \
+	&& !defined(CONFIG_MACH_LT02_SPR) && !defined(CONFIG_MACH_LT02_TMO) && !defined(CONFIG_MACH_LT02_XX) \
+	&&!defined(CONFIG_MACH_WILCOX_EUR_LTE) && !defined(CONFIG_MACH_SERRANO_EUR_3G)
     struct pm_gpio param = {
         .direction      = PM_GPIO_DIR_OUT,
         .output_buffer  = PM_GPIO_OUT_BUF_CMOS,
@@ -342,6 +348,7 @@ static int wcd9xxx_reset(struct wcd9xxx *wcd9xxx)
         .out_strength   = PM_GPIO_STRENGTH_MED,
         .function       = PM_GPIO_FUNC_NORMAL,
     };
+#endif //CONFIG_MACH_SERRANO_EUR_LTE
 #endif
 	if (wcd9xxx->reset_gpio) {
 		ret = gpio_request(wcd9xxx->reset_gpio, "CDC_RESET");
@@ -351,8 +358,13 @@ static int wcd9xxx_reset(struct wcd9xxx *wcd9xxx)
 			wcd9xxx->reset_gpio = 0;
 			return ret;
 		}
-#if defined(CONFIG_MACH_MELIUS) || defined(CONFIG_MACH_KS02) \
-	|| defined(CONFIG_MACH_LT02_CHN_CTC)
+#if defined(CONFIG_ARCH_MSM8930) || defined(CONFIG_MACH_KS02) \
+	|| defined(CONFIG_MACH_LT02_CHN_CTC) || defined(CONFIG_ARCH_MSM8960)
+#if !defined(CONFIG_MACH_SERRANO_EUR_LTE) && !defined(CONFIG_MACH_SERRANO_ATT) && !defined(CONFIG_MACH_GOLDEN_VZW) \
+	&& !defined(CONFIG_MACH_SERRANO_VZW) && !defined(CONFIG_MACH_SERRANO_SPR) && !defined (CONFIG_MACH_SERRANO_USC) \
+	&& !defined(CONFIG_MACH_SERRANO_LRA) && !defined(CONFIG_MACH_LT02_ATT) && !defined(CONFIG_MACH_GOLDEN_ATT) \
+	&& !defined(CONFIG_MACH_LT02_SPR) && !defined(CONFIG_MACH_LT02_TMO) && !defined(CONFIG_MACH_LT02_XX) \
+	&& !defined(CONFIG_MACH_WILCOX_EUR_LTE) && !defined(CONFIG_MACH_SERRANO_EUR_3G)
         ret = pm8xxx_gpio_config
             (wcd9xxx->reset_gpio, &param);
         if (ret) {
@@ -361,6 +373,7 @@ static int wcd9xxx_reset(struct wcd9xxx *wcd9xxx)
             wcd9xxx->reset_gpio = 0;
             return ret;
         }
+#endif //CONFIG_MACH_SERRANO_EUR_LTE		
 #else
 #if !defined(CONFIG_MACH_JF)
 		ret = gpio_tlmm_config
@@ -464,7 +477,7 @@ static int wcd9xxx_device_init(struct wcd9xxx *wcd9xxx, int irq)
 				       &wcd9xxx->num_irqs);
 	if (ret < 0)
 		goto err_irq;
-#if defined(CONFIG_MACH_JF) 
+#if defined(CONFIG_MACH_JF)
 	if (wcd9xxx->irq != -1) {
 		ret = wcd9xxx_irq_init(wcd9xxx);
 		if (ret) {
@@ -907,17 +920,14 @@ static int __devinit wcd9xxx_i2c_probe(struct i2c_client *client,
 	int i2c_mode = 0;
 	int wcd9xx_index = 0;
 	struct device *dev;
-printk("%s Debashis1 \n",__func__);
-	//wcd9xxx_intf=WCD9XXX_INTERFACE_TYPE_I2C;
-	printk("%s: interface status %d\n", __func__, wcd9xxx_intf);
+	
+	pr_info("%s: interface status %d\n", __func__, wcd9xxx_intf);
 	if (wcd9xxx_intf == WCD9XXX_INTERFACE_TYPE_SLIMBUS) {
 		dev_dbg(&client->dev, "%s:Codec is detected in slimbus mode\n",
 			__func__);
-printk("%s Debashis2 \n",__func__);			
 		return -ENODEV;
 	} else if (wcd9xxx_intf == WCD9XXX_INTERFACE_TYPE_I2C) {
 		ret = wcd9xxx_i2c_get_client_index(client, &wcd9xx_index);
-printk("%s Debashis3 \n",__func__);		
 		if (ret != 0)
 			dev_err(&client->dev, "%s: I2C set codec I2C\n"
 				"client failed\n", __func__);
@@ -1023,7 +1033,6 @@ printk("%s Debashis3 \n",__func__);
 		return ret;
 	} else
 		pr_err("%s: I2C probe in wrong state\n", __func__);
-printk("%s Debashis4 \n",__func__);
 err_device_init:
 	wcd9xxx_free_reset(wcd9xxx);
 err_supplies:
@@ -1268,7 +1277,6 @@ static struct wcd9xxx_pdata *wcd9xxx_populate_dt_pdata(struct device *dev)
 	char **codec_supplies;
 	u32 num_of_supplies = 0;
 	u32 mclk_rate = 0;
-printk("%s Debashis\n",__func__);
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
 		dev_err(dev,
@@ -1356,7 +1364,6 @@ static int wcd9xxx_slim_probe(struct slim_device *slim)
 	struct wcd9xxx *wcd9xxx;
 	struct wcd9xxx_pdata *pdata;
 	int ret = 0;
-printk("%s Debashis\n",__func__);
 	if (wcd9xxx_intf == WCD9XXX_INTERFACE_TYPE_I2C) {
 		dev_dbg(&slim->dev, "%s:Codec is detected in I2C mode\n",
 			__func__);
@@ -1754,7 +1761,6 @@ static struct i2c_driver wcd9xxx_i2c_driver = {
 static int __init wcd9xxx_init(void)
 {
 	int ret1, ret2, ret3, ret4, ret5, ret6, ret7;
-	printk("%s Debashis \n",__func__);
 	wcd9xxx_intf = WCD9XXX_INTERFACE_TYPE_PROBING;
 
 	ret1 = slim_driver_register(&tabla_slim_driver);

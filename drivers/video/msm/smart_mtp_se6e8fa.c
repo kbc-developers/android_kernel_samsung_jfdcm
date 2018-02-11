@@ -119,7 +119,7 @@ static int char_to_int_v255(char data1, char data2)
 static int v255_adjustment(struct SMART_DIM *pSmart)
 {
 	unsigned long long result_1, result_2, result_3, result_4;
-	int add_mtp;
+	unsigned long long add_mtp;
 	int LSB;
 	int v255_value;
 
@@ -206,7 +206,7 @@ static int vt_coefficient[] = {
 static int vt_adjustment(struct SMART_DIM *pSmart)
 {
 	unsigned long long result_1, result_2, result_3, result_4;
-	int add_mtp;
+	unsigned long long add_mtp;
 	int LSB;
 
 	LSB = char_to_int(pSmart->MTP.R_OFFSET.OFFSET_1);
@@ -256,7 +256,7 @@ static void vt_hexa(int *index, struct SMART_DIM *pSmart, char *str)
 static int v203_adjustment(struct SMART_DIM *pSmart)
 {
 	unsigned long long result_1, result_2, result_3, result_4;
-	int add_mtp;
+	unsigned long long add_mtp;
 	int LSB;
 
 	LSB = char_to_int(pSmart->MTP.R_OFFSET.OFFSET_203);
@@ -335,7 +335,7 @@ static void v203_hexa(int *index, struct SMART_DIM *pSmart, char *str)
 static int v151_adjustment(struct SMART_DIM *pSmart)
 {
 	unsigned long long result_1, result_2, result_3, result_4;
-	int add_mtp;
+	unsigned long long add_mtp;
 	int LSB;
 
 	LSB = char_to_int(pSmart->MTP.R_OFFSET.OFFSET_151);
@@ -413,7 +413,7 @@ static void v151_hexa(int *index, struct SMART_DIM *pSmart, char *str)
 static int v87_adjustment(struct SMART_DIM *pSmart)
 {
 	unsigned long long result_1, result_2, result_3, result_4;
-	int add_mtp;
+	unsigned long long add_mtp;
 	int LSB;
 
 	LSB = char_to_int(pSmart->MTP.R_OFFSET.OFFSET_87);
@@ -491,7 +491,7 @@ static void v87_hexa(int *index, struct SMART_DIM *pSmart, char *str)
 static int v51_adjustment(struct SMART_DIM *pSmart)
 {
 	unsigned long long result_1, result_2, result_3, result_4;
-	int add_mtp;
+	unsigned long long add_mtp;
 	int LSB;
 
 	LSB = char_to_int(pSmart->MTP.R_OFFSET.OFFSET_51);
@@ -570,7 +570,7 @@ static void v51_hexa(int *index, struct SMART_DIM *pSmart, char *str)
 static int v35_adjustment(struct SMART_DIM *pSmart)
 {
 	unsigned long long result_1, result_2, result_3, result_4;
-	int add_mtp;
+	unsigned long long add_mtp;
 	int LSB;
 
 	LSB = char_to_int(pSmart->MTP.R_OFFSET.OFFSET_35);
@@ -649,7 +649,7 @@ static void v35_hexa(int *index, struct SMART_DIM *pSmart, char *str)
 static int v23_adjustment(struct SMART_DIM *pSmart)
 {
 	unsigned long long result_1, result_2, result_3, result_4;
-	int add_mtp;
+	unsigned long long add_mtp;
 	int LSB;
 
 	LSB = char_to_int(pSmart->MTP.R_OFFSET.OFFSET_23);
@@ -728,7 +728,7 @@ static void v23_hexa(int *index, struct SMART_DIM *pSmart, char *str)
 static int v11_adjustment(struct SMART_DIM *pSmart)
 {
 	unsigned long long result_1, result_2, result_3, result_4;
-	int add_mtp;
+	unsigned long long add_mtp;
 	int LSB;
 
 	LSB = char_to_int(pSmart->MTP.R_OFFSET.OFFSET_11);
@@ -807,7 +807,7 @@ static void v11_hexa(int *index, struct SMART_DIM *pSmart, char *str)
 static int v3_adjustment(struct SMART_DIM *pSmart)
 {
 	unsigned long long result_1, result_2, result_3, result_4;
-	int add_mtp;
+	unsigned long long add_mtp;
 	int LSB;
 
 	LSB = char_to_int(pSmart->MTP.R_OFFSET.OFFSET_3);
@@ -1226,24 +1226,17 @@ static int generate_gray_scale(struct SMART_DIM *pSmart)
 	return 0;
 }
 
-char offset_cal(int offset,  char value)
+char offset_cal(int offset,  int value)
 {
-	unsigned char real_value;
-
-	if (value < 0 )
-		real_value = value * -1;
-	else
-		real_value = value;
-
-	if (real_value - offset < 0)
+	if (value - offset < 0)
 		return 0;
-	else if (real_value - offset > 255)
+	else if (value - offset > 255)
 		return 0xFF;
 	else
-		return real_value - offset;
+		return value - offset;
 }
 
-void mtp_offset_substraction(struct SMART_DIM *pSmart, char *str)
+void mtp_offset_substraction(struct SMART_DIM *pSmart, int *str)
 {
 	int level_255_temp = 0;
 	int level_255_temp_MSB = 0;
@@ -1517,6 +1510,7 @@ static void gamma_init_vt888(struct SMART_DIM *pSmart, char *str, int size)
 {
 	long long candela_level[S6E8FA_TABLE_MAX] = {-1, };
 	int bl_index[S6E8FA_TABLE_MAX] = {-1, };
+	int gamma_setting[GAMMA_SET_MAX];
 
 	long long temp_cal_data = 0;
 	int bl_level, aor_bl_level;
@@ -1596,6 +1590,8 @@ static void gamma_init_vt888(struct SMART_DIM *pSmart, char *str, int size)
 	for (cnt = 0; cnt < S6E8FA_TABLE_MAX; cnt++)
 		(void)Make_hexa[cnt](bl_index , pSmart, str);
 
+	for (cnt = 0; cnt < GAMMA_SET_MAX; cnt++)
+		gamma_setting[cnt] = str[cnt];
 	/*
 	*	180CD ~ 110CD compensation
 	*/
@@ -1605,45 +1601,45 @@ static void gamma_init_vt888(struct SMART_DIM *pSmart, char *str, int size)
 		level_255_temp = (str[0] << 8) | str[1] ;
 		level_255_temp +=  adding_180cd_110cd_vt888[0][0];
 		level_255_temp_MSB = level_255_temp / 256;
-		str[0] = level_255_temp_MSB & 0xff;
-		str[1] = level_255_temp & 0xff;
+		gamma_setting[0] = level_255_temp_MSB & 0xff;
+		gamma_setting[1] = level_255_temp & 0xff;
 
 		level_255_temp = (str[2] << 8) | str[3] ;
 		level_255_temp +=  adding_180cd_110cd_vt888[0][1];
 		level_255_temp_MSB = level_255_temp / 256;
-		str[2] = level_255_temp_MSB & 0xff;
-		str[3] = level_255_temp & 0xff;
+		gamma_setting[2] = level_255_temp_MSB & 0xff;
+		gamma_setting[3] = level_255_temp & 0xff;
 
 		level_255_temp = (str[4] << 8) | str[5] ;
 		level_255_temp +=  adding_180cd_110cd_vt888[0][2];
 		level_255_temp_MSB = level_255_temp / 256;
-		str[4] = level_255_temp_MSB & 0xff;
-		str[5] = level_255_temp & 0xff;
+		gamma_setting[4] = level_255_temp_MSB & 0xff;
+		gamma_setting[5] = level_255_temp & 0xff;
 
 		/* V87 */
-		str[12] += adding_180cd_110cd_vt888[2][0];
-		str[13] += adding_180cd_110cd_vt888[2][1];
-		str[14] += adding_180cd_110cd_vt888[2][2];
+		gamma_setting[12] += adding_180cd_110cd_vt888[2][0];
+		gamma_setting[13] += adding_180cd_110cd_vt888[2][1];
+		gamma_setting[14] += adding_180cd_110cd_vt888[2][2];
 
 		/* V51 */
-		str[15] += adding_180cd_110cd_vt888[2][0];
-		str[16] += adding_180cd_110cd_vt888[2][1];
-		str[17] += adding_180cd_110cd_vt888[2][2];
+		gamma_setting[15] += adding_180cd_110cd_vt888[2][0];
+		gamma_setting[16] += adding_180cd_110cd_vt888[2][1];
+		gamma_setting[17] += adding_180cd_110cd_vt888[2][2];
 
 		/* V35 */
-		str[18] += adding_180cd_110cd_vt888[3][0];
-		str[19] += adding_180cd_110cd_vt888[3][1];
-		str[20] += adding_180cd_110cd_vt888[3][2];
+		gamma_setting[18] += adding_180cd_110cd_vt888[3][0];
+		gamma_setting[19] += adding_180cd_110cd_vt888[3][1];
+		gamma_setting[20] += adding_180cd_110cd_vt888[3][2];
 
 		/* V23 */
-		str[21] += adding_180cd_110cd_vt888[4][0];
-		str[22] += adding_180cd_110cd_vt888[4][1];
-		str[23] += adding_180cd_110cd_vt888[4][2];
+		gamma_setting[21] += adding_180cd_110cd_vt888[4][0];
+		gamma_setting[22] += adding_180cd_110cd_vt888[4][1];
+		gamma_setting[23] += adding_180cd_110cd_vt888[4][2];
 
 		/* V11 */
-		str[24] += adding_180cd_110cd_vt888[5][0];
-		str[25] += adding_180cd_110cd_vt888[5][1];
-		str[26] += adding_180cd_110cd_vt888[5][2];
+		gamma_setting[24] += adding_180cd_110cd_vt888[5][0];
+		gamma_setting[25] += adding_180cd_110cd_vt888[5][1];
+		gamma_setting[26] += adding_180cd_110cd_vt888[5][2];
 	}
 
 	if (pSmart->brightness_level <= 100) {
@@ -1652,29 +1648,33 @@ static void gamma_init_vt888(struct SMART_DIM *pSmart, char *str, int size)
 		level_255_temp = (str[0] << 8) | str[1] ;
 		level_255_temp +=  adding_compensation_vt888[point_index][0];
 		level_255_temp_MSB = level_255_temp / 256;
-		str[0] = level_255_temp_MSB & 0xff;
-		str[1] = level_255_temp & 0xff;
+		gamma_setting[0] = level_255_temp_MSB & 0xff;
+		gamma_setting[1] = level_255_temp & 0xff;
 
 		level_255_temp = (str[2] << 8) | str[3] ;
 		level_255_temp +=  adding_compensation_vt888[point_index][1];
 		level_255_temp_MSB = level_255_temp / 256;
-		str[2] = level_255_temp_MSB & 0xff;
-		str[3] = level_255_temp & 0xff;
+		gamma_setting[2] = level_255_temp_MSB & 0xff;
+		gamma_setting[3] = level_255_temp & 0xff;
 
 		level_255_temp = (str[4] << 8) | str[5] ;
 		level_255_temp +=  adding_compensation_vt888[point_index][2];
 		level_255_temp_MSB = level_255_temp / 256;
-		str[4] = level_255_temp_MSB & 0xff;
-		str[5] = level_255_temp & 0xff;
+		gamma_setting[4] = level_255_temp_MSB & 0xff;
+		gamma_setting[5] = level_255_temp & 0xff;
 
 		for (cnt = 3; cnt < 24; cnt++) {
-			str[cnt + 3] +=
+			gamma_setting[cnt + 3] +=
 				adding_compensation_vt888[point_index][cnt];
 		}
 	}
 
 	/*subtration MTP_OFFSET value from generated gamma table*/
-	mtp_offset_substraction(pSmart, str);
+	mtp_offset_substraction(pSmart, gamma_setting);
+
+	/* To avoid overflow */
+	for (cnt = 0; cnt < GAMMA_SET_MAX; cnt++)
+		str[cnt] = gamma_setting[cnt];
 }
 
 static int aor_fix_bl_leve_vt232[] = {
@@ -1864,6 +1864,7 @@ static void gamma_init_vt232(struct SMART_DIM *pSmart, char *str, int size)
 {
 	long long candela_level[S6E8FA_TABLE_MAX] = {-1, };
 	int bl_index[S6E8FA_TABLE_MAX] = {-1, };
+	int gamma_setting[GAMMA_SET_MAX];
 
 	long long temp_cal_data = 0;
 	int bl_level, aor_bl_level;
@@ -2056,6 +2057,10 @@ static void gamma_init_vt232(struct SMART_DIM *pSmart, char *str, int size)
 	for (cnt = 0; cnt < S6E8FA_TABLE_MAX; cnt++)
 		(void)Make_hexa[cnt](bl_index , pSmart, str);
 
+	/* To avoid overflow */
+	for (cnt = 0; cnt < GAMMA_SET_MAX; cnt++)
+		gamma_setting[cnt] = str[cnt];
+
 	/*
 	*	180CD ~ 110CD compensation
 	*/
@@ -2064,7 +2069,7 @@ static void gamma_init_vt232(struct SMART_DIM *pSmart, char *str, int size)
 		point_index = 18 - (pSmart->brightness_level / 10);
 
 		for (cnt = 15; cnt < 27; cnt++) {
-			str[cnt] +=
+			gamma_setting[cnt] +=
 				adding_180cd_110cd_vt232[point_index][cnt - 15];
 		}
 	}
@@ -2075,29 +2080,31 @@ static void gamma_init_vt232(struct SMART_DIM *pSmart, char *str, int size)
 		level_255_temp = (str[0] << 8) | str[1] ;
 		level_255_temp +=  adding_compensation_vt232[point_index][0];
 		level_255_temp_MSB = level_255_temp / 256;
-		str[0] = level_255_temp_MSB & 0xff;
-		str[1] = level_255_temp & 0xff;
+		gamma_setting[0] = level_255_temp_MSB & 0xff;
+		gamma_setting[1] = level_255_temp & 0xff;
 
 		level_255_temp = (str[2] << 8) | str[3] ;
 		level_255_temp +=  adding_compensation_vt232[point_index][1];
 		level_255_temp_MSB = level_255_temp / 256;
-		str[2] = level_255_temp_MSB & 0xff;
-		str[3] = level_255_temp & 0xff;
+		gamma_setting[2] = level_255_temp_MSB & 0xff;
+		gamma_setting[3] = level_255_temp & 0xff;
 
 		level_255_temp = (str[4] << 8) | str[5] ;
 		level_255_temp +=  adding_compensation_vt232[point_index][2];
 		level_255_temp_MSB = level_255_temp / 256;
-		str[4] = level_255_temp_MSB & 0xff;
-		str[5] = level_255_temp & 0xff;
+		gamma_setting[4] = level_255_temp_MSB & 0xff;
+		gamma_setting[5] = level_255_temp & 0xff;
 
 		for (cnt = 3; cnt < 24; cnt++) {
-			str[cnt + 3] +=
+			gamma_setting[cnt + 3] +=
 				adding_compensation_vt232[point_index][cnt];
 		}
 	}
 
 	/*subtration MTP_OFFSET value from generated gamma table*/
-	mtp_offset_substraction(pSmart, str);
+	mtp_offset_substraction(pSmart, gamma_setting);
+	for (cnt = 0; cnt < GAMMA_SET_MAX; cnt++)
+		str[cnt] = gamma_setting[cnt];
 }
 
 
@@ -2350,6 +2357,7 @@ static void gamma_init_evt1(
 {
 	long long candela_level[S6E8FA_TABLE_MAX] = {-1, };
 	int bl_index[S6E8FA_TABLE_MAX] = {-1, };
+	int gamma_setting[GAMMA_SET_MAX];
 
 	long long temp_cal_data = 0;
 	int bl_level;
@@ -2531,6 +2539,10 @@ static void gamma_init_evt1(
 	for (cnt = 0; cnt < S6E8FA_TABLE_MAX; cnt++)
 		(void)Make_hexa[cnt](bl_index , pSmart, str);
 
+	/* To avoid overflow */
+	for (cnt = 0; cnt < GAMMA_SET_MAX; cnt++)
+		gamma_setting[cnt] = str[cnt];
+
 	/*
 	*	RGB compensation
 	*/
@@ -2549,14 +2561,18 @@ static void gamma_init_evt1(
 				rgb_offset[table_index][cnt];
 			level_255_temp_MSB = level_V255 / 256;
 
-			str[cnt * 2] = level_255_temp_MSB & 0xff;
-			str[(cnt * 2) + 1] = level_V255 & 0xff;
+			gamma_setting[cnt * 2] = level_255_temp_MSB & 0xff;
+			gamma_setting[(cnt * 2) + 1] = level_V255 & 0xff;
 		} else {
-			str[cnt+3] += rgb_offset[table_index][cnt];
+			gamma_setting[cnt+3] += rgb_offset[table_index][cnt];
 		}
 	}
 	/*subtration MTP_OFFSET value from generated gamma table*/
-	mtp_offset_substraction(pSmart, str);
+	mtp_offset_substraction(pSmart, gamma_setting);
+
+	/* To avoid overflow */
+	for (cnt = 0; cnt < GAMMA_SET_MAX; cnt++)
+		str[cnt] = gamma_setting[cnt];
 }
 
 static int gradation_offset_evt1_second[][9] = {
@@ -2683,6 +2699,7 @@ static void gamma_init_evt1_second(
 {
 	long long candela_level[S6E8FA_TABLE_MAX] = {-1, };
 	int bl_index[S6E8FA_TABLE_MAX] = {-1, };
+	int gamma_setting[GAMMA_SET_MAX];
 
 	long long temp_cal_data = 0;
 	int bl_level;
@@ -2874,6 +2891,10 @@ static void gamma_init_evt1_second(
 	for (cnt = 0; cnt < S6E8FA_TABLE_MAX; cnt++)
 		(void)Make_hexa[cnt](bl_index , pSmart, str);
 
+	/* To avoid overflow */
+	for (cnt = 0; cnt < GAMMA_SET_MAX; cnt++)
+		gamma_setting[cnt] = str[cnt];
+
 	/*
 	*	RGB compensation
 	*/
@@ -2892,14 +2913,18 @@ static void gamma_init_evt1_second(
 				rgb_offset_evt1_second[table_index][cnt];
 			level_255_temp_MSB = level_V255 / 256;
 
-			str[cnt * 2] = level_255_temp_MSB & 0xff;
-			str[(cnt * 2) + 1] = level_V255 & 0xff;
+			gamma_setting[cnt * 2] = level_255_temp_MSB & 0xff;
+			gamma_setting[(cnt * 2) + 1] = level_V255 & 0xff;
 		} else {
-			str[cnt+3] += rgb_offset_evt1_second[table_index][cnt];
+			gamma_setting[cnt+3] += rgb_offset_evt1_second[table_index][cnt];
 		}
 	}
 	/*subtration MTP_OFFSET value from generated gamma table*/
-	mtp_offset_substraction(pSmart, str);
+	mtp_offset_substraction(pSmart, gamma_setting);
+
+	/* To avoid overflow */
+	for (cnt = 0; cnt < GAMMA_SET_MAX; cnt++)
+		str[cnt] = gamma_setting[cnt];
 }
 
 
@@ -3027,6 +3052,7 @@ static void gamma_init_evt1_third(
 {
 	long long candela_level[S6E8FA_TABLE_MAX] = {-1, };
 	int bl_index[S6E8FA_TABLE_MAX] = {-1, };
+	int gamma_setting[GAMMA_SET_MAX];
 
 	long long temp_cal_data = 0;
 	int bl_level;
@@ -3198,6 +3224,10 @@ static void gamma_init_evt1_third(
 	for (cnt = 0; cnt < S6E8FA_TABLE_MAX; cnt++)
 		(void)Make_hexa[cnt](bl_index , pSmart, str);
 
+	/* To avoid overflow */
+	for (cnt = 0; cnt < GAMMA_SET_MAX; cnt++)
+		gamma_setting[cnt] = str[cnt];
+
 	/*
 	*	RGB compensation
 	*/
@@ -3216,22 +3246,319 @@ static void gamma_init_evt1_third(
 				rgb_offset_evt1_third[table_index][cnt];
 			level_255_temp_MSB = level_V255 / 256;
 
-			str[cnt * 2] = level_255_temp_MSB & 0xff;
-			str[(cnt * 2) + 1] = level_V255 & 0xff;
+			gamma_setting[cnt * 2] = level_255_temp_MSB & 0xff;
+			gamma_setting[(cnt * 2) + 1] = level_V255 & 0xff;
 		} else {
-			str[cnt+3] += rgb_offset_evt1_third[table_index][cnt];
+			gamma_setting[cnt+3] += rgb_offset_evt1_third[table_index][cnt];
 		}
 	}
 	/*subtration MTP_OFFSET value from generated gamma table*/
-	mtp_offset_substraction(pSmart, str);
+	mtp_offset_substraction(pSmart, gamma_setting);
+
+	/* To avoid overflow */
+	for (cnt = 0; cnt < GAMMA_SET_MAX; cnt++)
+		str[cnt] = gamma_setting[cnt];
 }
 
+static int gradation_offset_Tulip_first[][9] = {
+/*	V255 V203 V151 V87 V51 V35 V23 V11 V3 */	
+	{0, 4, 6, 11, 14, 18, 20, 25, 25,},
+	{0, 3, 4, 9, 13, 16, 18, 23, 26,},
+	{0, 4, 6, 10, 13, 16, 18, 23, 22,},
+	{0, 4, 5, 9, 12, 14, 17, 21, 22,},
+	{0, 4, 5, 9, 11, 13, 16, 20, 19,},
+	{0, 2, 4, 8, 10, 13, 15, 20, 16,},
+	{0, 4, 4, 8, 10, 12, 15, 19, 15,},
+	{0, 3, 3, 7, 9, 11, 14, 18, 15,},
+	{0, 4, 4, 7, 9, 11, 13, 17, 16,},
+	{0, 3, 3, 6, 8, 10, 13, 16, 17,},
+	{0, 3, 3, 6, 7, 10, 12, 15, 16,},
+	{0, 3, 2, 5, 6, 9, 11, 15, 10,},
+	{0, 2, 2, 4, 6, 8, 10, 14, 10,},
+	{0, 3, 2, 5, 6, 8, 10, 13, 13,},
+	{0, 2, 1, 4, 6, 8, 9, 12, 12,},
+	{0, 3, 2, 4, 5, 7, 8, 11, 9,},
+	{0, 2, 1, 4, 5, 7, 8, 11, 9,},
+	{0, 2, 1, 4, 5, 7, 7, 10, 9,},
+	{0, 3, 1, 4, 4, 6, 7, 10, 8,},
+	{0, 2, 1, 3, 4, 6, 6, 9, 6,},
+	{0, 2, 1, 3, 4, 5, 6, 8, 8,},
+	{0, 2, 1, 3, 3, 5, 5, 7, 7,},
+	{0, 2, 1, 3, 3, 5, 5, 7, 5,},
+	{0, 2, 1, 2, 2, 4, 4, 6, 6,},
+	{0, 2, 1, 2, 2, 4, 4, 5, 5,},
+	{0, 2, 1, 2, 2, 3, 3, 4, 6,},
+	{0, 2, 0, 2, 2, 3, 3, 4, 4,},
+	{0, 2, 0, 2, 1, 3, 2, 3, 4,},
+	{0, 2, 0, 2, 1, 2, 2, 3, 1,},
+	{0, 2, 0, 2, 1, 2, 1, 2, 4,},
+	{0, 1, 1, 2, 1, 2, 2, 3, 1,},
+	{0, 1, 2, 2, 1, 1, 2, 3, 1,},
+	{0, 2, 1, 2, 1, 2, 1, 3, 1,},
+	{0, 2, 3, 3, 2, 2, 3, 3, 4,},
+	{0, 1, 2, 3, 1, 2, 2, 2, 2,},
+	{0, 2, 3, 2, 1, 2, 2, 2, 3,},
+	{0, 2, 2, 2, 1, 2, 2, 2, 3,},
+	{0, 1, 3, 2, 2, 2, 3, 3, 3,},
+	{0, 2, 3, 2, 2, 1, 2, 2, 1,},
+	{0, 3, 2, 2, 2, 1, 2, 2, 1,},
+	{0, 2, 2, 2, 2, 2, 1, 2, 1,},
+	{0, 2, 3, 2, 1, 1, 2, 2, 0,},
+	{0, 2, 2, 2, 1, 1, 1, 1, 1,},
+	{0, 2, 3, 1, 1, 0, 1, 0, 2,},
+	{0, 2, 3, 1, 1, 0, 1, 0, 2,},
+	{0, 2, 2, 1, 1, 0, 1, 0, 0,},
+	{0, 2, 2, 1, 1, 0, 1, 0, 0,},
+	{0, 2, 2, 1, 0, 0, 1, -1, 2,},
+	{0, 1, 1, 0, 0, 0, 0, -1, 0,},
+	{0, 1, 1, 0, 0, -1, 0, -1, 0,},
+	{0, 1, 1, 0, 0, -1, 0, -1, 0,},
+	{0, 1, 1, -1, 1, -1, 0, -1, 2,},
+	{0, 1, 0, -1, -1, -1, -1, -1, 1,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0,},
+};
+
+static int rgb_offset_Tulip_first[][RGB_COMPENSATION] = {
+/*	R255 G255 B255 R203 G203 B203 R151 G151 B151
+	R87 G87 B87 R51 G51 B51 R35 G35 B35 
+	R23 G23 B23 R11 G11 B11
+*/
+	{-1, 0, -1, -1, 0, -2, 0, 0, 0, -2, 2, -4, -4, 2, -6, -3, 3, -6, -2, 3, -8, 0, 4, -9,},
+	{0, 0, 0, -1, 0, -1, -1, 0, -1, -1, 1, -4, -3, 2, -6, -3, 3, -6, -4, 3, -8, 0, 4, -10,},
+	{0, 0, 0, -1, 0, -1, -1, 0, -1, -3, 1, -4, -3, 2, -6, -3, 2, -6, -5, 2, -8, 0, 4, -10,},
+	{0, 0, 0, -1, 0, -1, -2, 0, -3, -1, 1, -2, -3, 2, -5, -3, 2, -6, -2, 2, -6, 0, 5, -12,},
+	{0, 0, 0, -1, 0, -1, -1, 0, -2, -2, 1, -3, -2, 2, -4, -3, 2, -5, -3, 2, -6, 0, 5, -12,},
+	{0, 0, 0, -1, 0, -1, -1, 0, -2, -2, 1, -2, -3, 2, -5, -2, 2, -4, -3, 2, -7, 0, 4, -10,},
+	{0, 0, 0, -1, 0, -1, -1, 0, -2, -2, 1, -2, -2, 2, -4, -4, 2, -5, -2, 2, -6, 0, 5, -10,},
+	{0, 0, 0, -1, 0, -1, -1, 0, -2, -1, 0, -2, -3, 1, -4, -3, 2, -5, -2, 2, -6, 0, 5, -11,},
+	{0, 0, 0, -1, 0, -1, -1, 0, -2, -2, 0, -2, -3, 1, -4, -3, 1, -4, -3, 1, -8, 0, 5, -10,},
+	{0, 0, 0, -1, 0, -1, -1, 0, -2, -1, 0, -2, -3, 1, -4, -3, 1, -4, -2, 1, -6, 0, 5, -12,},
+	{0, 0, 0, 0, 0, 0, 0, 0, -1, -1, 1, -2, -3, 1, -4, -3, 1, -4, -3, 1, -7, 0, 6, -13,},
+	{0, 0, 0, 0, 0, 0, 0, 0, -1, -1, 1, -2, -3, 1, -3, -3, 1, -4, -3, 1, -7, 0, 4, -9,},
+	{0, 0, 0, 0, 0, 0, 0, 0, -1, -2, 0, -2, -2, 1, -3, -3, 2, -4, -2, 2, -6, 0, 4, -10,},
+	{0, 0, 0, 0, 0, 0, 0, 0, -1, -2, 0, -2, -2, 1, -2, -2, 1, -4, -3, 1, -6, 0, 5, -12,},
+	{0, 0, 0, 0, 0, 0, 0, 0, -1, -2, 0, -2, -3, 1, -3, -1, 1, -3, -3, 1, -6, 1, 5, -12,},
+	{0, 0, 0, 0, 0, 0, 0, 0, -1, -1, 0, -2, -1, 1, -2, -3, 1, -3, -3, 1, -6, 1, 6, -12,},
+	{0, 0, 0, 0, 0, 0, 0, 0, -1, -2, 0, -2, -2, 1, -2, -2, 1, -2, -3, 1, -6, 1, 5, -12,},
+	{0, 0, 0, 0, 0, 0, 0, 0, -1, -2, 0, -2, -2, 0, -2, -2, 1, -2, -4, 1, -7, 2, 6, -12,},
+	{0, 0, 0, 0, 0, 0, 0, 0, -1, -1, 0, -2, -2, 0, -2, -2, 1, -2, -4, 1, -6, 1, 5, -12,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, -2, 0, -1, -2, 0, -2, -1, 1, -2, -3, 1, -6, 1, 5, -11,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, -2, 0, -1, -2, 0, -2, -2, 0, -2, -2, 0, -5, 1, 6, -14,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, -2, -2, 0, 0, -2, 1, -2, -2, 1, -5, 2, 6, -14,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, -2, -2, 0, 0, -2, 0, -2, -2, 0, -4, 2, 6, -12,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -2, 0, 0, -1, 0, -2, -3, 0, -6, 1, 5, -12,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -2, 0, 0, 0, 0, -1, -3, 0, -5, 2, 6, -13,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -2, 0, 0, 0, 0, -1, -1, 0, -4, 2, 6, -13,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -2, 0, 0, -1, 1, -2, 0, 1, -4, 1, 6, -12,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, 0, 0, -1, 0, -1, 0, 0, -4, 2, 5, -12,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -2, 0, 0, 0, 0, 0, 0, 0, -4, 3, 5, -10,},
+	{0, 0, 0, -2, 0, -1, 0, 0, 0, 0, 0, -1, -1, 0, 1, 0, 0, -1, 0, 0, -5, 3, 5, -11,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, -1, 0, 0, -4, 3, 4, -9,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, -3, 3, 4, -9,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -3, 3, 4, -8,},
+	{0, 0, 0, -2, 0, -1, 0, 0, 0, -1, 0, -1, 0, 0, 0, 0, 0, 0, -2, 0, -4, 2, 5, -11,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, -2, 2, 4, -10,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, -3, 2, 4, -10,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, -1, 0, -2, 3, 4, -10,},
+	{0, 0, 0, -1, 0, -1, -1, 0, -1, -1, 0, 0, 0, 0, -1, 0, 0, 0, -1, 0, -2, 1, 4, -10,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, -2, 1, 4, -9,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, 0, 1, 0, 0, -1, 2, 3, -8,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, 0, 1, -1, 0, -1, 2, 3, -8,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, -1, 2, 3, -8,},
+	{0, 0, 0, 0, 0, 0, -1, 0, -1, -2, 0, -1, 0, 0, -1, 0, 0, 2, -1, 0, -1, 3, 3, -9,},
+	{0, 0, 0, -2, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 1, -2, 0, 2, 0, 0, 0, 2, 3, -8,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -2, 0, 2, 0, 0, 0, 2, 3, -8,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -2, 0, 2, 0, 0, 0, 2, 3, -7,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -2, 0, 2, 0, 0, 0, 3, 3, -6,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, 4, 2, -5,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 3, 0, -1, -1, 4, 2, -5,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 3, 0, -1, 0, 4, 1, -4,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,},
+};
+
+#define AOR_TULIP_FIRST_BL_LEVEL 265 /* 300 ~ 265 */
+#define AOR_TULIP_SECOND_BL_LEVEL 172 /*249 ~ 172 (162)*/
+#define AOR_TULIP_THIRD_BL_LEVEL 72 /*152 ~ 72*/
+
+#define AOR_ADJUST_TULIP_CD 112
+
+static void gamma_init_Tulip_first(
+				struct SMART_DIM *pSmart, char *str, int size)
+{
+	long long candela_level[S6E8FA_TABLE_MAX] = {-1, };
+	int bl_index[S6E8FA_TABLE_MAX] = {-1, };
+	int gamma_setting[GAMMA_SET_MAX];
+
+	long long temp_cal_data = 0;
+	int bl_level;
+
+	int level_255_temp_MSB = 0;
+	int level_V255 = 0;
+
+	int point_index;
+	int cnt;
+	int table_index;
+
+	/*calculate candela level */
+	if (pSmart->brightness_level >= AOR_TULIP_FIRST_BL_LEVEL) {
+		/* 300CD ~ 265CD */
+		if (pSmart->brightness_level == 265)
+			bl_level = 267;
+		else if (pSmart->brightness_level == 282)
+			bl_level = 283;
+		else
+			bl_level = 300;
+	} else if ((pSmart->brightness_level < AOR_TULIP_FIRST_BL_LEVEL) &&
+				(pSmart->brightness_level >= AOR_TULIP_SECOND_BL_LEVEL)) {
+		/* 249CD ~ 172(162)CD */
+		bl_level = 251;
+	} else if ((pSmart->brightness_level < AOR_TULIP_SECOND_BL_LEVEL) &&
+				(pSmart->brightness_level >= AOR_TULIP_THIRD_BL_LEVEL)) {
+		/* 162(152)CD ~ 72CD */
+		if (pSmart->brightness_level == 72)
+			bl_level = 118;
+		else if (pSmart->brightness_level == 77)
+			bl_level = 126;
+		else if (pSmart->brightness_level == 82)
+			bl_level = 134;
+		else if (pSmart->brightness_level == 87)
+			bl_level = 142;
+		else if (pSmart->brightness_level == 93)
+			bl_level = 151;
+		else if (pSmart->brightness_level == 98)
+			bl_level = 158;
+		else if (pSmart->brightness_level == 105)
+			bl_level = 171;
+		else if (pSmart->brightness_level == 111)
+			bl_level = 180;
+		else if (pSmart->brightness_level == 119)
+			bl_level = 191;
+		else if (pSmart->brightness_level == 126)
+			bl_level = 202;
+		else if (pSmart->brightness_level == 134)
+			bl_level = 213;
+		else if (pSmart->brightness_level == 143)
+			bl_level = 226;
+		else if (pSmart->brightness_level == 152)
+			bl_level = 239;			
+		else
+			bl_level = 251;
+	} else {
+		/* 68(64)CD ~ 10CD */
+		bl_level = AOR_ADJUST_TULIP_CD;
+	}
+
+	for (cnt = 0; cnt < S6E8FA_TABLE_MAX; cnt++) {
+		point_index = S6E8FA_ARRAY[cnt+1];
+		if(cnt == (S6E8FA_TABLE_MAX - 1)) {
+			temp_cal_data =
+			((long long)(candela_coeff_2p2[point_index])) *
+			((long long)(bl_level));
+		}
+		else {
+			temp_cal_data =
+			((long long)(candela_coeff_2p15[point_index])) *
+			((long long)(bl_level));
+		}
+		candela_level[cnt] = temp_cal_data;
+	}
+
+#ifdef SMART_DIMMING_DEBUG
+	printk(KERN_INFO "\n candela_1:%llu  candela_3:%llu  candela_11:%llu ",
+		candela_level[0], candela_level[1], candela_level[2]);
+	printk(KERN_INFO "candela_23:%llu  candela_35:%llu  candela_51:%llu ",
+		candela_level[3], candela_level[4], candela_level[5]);
+	printk(KERN_INFO "candela_87:%llu  candela_151:%llu  candela_203:%llu ",
+		candela_level[6], candela_level[7], candela_level[8]);
+	printk(KERN_INFO "candela_255:%llu brightness_level %d\n", candela_level[9], pSmart->brightness_level);
+#endif
+
+	for (cnt = 0; cnt < S6E8FA_TABLE_MAX; cnt++) {
+		if (searching_function(candela_level[cnt],
+			&(bl_index[cnt]), GAMMA_CURVE_2P2)) {
+			pr_info("%s searching functioin error cnt:%d\n",
+			__func__, cnt);
+		}
+	}
+
+	/*
+	*	Candela compensation
+	*/
+	for (cnt = 1; cnt < S6E8FA_TABLE_MAX; cnt++) {
+		table_index = find_cadela_table(pSmart->brightness_level);
+
+		if (table_index == -1) {
+			table_index = CCG6_MAX_TABLE;
+			pr_info("%s fail candela table_index cnt : %d brightness %d",
+				__func__, cnt, pSmart->brightness_level);
+		}
+
+		bl_index[S6E8FA_TABLE_MAX - cnt] +=
+			gradation_offset_Tulip_first[table_index][cnt - 1];
+
+		/* THERE IS M-GRAY0 target */
+		if (bl_index[S6E8FA_TABLE_MAX - cnt] == 0)
+			bl_index[S6E8FA_TABLE_MAX - cnt] = 1;
+	}
+
+#ifdef SMART_DIMMING_DEBUG
+	printk(KERN_INFO "\n bl_index_1:%d  bl_index_3:%d  bl_index_11:%d",
+		bl_index[0], bl_index[1], bl_index[2]);
+	printk(KERN_INFO "bl_index_23:%d bl_index_35:%d  bl_index_51:%d",
+		bl_index[3], bl_index[4], bl_index[5]);
+	printk(KERN_INFO "bl_index_87:%d  bl_index_151:%d bl_index_203:%d",
+		bl_index[6], bl_index[7], bl_index[8]);
+	printk(KERN_INFO "bl_index_255:%d\n", bl_index[9]);
+#endif
+	/*Generate Gamma table*/
+	for (cnt = 0; cnt < S6E8FA_TABLE_MAX; cnt++)
+		(void)Make_hexa[cnt](bl_index , pSmart, str);
+
+	/* To avoid overflow */
+	for (cnt = 0; cnt < GAMMA_SET_MAX; cnt++)
+		gamma_setting[cnt] = str[cnt];
+
+	/*
+	*	RGB compensation
+	*/
+	for (cnt = 0; cnt < RGB_COMPENSATION; cnt++) {
+		table_index = find_cadela_table(pSmart->brightness_level);
+
+		if (table_index == -1) {
+			table_index = CCG6_MAX_TABLE;
+			pr_info("%s fail RGB table_index cnt : %d brightness %d",
+				__func__, cnt, pSmart->brightness_level);
+		}
+
+		if (cnt < 3) {
+			level_V255 = str[cnt * 2] << 8 | str[(cnt * 2) + 1];
+			level_V255 +=
+				rgb_offset_Tulip_first[table_index][cnt];
+			level_255_temp_MSB = level_V255 / 256;
+
+			gamma_setting[cnt * 2] = level_255_temp_MSB & 0xff;
+			gamma_setting[(cnt * 2) + 1] = level_V255 & 0xff;
+		} else {
+			gamma_setting[cnt+3] += rgb_offset_Tulip_first[table_index][cnt];
+		}
+}
+	/*subtration MTP_OFFSET value from generated gamma table*/
+	mtp_offset_substraction(pSmart, gamma_setting);
+
+	/* To avoid overflow */
+	for (cnt = 0; cnt < GAMMA_SET_MAX; cnt++)
+		str[cnt] = gamma_setting[cnt];
+}
 #endif
 
 static void pure_gamma_init(struct SMART_DIM *pSmart, char *str, int size)
 {
 	long long candela_level[S6E8FA_TABLE_MAX] = {-1, };
 	int bl_index[S6E8FA_TABLE_MAX] = {-1, };
+	int gamma_setting[GAMMA_SET_MAX];
 
 	long long temp_cal_data = 0;
 	int bl_level, cnt;
@@ -3287,7 +3614,15 @@ static void pure_gamma_init(struct SMART_DIM *pSmart, char *str, int size)
 	for (cnt = 0; cnt < S6E8FA_TABLE_MAX; cnt++)
 		(void)Make_hexa[cnt](bl_index , pSmart, str);
 
-	mtp_offset_substraction(pSmart, str);
+	/* To avoid overflow */
+	for (cnt = 0; cnt < GAMMA_SET_MAX; cnt++)
+		gamma_setting[cnt] = str[cnt];
+
+	mtp_offset_substraction(pSmart, gamma_setting);
+
+	/* To avoid overflow */
+	for (cnt = 0; cnt < GAMMA_SET_MAX; cnt++)
+		str[cnt] = gamma_setting[cnt];
 }
 
 
@@ -3452,6 +3787,74 @@ static void mtp_sorting(struct SMART_DIM *psmart)
 	}
 }
 
+#ifdef SMART_DIMMING_DEBUG
+void print_RGB_offset(struct SMART_DIM *pSmart)
+{
+	pr_info("%s MTP Offset VT R:%d G:%d B:%d\n", __func__,
+			char_to_int(pSmart->MTP.R_OFFSET.OFFSET_1),
+			char_to_int(pSmart->MTP.G_OFFSET.OFFSET_1),
+			char_to_int(pSmart->MTP.B_OFFSET.OFFSET_1));
+	pr_info("%s MTP Offset V3 R:%d G:%d B:%d\n", __func__,
+			char_to_int(pSmart->MTP.R_OFFSET.OFFSET_3),
+			char_to_int(pSmart->MTP.G_OFFSET.OFFSET_3),
+			char_to_int(pSmart->MTP.B_OFFSET.OFFSET_3));
+	pr_info("%s MTP Offset V11 R:%d G:%d B:%d\n", __func__,
+			char_to_int(pSmart->MTP.R_OFFSET.OFFSET_11),
+			char_to_int(pSmart->MTP.G_OFFSET.OFFSET_11),
+			char_to_int(pSmart->MTP.B_OFFSET.OFFSET_11));
+	pr_info("%s MTP Offset V23 R:%d G:%d B:%d\n", __func__,
+			char_to_int(pSmart->MTP.R_OFFSET.OFFSET_23),
+			char_to_int(pSmart->MTP.G_OFFSET.OFFSET_23),
+			char_to_int(pSmart->MTP.B_OFFSET.OFFSET_23));
+	pr_info("%s MTP Offset V35 R:%d G:%d B:%d\n", __func__,
+			char_to_int(pSmart->MTP.R_OFFSET.OFFSET_35),
+			char_to_int(pSmart->MTP.G_OFFSET.OFFSET_35),
+			char_to_int(pSmart->MTP.B_OFFSET.OFFSET_35));
+	pr_info("%s MTP Offset V51 R:%d G:%d B:%d\n", __func__,
+			char_to_int(pSmart->MTP.R_OFFSET.OFFSET_51),
+			char_to_int(pSmart->MTP.G_OFFSET.OFFSET_51),
+			char_to_int(pSmart->MTP.B_OFFSET.OFFSET_51));
+	pr_info("%s MTP Offset V87 R:%d G:%d B:%d\n", __func__,
+			char_to_int(pSmart->MTP.R_OFFSET.OFFSET_87),
+			char_to_int(pSmart->MTP.G_OFFSET.OFFSET_87),
+			char_to_int(pSmart->MTP.B_OFFSET.OFFSET_87));
+	pr_info("%s MTP Offset V151 R:%d G:%d B:%d\n", __func__,
+			char_to_int(pSmart->MTP.R_OFFSET.OFFSET_151),
+			char_to_int(pSmart->MTP.G_OFFSET.OFFSET_151),
+			char_to_int(pSmart->MTP.B_OFFSET.OFFSET_151));
+	pr_info("%s MTP Offset V203 R:%d G:%d B:%d\n", __func__,
+			char_to_int(pSmart->MTP.R_OFFSET.OFFSET_203),
+			char_to_int(pSmart->MTP.G_OFFSET.OFFSET_203),
+			char_to_int(pSmart->MTP.B_OFFSET.OFFSET_203));
+	pr_info("%s MTP Offset V255 R:%d G:%d B:%d\n", __func__,
+			char_to_int_v255(pSmart->MTP.R_OFFSET.OFFSET_255_MSB,
+				pSmart->MTP.R_OFFSET.OFFSET_255_LSB),
+			char_to_int_v255(pSmart->MTP.G_OFFSET.OFFSET_255_MSB,
+				pSmart->MTP.G_OFFSET.OFFSET_255_LSB),
+			char_to_int_v255(pSmart->MTP.B_OFFSET.OFFSET_255_MSB,
+				pSmart->MTP.B_OFFSET.OFFSET_255_LSB));
+}
+
+void log_sorting(char *dst, char *src)
+{
+	int sorting[GAMMA_SET_MAX] = {
+		30, 31, 32, //VT
+		27, 28, 29, //V3
+		24, 25, 26, //V11
+		21, 22, 23, //V23
+		18, 19, 20, //V35
+		15, 16, 17, //V51
+		12, 13, 14, //V87
+		9, 10, 11, //V151
+		6, 7, 8, //V203
+		0, 1, 2, 3, 4, 5,  //V255
+	};
+	int loop;
+
+	for (loop = 0; loop < GAMMA_SET_MAX; loop++)
+		dst[loop] = src[sorting[loop]];
+}
+#endif
 int smart_dimming_init(struct SMART_DIM *psmart)
 {
 	int lux_loop;
@@ -3459,6 +3862,7 @@ int smart_dimming_init(struct SMART_DIM *psmart)
 #ifdef SMART_DIMMING_DEBUG
 	int cnt;
 	char pBuffer[256];
+	char log_buf[GAMMA_SET_MAX];
 	memset(pBuffer, 0x00, 256);
 #endif
 	id1 = (psmart->ldi_revision & 0x00FF0000) >> 16;
@@ -3468,6 +3872,10 @@ int smart_dimming_init(struct SMART_DIM *psmart)
 	mtp_sorting(psmart);
 	gamma_cell_determine(psmart->ldi_revision);
 	set_max_lux_table();
+
+#ifdef SMART_DIMMING_DEBUG
+	print_RGB_offset(psmart);
+#endif
 
 	v255_adjustment(psmart);
 	vt_adjustment(psmart);
@@ -3518,7 +3926,16 @@ int smart_dimming_init(struct SMART_DIM *psmart)
 				(char *)(&(psmart->gen_table[lux_loop].gamma_setting)),
 				GAMMA_SET_MAX);
 		} else { 
+			if ((id2 & EL_METERIAL_MASK) == TULIP) {
 			if (id3 == MAGNA_C_FIRST_ID || id3 == MAGNA_C_SECOND_ID)
+					gamma_init_Tulip_first(psmart,
+					(char *)(&(psmart->gen_table[lux_loop].gamma_setting)),
+					GAMMA_SET_MAX);
+				else
+					gamma_init_Tulip_first(psmart,
+					(char *)(&(psmart->gen_table[lux_loop].gamma_setting)),
+					GAMMA_SET_MAX);
+			} else if (id3 == MAGNA_C_FIRST_ID || id3 == MAGNA_C_SECOND_ID)
 				gamma_init_evt1_third(psmart,
 				(char *)(&(psmart->gen_table[lux_loop].gamma_setting)),
 				GAMMA_SET_MAX);
@@ -3526,7 +3943,6 @@ int smart_dimming_init(struct SMART_DIM *psmart)
 				gamma_init_vt888(psmart,
 				(char *)(&(psmart->gen_table[lux_loop].gamma_setting)),
 				GAMMA_SET_MAX);
-
 		}
 #else
 		pure_gamma_init(psmart,
@@ -3543,11 +3959,12 @@ int smart_dimming_init(struct SMART_DIM *psmart)
 
 #ifdef SMART_DIMMING_DEBUG
 	for (lux_loop = 0; lux_loop < psmart->lux_table_max; lux_loop++) {
-		for (cnt = 0; cnt < GAMMA_SET_MAX; cnt++)
-			snprintf(pBuffer + strnlen(pBuffer, 256), 256, " %d",
-				psmart->gen_table[lux_loop].gamma_setting[cnt]);
+		log_sorting(log_buf, psmart->gen_table[lux_loop].gamma_setting);
 
-		pr_info("lux : %d  %s", psmart->plux_table[lux_loop], pBuffer);
+		for (cnt = 0; cnt < GAMMA_SET_MAX; cnt++)
+			snprintf(pBuffer + strnlen(pBuffer, 256), 256, " %3d", log_buf[cnt]);
+
+		pr_info("lux : %3d  %s", psmart->plux_table[lux_loop], pBuffer);
 		memset(pBuffer, 0x00, 256);
 	}
 

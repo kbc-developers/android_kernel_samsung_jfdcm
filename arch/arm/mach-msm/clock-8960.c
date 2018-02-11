@@ -26,6 +26,7 @@
 #include <mach/msm_iomap.h>
 #include <mach/rpm-regulator.h>
 #include <mach/socinfo.h>
+#include <mach/msm8960-gpio.h>
 
 #include "clock.h"
 #include "clock-local.h"
@@ -1536,7 +1537,8 @@ static struct clk_freq_tbl clk_tbl_sdc[] = {
 	F_SDC( 17070000, pll8,  1, 2,  45),
 	F_SDC( 20210000, pll8,  1, 1,  19),
 	F_SDC( 24000000, pll8,  4, 1,   4),
-	F_SDC( 48000000, pll8,  1, 2,  19),
+	F_SDC( 40000000, pll8,  1, 2,  19),    /* only for sdc2 using T-Flash with L/S */
+	F_SDC( 48000000, pll8,  4, 1,   2),
 	F_SDC( 64000000, pll8,  3, 1,   2),
 	F_SDC( 96000000, pll8,  4, 0,   0),
 	F_SDC(192000000, pll8,  2, 0,   0),
@@ -5598,27 +5600,16 @@ static struct clk_lookup msm_clocks_8064[] = {
 	CLK_LOOKUP("iface_clk",		vfe_p_clk.c,	"footswitch-8x60.8"),
 	CLK_LOOKUP("vpe_pclk",		vpe_p_clk.c,		"msm_vpe.0"),
 	CLK_LOOKUP("iface_clk",		vpe_p_clk.c,	"footswitch-8x60.9"),
-
-	CLK_LOOKUP("bit_clk",		mi2s_bit_clk.c,
-			    "msm-dai-q6-mi2s"),
-	CLK_LOOKUP("osr_clk",		mi2s_osr_clk.c,
-			    "msm-dai-q6-mi2s"),
-	CLK_LOOKUP("bit_clk",		codec_i2s_mic_bit_clk.c,
-			   "msm-dai-q6.1"),
-	CLK_LOOKUP("osr_clk",		codec_i2s_mic_osr_clk.c,
-			   "msm-dai-q6.1"),
-	CLK_LOOKUP("bit_clk",		spare_i2s_mic_bit_clk.c,
-			   "msm-dai-q6.5"),
-	CLK_LOOKUP("osr_clk",		spare_i2s_mic_osr_clk.c,
-			   "msm-dai-q6.5"),
-	CLK_LOOKUP("bit_clk",		codec_i2s_spkr_bit_clk.c,
-			   "msm-dai-q6.16384"),
-	CLK_LOOKUP("osr_clk",		codec_i2s_spkr_osr_clk.c,
-			   "msm-dai-q6.16384"),
-	CLK_LOOKUP("bit_clk",		spare_i2s_spkr_bit_clk.c,
-			   "msm-dai-q6.4"),
-	CLK_LOOKUP("osr_clk",		spare_i2s_spkr_osr_clk.c,
-			   "msm-dai-q6.4"),
+	CLK_LOOKUP("bit_clk",		mi2s_bit_clk.c, "msm-dai-q6-mi2s"),
+	CLK_LOOKUP("osr_clk",		mi2s_osr_clk.c, "msm-dai-q6-mi2s"),
+	CLK_LOOKUP("bit_clk",		codec_i2s_mic_bit_clk.c,  "msm-dai-q6.1"),
+	CLK_LOOKUP("osr_clk",		codec_i2s_mic_osr_clk.c,  "msm-dai-q6.1"),
+	CLK_LOOKUP("bit_clk",		spare_i2s_mic_bit_clk.c,  "msm-dai-q6.5"),
+	CLK_LOOKUP("osr_clk",		spare_i2s_mic_osr_clk.c,  "msm-dai-q6.5"),
+	CLK_LOOKUP("bit_clk",		codec_i2s_spkr_bit_clk.c, "msm-dai-q6.16384"),
+	CLK_LOOKUP("osr_clk",		codec_i2s_spkr_osr_clk.c, "msm-dai-q6.16384"),
+	CLK_LOOKUP("bit_clk",		spare_i2s_spkr_bit_clk.c, "msm-dai-q6.4"),
+	CLK_LOOKUP("osr_clk",		spare_i2s_spkr_osr_clk.c, "msm-dai-q6.4"),
 	CLK_LOOKUP("pcm_clk",		pcm_clk.c,		"msm-dai-q6.2"),
 	CLK_LOOKUP("pcm_clk",		pcm_clk.c,		"msm-dai-q6.3"),
 	CLK_LOOKUP("sps_slimbus_clk",	sps_slimbus_clk.c,	""),
@@ -5772,16 +5763,22 @@ static struct clk_lookup msm_clocks_8960_common[] __initdata = {
 	CLK_LOOKUP("core_clk",		gsbi5_uart_clk.c, "msm_serial_hsl.0"),
 	CLK_LOOKUP("core_clk",		gsbi6_uart_clk.c, "msm_serial_hs.0"),
 	CLK_LOOKUP("core_clk",		gsbi7_uart_clk.c,	""),
+#if !defined(CONFIG_SEC_PRODUCT_8960)
 	/* used on 8960 SGLTE for console */
 	CLK_LOOKUP("core_clk",		gsbi8_uart_clk.c, "msm_serial_hsl.1"),
 	/* used on 8960 standalone with Atheros Bluetooth */
 	CLK_LOOKUP("core_clk",		gsbi8_uart_clk.c, "msm_serial_hs.2"),
+#endif
 	CLK_LOOKUP("core_clk",		gsbi9_uart_clk.c, "msm_serial_hs.1"),
 	CLK_LOOKUP("core_clk",		gsbi10_uart_clk.c,	""),
 	CLK_LOOKUP("core_clk",		gsbi11_uart_clk.c,	""),
 	CLK_LOOKUP("core_clk",		gsbi12_uart_clk.c,	""),
 #if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 	CLK_LOOKUP("core_clk",		gsbi1_qup_clk.c,	"spi_qsd.1"),
+#elif defined(CONFIG_VP_A2220)
+	CLK_LOOKUP("core_clk",          gsbi1_qup_clk.c,        "qup_i2c.1"),
+#elif defined(CONFIG_S5C73M3)
+	CLK_LOOKUP("core_clk",          gsbi1_qup_clk.c,        NULL),
 #else
 	CLK_LOOKUP("core_clk",		gsbi1_qup_clk.c,	"spi_qsd.0"),
 #endif
@@ -5791,10 +5788,14 @@ static struct clk_lookup msm_clocks_8960_common[] __initdata = {
 	CLK_LOOKUP("core_clk",		gsbi5_qup_clk.c,	""),
 	CLK_LOOKUP("core_clk",		gsbi6_qup_clk.c,	""),
 	CLK_LOOKUP("core_clk",		gsbi7_qup_clk.c,	""),
-	CLK_LOOKUP("core_clk",		gsbi8_qup_clk.c,	""),
+	CLK_LOOKUP("core_clk",		gsbi8_qup_clk.c,	"qup_i2c.8"),
 	CLK_LOOKUP("core_clk",		gsbi9_qup_clk.c,	""),
 	CLK_LOOKUP("core_clk",		gsbi10_qup_clk.c,	"qup_i2c.10"),
+#ifdef CONFIG_S5C73M3
+	CLK_LOOKUP("core_clk",		gsbi11_qup_clk.c,	"spi_qsd.0"),
+#else
 	CLK_LOOKUP("core_clk",		gsbi11_qup_clk.c,	""),
+#endif
 	CLK_LOOKUP("core_clk",		gsbi12_qup_clk.c,	"qup_i2c.12"),
 	CLK_LOOKUP("core_clk",		pdm_clk.c,		""),
 	CLK_LOOKUP("mem_clk",		pmem_clk.c,		"msm_sps"),
@@ -5826,6 +5827,10 @@ static struct clk_lookup msm_clocks_8960_common[] __initdata = {
 	CLK_LOOKUP("dma_bam_pclk",	dma_bam_p_clk.c,	NULL),
 #if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 	CLK_LOOKUP("iface_clk",		gsbi1_p_clk.c,		"spi_qsd.1"),
+#elif defined(CONFIG_VP_A2220)
+	CLK_LOOKUP("iface_clk",         gsbi1_p_clk.c,          "qup_i2c.1"),
+#elif defined(CONFIG_S5C73M3)
+	CLK_LOOKUP("iface_clk",          gsbi1_p_clk.c,        ""),
 #else
 	CLK_LOOKUP("iface_clk",		gsbi1_p_clk.c,		"spi_qsd.0"),
 #endif	
@@ -5839,9 +5844,14 @@ static struct clk_lookup msm_clocks_8960_common[] __initdata = {
 	CLK_LOOKUP("iface_clk",		gsbi8_p_clk.c,	"msm_serial_hsl.1"),
 	/* used on 8960 standalone with Atheros Bluetooth */
 	CLK_LOOKUP("iface_clk",		gsbi8_p_clk.c,	"msm_serial_hs.2"),
+	CLK_LOOKUP("iface_clk",		gsbi8_p_clk.c,		"qup_i2c.8"),
 	CLK_LOOKUP("iface_clk",		gsbi9_p_clk.c,  "msm_serial_hs.1"),
 	CLK_LOOKUP("iface_clk",		gsbi10_p_clk.c,		"qup_i2c.10"),
+#ifdef CONFIG_S5C73M3
+	CLK_LOOKUP("iface_clk",		gsbi11_p_clk.c,		"spi_qsd.0"),
+#else
 	CLK_LOOKUP("iface_clk",		gsbi11_p_clk.c,		""),
+#endif
 	CLK_LOOKUP("iface_clk",		gsbi12_p_clk.c,		"qup_i2c.12"),
 	CLK_LOOKUP("iface_clk",		tsif_p_clk.c,		""),
 	CLK_LOOKUP("ref_clk",	tsif_ref_clk.c,	"msm_tspp.0"),
@@ -5860,6 +5870,10 @@ static struct clk_lookup msm_clocks_8960_common[] __initdata = {
 	CLK_LOOKUP("iface_clk",		pmic_arb1_p_clk.c,	""),
 	CLK_LOOKUP("core_clk",		pmic_ssbi2_clk.c,	""),
 	CLK_LOOKUP("mem_clk",		rpm_msg_ram_p_clk.c,	""),
+    CLK_LOOKUP("cam_clk",   cam2_clk.c,     "msm_camera_s5k6a3yx.0"),
+	CLK_LOOKUP("cam_clk",	cam0_clk.c,	"msm_camera_s5c73m3.0"),
+	CLK_LOOKUP("cam_clk",		cam0_clk.c,	NULL),
+	CLK_LOOKUP("cam_clk",		cam2_clk.c,	"4-0045"),
 	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"4-002d"),	
 	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"4-001a"),
 	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"4-0010"),
@@ -5901,6 +5915,8 @@ static struct clk_lookup msm_clocks_8960_common[] __initdata = {
 	CLK_LOOKUP("esc_clk",	dsi2_esc_clk.c,		"mipi_dsi.2"),
 	CLK_LOOKUP("core_clk",		gfx3d_clk.c,	"kgsl-3d0.0"),
 	CLK_LOOKUP("core_clk",		gfx3d_clk.c,	"footswitch-8x60.2"),
+	CLK_LOOKUP("imem_clk",		imem_axi_clk.c,		NULL),
+	CLK_LOOKUP("ijpeg_clk",         ijpeg_clk.c,            NULL),
 	CLK_LOOKUP("bus_clk",		ijpeg_axi_clk.c, "footswitch-8x60.3"),
 	CLK_LOOKUP("mem_clk",		imem_axi_clk.c,	"msm_gemini.0"),
 	CLK_LOOKUP("core_clk",          ijpeg_clk.c,    "msm_gemini.0"),
@@ -5949,6 +5965,7 @@ static struct clk_lookup msm_clocks_8960_common[] __initdata = {
 	CLK_LOOKUP("iface_clk",		gfx3d_p_clk.c,	"kgsl-3d0.0"),
 	CLK_LOOKUP("iface_clk",		gfx3d_p_clk.c,	"footswitch-8x60.2"),
 	CLK_LOOKUP("master_iface_clk",	hdmi_m_p_clk.c,	"hdmi_msm.1"),
+	CLK_LOOKUP("ijpeg_pclk",	ijpeg_p_clk.c,		NULL),
 	CLK_LOOKUP("slave_iface_clk",	hdmi_s_p_clk.c,	"hdmi_msm.1"),
 	CLK_LOOKUP("iface_clk",		ijpeg_p_clk.c,	"msm_gemini.0"),
 	CLK_LOOKUP("iface_clk",		ijpeg_p_clk.c,	"footswitch-8x60.3"),
@@ -5965,26 +5982,22 @@ static struct clk_lookup msm_clocks_8960_common[] __initdata = {
 	CLK_LOOKUP("iface_clk",		vfe_p_clk.c,	"footswitch-8x60.8"),
 	CLK_LOOKUP("vpe_pclk",		vpe_p_clk.c,		"msm_vpe.0"),
 	CLK_LOOKUP("iface_clk",		vpe_p_clk.c,	"footswitch-8x60.9"),
-	CLK_LOOKUP("bit_clk",		mi2s_bit_clk.c,
-			    "msm-dai-q6-mi2s"),
-	CLK_LOOKUP("osr_clk",		mi2s_osr_clk.c,
-			    "msm-dai-q6-mi2s"),
-	CLK_LOOKUP("bit_clk",		codec_i2s_mic_bit_clk.c,
-			   "msm-dai-q6.1"),
-	CLK_LOOKUP("osr_clk",		codec_i2s_mic_osr_clk.c,
-			   "msm-dai-q6.1"),
-	CLK_LOOKUP("bit_clk",		spare_i2s_mic_bit_clk.c,
-			   "msm-dai-q6.5"),
-	CLK_LOOKUP("osr_clk",		spare_i2s_mic_osr_clk.c,
-			   "msm-dai-q6.5"),
-	CLK_LOOKUP("bit_clk",		codec_i2s_spkr_bit_clk.c,
-			   "msm-dai-q6.16384"),
-	CLK_LOOKUP("osr_clk",		codec_i2s_spkr_osr_clk.c,
-			   "msm-dai-q6.16384"),
-	CLK_LOOKUP("bit_clk",		spare_i2s_spkr_bit_clk.c,
-			   "msm-dai-q6.4"),
-	CLK_LOOKUP("osr_clk",		spare_i2s_spkr_osr_clk.c,
-			   "msm-dai-q6.4"),
+	CLK_LOOKUP("bit_clk",		mi2s_bit_clk.c, "msm-dai-q6-mi2s"),
+	CLK_LOOKUP("osr_clk",		mi2s_osr_clk.c, "msm-dai-q6-mi2s"),
+	CLK_LOOKUP("bit_clk",		codec_i2s_mic_bit_clk.c,"msm-dai-q6.1"),
+	CLK_LOOKUP("osr_clk",		codec_i2s_mic_osr_clk.c,"msm-dai-q6.1"),
+	CLK_LOOKUP("bit_clk",		spare_i2s_mic_bit_clk.c,"msm-dai-q6.5"),
+	CLK_LOOKUP("osr_clk",		spare_i2s_mic_osr_clk.c,"msm-dai-q6.5"),
+#ifndef CONFIG_SLIMBUS_MSM_CTRL
+	CLK_LOOKUP("bit_clk",		codec_i2s_spkr_bit_clk.c,"msm-dai-q6.0"),
+	CLK_LOOKUP("osr_clk",		codec_i2s_spkr_osr_clk.c,"msm-dai-q6.0"),
+#else
+	CLK_LOOKUP("bit_clk",		codec_i2s_spkr_bit_clk.c,"msm-dai-q6.16384"),
+	CLK_LOOKUP("osr_clk",		codec_i2s_spkr_osr_clk.c,"msm-dai-q6.16384"),
+#endif
+	CLK_LOOKUP("bit_clk",		spare_i2s_spkr_bit_clk.c,"msm-dai-q6.4"),
+	CLK_LOOKUP("osr_clk",		spare_i2s_spkr_osr_clk.c,"msm-dai-q6.4"),
+	CLK_LOOKUP("pcm_clk",		pcm_clk.c,		"msm-dai-q6.0"),
 	CLK_LOOKUP("pcm_clk",		pcm_clk.c,		"msm-dai-q6.2"),
 	CLK_LOOKUP("pcm_clk",		pcm_clk.c,		"msm-dai-q6.3"),
 	CLK_LOOKUP("sps_slimbus_clk",	sps_slimbus_clk.c,	NULL),
@@ -6147,8 +6160,28 @@ static struct clk_lookup msm_clocks_8930[] = {
 	CLK_LOOKUP("core_clk",		gsbi10_uart_clk.c, "msm_serial_hsl.1"),
 	CLK_LOOKUP("core_clk",		gsbi11_uart_clk.c, "msm_serial_hsl.2"),
 	CLK_LOOKUP("core_clk",		gsbi12_uart_clk.c,	""),
+#if !defined(CONFIG_SENSOR_LT02_CTC)
+#if !defined(CONFIG_GSM_MODEM_SPRD6500)
+#if defined(CONFIG_MACH_SERRANO) || defined(CONFIG_MACH_CRATER)	|| defined (CONFIG_MACH_BAFFIN)	//For Camera Actuator EEPROM By Teddy
+	CLK_LOOKUP("core_clk",		gsbi1_qup_clk.c,	"spi_qsd.1"),
+#elif defined(CONFIG_MACH_CANE) || defined(CONFIG_MACH_LOGANRE)
+	CLK_LOOKUP("core_clk",		gsbi1_qup_clk.c,	"qup_i2c.1"),
+#else
 	CLK_LOOKUP("core_clk",		gsbi1_qup_clk.c,	"spi_qsd.0"),
+#endif
+	CLK_LOOKUP("core_clk",		gsbi1_qup_clk.c,	"spi_qsd.0"),
+#else
+	CLK_LOOKUP("core_clk",		gsbi1_qup_clk.c,	""),
+#endif
+#else//CONFIG_SENSOR_LT02_CTC
+	CLK_LOOKUP("core_clk",		gsbi1_qup_clk.c,	"qup_i2c.21"),
+#endif
+#if defined(CONFIG_MACH_MELIUS_SKT) || defined(CONFIG_MACH_MELIUS_KTT) || \
+			defined(CONFIG_MACH_MELIUS_LGT)
+	CLK_LOOKUP("core_clk",		gsbi2_qup_clk.c,	"spi_qsd.2"),
+#else
 	CLK_LOOKUP("core_clk",		gsbi2_qup_clk.c,	""),
+#endif
 	CLK_LOOKUP("core_clk",		gsbi3_qup_clk.c,	"qup_i2c.3"),
 	CLK_LOOKUP("core_clk",		gsbi4_qup_clk.c,	"qup_i2c.4"),
 	CLK_LOOKUP("core_clk",		gsbi5_qup_clk.c,	""),
@@ -6166,10 +6199,20 @@ static struct clk_lookup msm_clocks_8930[] = {
 #else
 	CLK_LOOKUP("core_clk",		gsbi11_qup_clk.c,	""),
 #endif
+#if defined(CONFIG_MACH_SERRANO) || defined(CONFIG_MACH_CRATER)  || defined (CONFIG_MACH_BAFFIN) || defined (CONFIG_MACH_CANE) || defined(CONFIG_MACH_LOGANRE)
+	CLK_LOOKUP("core_clk",		gsbi11_qup_clk.c,	"qup_i2c.11"),
+#else
 #if defined(CONFIG_MACH_MELIUS)
 	CLK_LOOKUP("core_clk",		gsbi11_qup_clk.c,	"spi_qsd.11"),
 #elif defined(CONFIG_MACH_KS02)
 	CLK_LOOKUP("core_clk",		gsbi11_qup_clk.c,	"spi_qsd.1"),
+#endif
+#endif
+#ifdef CONFIG_RADIO_USE_MI2S
+	CLK_LOOKUP("bit_clk",		mi2s_bit_clk.c,
+			    "msm-dai-q6-mi2s"),
+	CLK_LOOKUP("osr_clk",		mi2s_osr_clk.c,
+			    "msm-dai-q6-mi2s"),
 #endif
 	CLK_LOOKUP("core_clk",		gsbi12_qup_clk.c,	"qup_i2c.12"),
 	CLK_LOOKUP("core_clk",		pdm_clk.c,		""),
@@ -6200,8 +6243,27 @@ static struct clk_lookup msm_clocks_8930[] = {
 	CLK_LOOKUP("core_clk",		ce1_core_clk.c,		"qce.0"),
 	CLK_LOOKUP("core_clk",		ce1_core_clk.c,		"qcrypto.0"),
 	CLK_LOOKUP("dma_bam_pclk",	dma_bam_p_clk.c,	NULL),
+#if !defined(CONFIG_SENSOR_LT02_CTC)
+#if !defined(CONFIG_GSM_MODEM_SPRD6500)
+#if defined(CONFIG_MACH_SERRANO) || defined(CONFIG_MACH_CRATER)	|| defined (CONFIG_MACH_BAFFIN)	//For Camera Actuator EEPROM By Teddy
+	CLK_LOOKUP("iface_clk",		gsbi1_p_clk.c,		"spi_qsd.1"),
+#elif defined(CONFIG_MACH_CANE) || defined(CONFIG_MACH_LOGANRE)
+	CLK_LOOKUP("iface_clk",		gsbi1_p_clk.c,		"qup_i2c.1"),
+#else
 	CLK_LOOKUP("iface_clk",		gsbi1_p_clk.c,		"spi_qsd.0"),
+#endif
+#else
+	CLK_LOOKUP("iface_clk", 	gsbi1_p_clk.c,		""),
+#endif
+#else//CONFIG_SENSOR_LT02_CTC
+	CLK_LOOKUP("iface_clk", 	gsbi1_p_clk.c,		"qup_i2c.21"),
+#endif
+#if defined(CONFIG_MACH_MELIUS_SKT) || defined(CONFIG_MACH_MELIUS_KTT) || \
+		defined(CONFIG_MACH_MELIUS_LGT)
+	CLK_LOOKUP("iface_clk", 	gsbi2_p_clk.c,		"spi_qsd.2"),
+#else
 	CLK_LOOKUP("iface_clk",		gsbi2_p_clk.c,		""),
+#endif
 	CLK_LOOKUP("iface_clk",		gsbi3_p_clk.c,		"qup_i2c.3"),
 	CLK_LOOKUP("iface_clk",		gsbi4_p_clk.c,		"qup_i2c.4"),
 	CLK_LOOKUP("iface_clk",		gsbi5_p_clk.c,	"msm_serial_hsl.0"),
@@ -6246,12 +6308,16 @@ static struct clk_lookup msm_clocks_8930[] = {
 	CLK_LOOKUP("iface_clk",		pmic_arb1_p_clk.c,	""),
 	CLK_LOOKUP("core_clk",		pmic_ssbi2_clk.c,	""),
 	CLK_LOOKUP("mem_clk",		rpm_msg_ram_p_clk.c,	""),
-	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"4-002d"),	
+	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"4-002d"),
 	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"4-001a"),
 	CLK_LOOKUP("cam_clk",		cam1_clk.c,	"4-006c"),
 	CLK_LOOKUP("cam_clk",		cam1_clk.c,	"4-0048"),
 	CLK_LOOKUP("cam_clk",		cam2_clk.c,		NULL),
+	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"4-0056"),
+	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"4-003d"),
 	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"4-0020"),
+	CLK_LOOKUP("cam_clk",		cam1_clk.c,	"4-0030"),
+	CLK_LOOKUP("cam_clk",		cam1_clk.c,	"4-0028"),
 	CLK_LOOKUP("cam_clk",		cam1_clk.c,	"4-0010"),
 	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"8-001a"),
 	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"8-0036"),
@@ -6355,44 +6421,25 @@ static struct clk_lookup msm_clocks_8930[] = {
 	CLK_LOOKUP("bit_clk",		mi2s_bit_clk.c,		"msm-dai-q6.6"),
 	CLK_LOOKUP("osr_clk",		mi2s_osr_clk.c,		"msm-dai-q6.6"),
 #ifdef CONFIG_SLIMBUS_MSM_CTRL
-	CLK_LOOKUP("bit_clk",		codec_i2s_mic_bit_clk.c,
-			   "msm-dai-q6.1"),
-	CLK_LOOKUP("osr_clk",		codec_i2s_mic_osr_clk.c,
-			   "msm-dai-q6.1"),
-	CLK_LOOKUP("bit_clk",		spare_i2s_mic_bit_clk.c,
-			   "msm-dai-q6.5"),
-	CLK_LOOKUP("osr_clk",		spare_i2s_mic_osr_clk.c,
-			   "msm-dai-q6.5"),
-	CLK_LOOKUP("bit_clk",		codec_i2s_spkr_bit_clk.c,
-			   "msm-dai-q6.16384"),
-	CLK_LOOKUP("osr_clk",		codec_i2s_spkr_osr_clk.c,
-			   "msm-dai-q6.16384"),
-	CLK_LOOKUP("bit_clk",		spare_i2s_spkr_bit_clk.c,
-			   "msm-dai-q6.4"),
-	CLK_LOOKUP("osr_clk",		spare_i2s_spkr_osr_clk.c,
-			   "msm-dai-q6.4"),
+	CLK_LOOKUP("bit_clk",		codec_i2s_mic_bit_clk.c,"msm-dai-q6.1"),
+	CLK_LOOKUP("osr_clk",		codec_i2s_mic_osr_clk.c,"msm-dai-q6.1"),
+	CLK_LOOKUP("bit_clk",		spare_i2s_mic_bit_clk.c,"msm-dai-q6.5"),
+	CLK_LOOKUP("osr_clk",		spare_i2s_mic_osr_clk.c,"msm-dai-q6.5"),
+	CLK_LOOKUP("bit_clk",		codec_i2s_spkr_bit_clk.c,"msm-dai-q6.16384"),
+	CLK_LOOKUP("osr_clk",		codec_i2s_spkr_osr_clk.c,"msm-dai-q6.16384"),
+	CLK_LOOKUP("bit_clk",		spare_i2s_spkr_bit_clk.c,"msm-dai-q6.4"),
+	CLK_LOOKUP("osr_clk",		spare_i2s_spkr_osr_clk.c,"msm-dai-q6.4"),
 #else
-	CLK_LOOKUP("bit_clk",		codec_i2s_mic_bit_clk.c,
-			   "msm-dai-q6.1"),
-	CLK_LOOKUP("osr_clk",		codec_i2s_mic_osr_clk.c,
-			   "msm-dai-q6.1"),
-	CLK_LOOKUP("bit_clk",		codec_i2s_spkr_bit_clk.c,
-			   "msm-dai-q6.0"),
-	CLK_LOOKUP("osr_clk",		codec_i2s_spkr_osr_clk.c,
-			   "msm-dai-q6.0"),
-	CLK_LOOKUP("bit_clk",		spare_i2s_mic_bit_clk.c,
-			   "msm-dai-q6.5"),
-	CLK_LOOKUP("osr_clk",		spare_i2s_mic_osr_clk.c,
-			   "msm-dai-q6.5"),
-	CLK_LOOKUP("bit_clk",		codec_i2s_spkr_bit_clk.c,
-			   "msm-dai-q6.16384"),
-	CLK_LOOKUP("osr_clk",		codec_i2s_spkr_osr_clk.c,
-			   "msm-dai-q6.16384"),
-	CLK_LOOKUP("bit_clk",		spare_i2s_spkr_bit_clk.c,
-			   "msm-dai-q6.4"),
-	CLK_LOOKUP("osr_clk",		spare_i2s_spkr_osr_clk.c,
-			   "msm-dai-q6.4"),
-
+	CLK_LOOKUP("bit_clk",		codec_i2s_mic_bit_clk.c, "msm-dai-q6.1"),
+	CLK_LOOKUP("osr_clk",		codec_i2s_mic_osr_clk.c, "msm-dai-q6.1"),
+	CLK_LOOKUP("bit_clk",		codec_i2s_spkr_bit_clk.c,"msm-dai-q6.0"),
+	CLK_LOOKUP("osr_clk",		codec_i2s_spkr_osr_clk.c,"msm-dai-q6.0"),
+	CLK_LOOKUP("bit_clk",		spare_i2s_mic_bit_clk.c, "msm-dai-q6.5"),
+	CLK_LOOKUP("osr_clk",		spare_i2s_mic_osr_clk.c, "msm-dai-q6.5"),
+	CLK_LOOKUP("bit_clk",		codec_i2s_spkr_bit_clk.c,"msm-dai-q6.16384"),
+	CLK_LOOKUP("osr_clk",		codec_i2s_spkr_osr_clk.c,"msm-dai-q6.16384"),
+	CLK_LOOKUP("bit_clk",		spare_i2s_spkr_bit_clk.c,"msm-dai-q6.4"),
+	CLK_LOOKUP("osr_clk",		spare_i2s_spkr_osr_clk.c,"msm-dai-q6.4"),
 #endif /* CONFIG_SLIMBUS_MSM_CTRL */	   
 	CLK_LOOKUP("pcm_clk",		pcm_clk.c,		"msm-dai-q6.2"),
 #if defined (CONFIG_MACH_MELIUS_EUR_OPEN) || defined(CONFIG_MACH_MELIUS_EUR_LTE) \

@@ -16,6 +16,8 @@
 
 #include <mach/scm-io.h>
 #include <linux/list.h>
+#include "msm_fb_def.h"
+#include "msm_fb.h"
 
 #if defined(CONFIG_ESD_ERR_FG_RECOVERY)
 #include "mdnie_lite_tuning.h"
@@ -378,12 +380,13 @@ void update_lane_config(struct msm_panel_info *pinfo);
 
 #if defined(RUMTIME_MIPI_CLK_CHANGE)
 int mipi_runtime_clk_change(int fps);
+void mipi_dsi_configure_dividers(int fps);
 #endif
 
 void mipi_dsi_irq_set(uint32 mask, uint32 irq);
 void mdp4_dsi_video_wait4dmap_for_dsi(int cndx);
 
-#if defined(CONFIG_ESD_ERR_FG_RECOVERY)
+#if defined(CONFIG_MIPI_SAMSUNG_ESD_REFRESH) || defined(CONFIG_ESD_ERR_FG_RECOVERY)
 void esd_recovery(void);
 #endif
 

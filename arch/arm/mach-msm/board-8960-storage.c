@@ -62,7 +62,15 @@ static struct msm_mmc_reg_data mmc_vdd_reg_data[MAX_SDCC_CONTROLLER] = {
 		.high_vol_level = 2950000,
 		.low_vol_level = 2950000,
 		.hpm_uA = 600000, /* 600mA */
-	}
+	},
+	/* added for Wifi SDCC4 : External card slot connected */
+    [SDCC4] = {
+		.name = "sdc_vdd",
+		.set_voltage_sup = 1,
+		.high_vol_level = 1800000,
+		.low_vol_level = 1800000,
+		.hpm_uA = 600000, /* 600mA */
+	},
 };
 
 /* SDCC controllers may require voting for IO operating voltage */
@@ -92,14 +100,21 @@ static struct msm_mmc_reg_data mmc_vdd_io_reg_data[MAX_SDCC_CONTROLLER] = {
 		.lpm_uA = 2000,
 	},
 	/* SDCC4 : SDIO slot connected */
-	[SDCC4] = {
-		.name = "sdc_vdd_io",
+    [SDCC4] = {
+		.name = "sdc_vddp",
+		.set_voltage_sup = 1,
 		.high_vol_level = 1800000,
 		.low_vol_level = 1800000,
 		.always_on = 1,
 		.lpm_sup = 1,
-		.hpm_uA = 200000, /* 200mA */
-		.lpm_uA = 2000,
+		/* Max. Active current required is 16 mA */
+		.hpm_uA = 600000, /* 600mA, */
+		/*
+		 * Sleep current required is ~300 uA. But min. vote can be
+		 * in terms of mA (min. 1 mA). So let's vote for 2 mA
+		 * during sleep.
+		 */
+		.lpm_uA = 600000, /* 600mA, */
 	},
 };
 
@@ -120,7 +135,7 @@ static struct msm_mmc_slot_reg_data mmc_slot_vreg_data[MAX_SDCC_CONTROLLER] = {
 	},
 	/* SDCC4 : SDIO card slot connected */
 	[SDCC4] = {
-		.vdd_io_data = &mmc_vdd_io_reg_data[SDCC4],
+	     .vdd_data = &mmc_vdd_reg_data[SDCC4],
 	},
 };
 
@@ -175,13 +190,38 @@ static struct msm_mmc_pad_pull sdc3_pad_pull_off_cfg[] = {
 	 * see transitions (1 -> 0 and 0 -> 1) on card detection line,
 	 * which would result in false card detection interrupts.
 	 */
-	{TLMM_PULL_SDC3_CMD, GPIO_CFG_PULL_UP},
+	{TLMM_PULL_SDC3_CMD, GPIO_CFG_PULL_DOWN},
 	/*
 	 * Keeping DATA lines status to PULL UP will make sure that
 	 * there is no current leak during sleep if external pull up
 	 * is connected to DATA lines.
 	 */
-	{TLMM_PULL_SDC3_DATA, GPIO_CFG_PULL_UP}
+	{TLMM_PULL_SDC3_DATA, GPIO_CFG_PULL_DOWN}
+};
+
+/* SDC4 pad data - added for Wifi 1/30/2014 */
+static struct msm_mmc_pad_drv sdc4_pad_drv_on_cfg[] = {
+	{TLMM_HDRV_SDC4_CLK, GPIO_CFG_8MA},
+	{TLMM_HDRV_SDC4_CMD, GPIO_CFG_8MA},
+	{TLMM_HDRV_SDC4_DATA, GPIO_CFG_8MA}
+};
+
+static struct msm_mmc_pad_drv sdc4_pad_drv_off_cfg[] = {
+	{TLMM_HDRV_SDC4_CLK, GPIO_CFG_2MA},
+	{TLMM_HDRV_SDC4_CMD, GPIO_CFG_2MA},
+	{TLMM_HDRV_SDC4_DATA, GPIO_CFG_2MA}
+};
+
+static struct msm_mmc_pad_pull sdc4_pad_pull_on_cfg[] = {
+	{TLMM_PULL_SDC4_CLK, GPIO_CFG_NO_PULL},
+	{TLMM_PULL_SDC4_CMD, GPIO_CFG_PULL_UP},
+	{TLMM_PULL_SDC4_DATA, GPIO_CFG_PULL_UP}
+};
+
+static struct msm_mmc_pad_pull sdc4_pad_pull_off_cfg[] = {
+	{TLMM_PULL_SDC4_CLK, GPIO_CFG_NO_PULL},
+	{TLMM_PULL_SDC4_CMD, GPIO_CFG_PULL_UP},
+	{TLMM_PULL_SDC4_DATA, GPIO_CFG_PULL_UP}
 };
 
 static struct msm_mmc_pad_pull_data mmc_pad_pull_data[MAX_SDCC_CONTROLLER] = {
@@ -195,6 +235,12 @@ static struct msm_mmc_pad_pull_data mmc_pad_pull_data[MAX_SDCC_CONTROLLER] = {
 		.off = sdc3_pad_pull_off_cfg,
 		.size = ARRAY_SIZE(sdc3_pad_pull_on_cfg)
 	},
+	/*added for Wifi 1/30/2014 */
+	[SDCC4] = {
+		.on = sdc4_pad_pull_on_cfg,
+		.off = sdc4_pad_pull_off_cfg,
+		.size = ARRAY_SIZE(sdc4_pad_pull_on_cfg)
+	},
 };
 
 static struct msm_mmc_pad_drv_data mmc_pad_drv_data[MAX_SDCC_CONTROLLER] = {
@@ -207,6 +253,12 @@ static struct msm_mmc_pad_drv_data mmc_pad_drv_data[MAX_SDCC_CONTROLLER] = {
 		.on = sdc3_pad_drv_on_cfg,
 		.off = sdc3_pad_drv_off_cfg,
 		.size = ARRAY_SIZE(sdc3_pad_drv_on_cfg)
+	},
+		/*added for Wifi 1/30/2014 */
+		[SDCC4] = {
+		.on = sdc4_pad_drv_on_cfg,
+		.off = sdc4_pad_drv_off_cfg,
+		.size = ARRAY_SIZE(sdc4_pad_drv_on_cfg)
 	},
 };
 
@@ -248,6 +300,11 @@ static struct msm_mmc_pad_data mmc_pad_data[MAX_SDCC_CONTROLLER] = {
 		.pull = &mmc_pad_pull_data[SDCC3],
 		.drv = &mmc_pad_drv_data[SDCC3]
 	},
+		/*added for Wifi 1/30/2014 */
+	[SDCC4] = {
+		.pull = &mmc_pad_pull_data[SDCC4],
+		.drv = &mmc_pad_drv_data[SDCC4]
+	},
 };
 
 static struct msm_mmc_pin_data mmc_slot_pin_data[MAX_SDCC_CONTROLLER] = {
@@ -261,9 +318,9 @@ static struct msm_mmc_pin_data mmc_slot_pin_data[MAX_SDCC_CONTROLLER] = {
 	[SDCC3] = {
 		.pad_data = &mmc_pad_data[SDCC3],
 	},
+		/*added for Wifi 1/30/2014 */
 	[SDCC4] = {
-		.is_gpio = 1,
-		.gpio_data = &mmc_gpio_data[SDCC4],
+		.pad_data = &mmc_pad_data[SDCC4],
 	},
 };
 
@@ -293,10 +350,7 @@ static struct mmc_platform_data msm8960_sdc1_data = {
 	.nonremovable	= 1,
 	.vreg_data	= &mmc_slot_vreg_data[SDCC1],
 	.pin_data	= &mmc_slot_pin_data[SDCC1],
-	.mpm_sdiowakeup_int = MSM_MPM_PIN_SDC1_DAT1,
 	.msm_bus_voting_data = &sps_to_ddr_bus_voting_data,
-	.uhs_caps2	= MMC_CAP2_HS200_1_8V_SDR,
-	.packed_write	= MMC_CAP2_PACKED_WR | MMC_CAP2_PACKED_WR_CONTROL,
 };
 #endif
 
@@ -335,10 +389,8 @@ static struct mmc_platform_data msm8960_sdc3_data = {
 #endif
 	.is_status_gpio_active_low = true,
 	.xpc_cap	= 1,
-	.uhs_caps	= (MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
-			MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50 |
-			MMC_CAP_UHS_SDR104 | MMC_CAP_MAX_CURRENT_600),
-	.mpm_sdiowakeup_int = MSM_MPM_PIN_SDC3_DAT1,
+	.uhs_caps	= (MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25
+			| MMC_CAP_MAX_CURRENT_600),
 	.msm_bus_voting_data = &sps_to_ddr_bus_voting_data,
 };
 #endif
@@ -349,13 +401,16 @@ static unsigned int sdc4_sup_clk_rates[] = {
 };
 
 static struct mmc_platform_data msm8960_sdc4_data = {
-	.ocr_mask       = MMC_VDD_165_195,
+	.ocr_mask      = MMC_VDD_165_195 | MMC_VDD_27_28 | MMC_VDD_28_29,
 	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	.sup_clk_table  = sdc4_sup_clk_rates,
 	.sup_clk_cnt    = ARRAY_SIZE(sdc4_sup_clk_rates),
 	.vreg_data      = &mmc_slot_vreg_data[SDCC4],
 	.pin_data       = &mmc_slot_pin_data[SDCC4],
 	.sdiowakeup_irq = MSM_GPIO_TO_INT(85),
+#if defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE)
+	.register_status_notify	= brcm_wifi_status_register,
+#endif
 	.msm_bus_voting_data = &sps_to_ddr_bus_voting_data,
 };
 #endif
@@ -375,6 +430,7 @@ void __init msm8960_init_mmc(void)
 					       MMC_CAP_UHS_DDR50);
 	/* SDC1 : eMMC card connected */
 	msm_add_sdcc(1, &msm8960_sdc1_data);
+	msm_add_uio();
 #endif
 #ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
 	/* SDC2: SDIO slot for WLAN*/

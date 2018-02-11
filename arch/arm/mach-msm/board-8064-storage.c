@@ -460,7 +460,7 @@ static struct mmc_platform_data *apq8064_sdc1_pdata;
 
 #ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
 static unsigned int sdc2_sup_clk_rates[] = {
-	400000, 24000000, 48000000
+	400000, 24000000, 40000000
 };
 
 static struct mmc_platform_data sdc2_data = {
@@ -512,8 +512,8 @@ static struct mmc_platform_data sdc3_data = {
 	.sup_clk_cnt	= ARRAY_SIZE(sdc3_sup_clk_rates),
 	.pin_data	= &mmc_slot_pin_data[SDCC3],
 	.vreg_data	= &mmc_slot_vreg_data[SDCC3],
-	.wpswitch_gpio	= PM8921_GPIO_PM_TO_SYS(17),
-	.is_wpswitch_active_low = true,
+	.wpswitch_gpio	= 0,
+	.is_wpswitch_active_low = false,
 	.status_gpio	= 26,
 	.status_irq	= MSM_GPIO_TO_INT(26),
 	.irq_flags	= IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
@@ -570,6 +570,7 @@ void __init apq8064_init_mmc(void)
 					ARRAY_SIZE(sdc1_sup_clk_rates_all);
 		}
 		apq8064_add_sdcc(1, apq8064_sdc1_pdata);
+		apq8064_add_uio();
 	}
 #if defined(CONFIG_MACH_JFVE_EUR)
 	apq8064_sdc2_pdata = NULL;

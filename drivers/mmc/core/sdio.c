@@ -568,7 +568,7 @@ static int mmc_sdio_init_uhs_card(struct mmc_card *card)
 	if (err)
 		goto out;
 
-#if defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE)
+#if defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE) || defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE)
 	/*
 	* Prevent tuning operation when init a card
 	* for WiFi operation with sdmmc.
@@ -1267,7 +1267,7 @@ err:
 
 int sdio_reset_comm(struct mmc_card *card)
 {
-#if defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE)
+#if defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE) || defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE)
 	struct mmc_host *host = card->host;
 	u32 ocr;
 	int err;

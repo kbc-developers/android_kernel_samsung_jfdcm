@@ -276,6 +276,10 @@ u32 rotator_allocate_2pass_buf(struct rot_buf_type *rot_buf, int s_ndx)
 			__func__, __LINE__);
 		rot_buf->ihdl = ion_alloc(mrd->client, buffer_size, SZ_4K,
 			mrd->rot_session[s_ndx]->mem_hid,
+#if !defined(CONFIG_MSM_IOMMU) && defined(CONFIG_SEC_PRODUCT_8960)
+			mrd->rot_session[s_ndx]->mem_hid & ION_FORCE_CONTIGUOUS?
+			mrd->rot_session[s_ndx]->mem_hid & ION_FORCE_CONTIGUOUS:
+#endif /* !defined(CONFIG_MSM_IOMMU) && defined(CONFIG_SEC_PRODUCT_8960) */
 			mrd->rot_session[s_ndx]->mem_hid & ION_SECURE);
 		if (!IS_ERR_OR_NULL(rot_buf->ihdl)) {
 			if (rot_iommu_split_domain) {
@@ -2603,8 +2607,14 @@ static int msm_rotator_start(unsigned long arg,
 				rot_session->mem_hid |= BIT(ION_CP_MM_HEAP_ID);
 				rot_session->mem_hid |= ION_SECURE;
 			} else {
+#if !defined(CONFIG_MSM_IOMMU) && defined(CONFIG_SEC_PRODUCT_8960)
+				rot_session->mem_hid |= BIT(ION_CP_MM_HEAP_ID);
+				rot_session->mem_hid &= ~ION_SECURE;
+				rot_session->mem_hid |= ION_FORCE_CONTIGUOUS;
+#else
 				rot_session->mem_hid &= ~BIT(ION_CP_MM_HEAP_ID);
 				rot_session->mem_hid &= ~ION_SECURE;
+#endif /* !defined(CONFIG_MSM_IOMMU) && defined(CONFIG_SEC_PRODUCT_8960) */
 				rot_session->mem_hid |= BIT(ION_IOMMU_HEAP_ID);
 			}
 		}

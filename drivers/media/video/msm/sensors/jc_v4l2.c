@@ -1992,7 +1992,6 @@ static int jc_set_snapshot_mode(int mode)
 			jc_writeb(JC_CATEGORY_CAPCTRL,
 					JC_CAPCTRL_START_DUALCAP, 0x07);
 		} else {
-		        usleep(10*1000);
 			jc_writeb(JC_CATEGORY_CAPCTRL,
 					JC_CAPCTRL_START_DUALCAP, 0x01);
 		}

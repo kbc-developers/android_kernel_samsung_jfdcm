@@ -42,11 +42,6 @@ static char samsung_test_key_on1[] = {
 	0x5A, 0x5A,
 };
 
-static char samsung_test_key_off1[] = {
-	0xF0,
-	0xA5, 0xA5,
-};
-
 static char samsung_test_key_on3[] = {
 	0xFC,
 	0x5A, 0x5A,
@@ -1054,8 +1049,6 @@ static struct dsi_cmd_desc brightness_packet[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(samsung_nop), samsung_nop},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(samsung_nop), samsung_nop},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(samsung_nop), samsung_nop},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(samsung_nop), samsung_nop},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(samsung_nop), samsung_nop},
 };
 
 static struct dsi_cmd_desc panel_acl_cmds[] = {
@@ -1637,11 +1630,6 @@ static int brightness_control(int bl_level)
 
 	cmd_size = 0;
 
-	/* TEST KEY ENABLE */
-	brightness_packet[cmd_size].payload = samsung_test_key_on1;
-	brightness_packet[cmd_size].dlen = sizeof(samsung_test_key_on1);
-	cmd_size++;
-
 	/* aor ****************************************************************************/
 	/* 0xB2 setting */
 	memcpy(samsung_brightness_aor_pre, samsung_brightness_aor_ref,
@@ -1816,12 +1804,6 @@ static int brightness_control(int bl_level)
 	/* 0xF7 setting */
 	brightness_packet[cmd_size].payload = samsung_gamma_update;
 	brightness_packet[cmd_size].dlen = sizeof(samsung_gamma_update);
-	cmd_size++;
-
-
-	/* TEST KEY DISABLE */
-	brightness_packet[cmd_size].payload = samsung_test_key_off1;
-	brightness_packet[cmd_size].dlen = sizeof(samsung_test_key_off1);
 	cmd_size++;
 
 	mipi_pd.brightness.size = cmd_size;

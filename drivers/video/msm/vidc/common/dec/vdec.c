@@ -386,7 +386,12 @@ static void vid_dec_output_frame_done(struct video_client_ctx *client_ctx,
 		ion_flag = vidc_get_fd_info(client_ctx, BUFFER_TYPE_OUTPUT,
 				pmem_fd, kernel_vaddr, buffer_index,
 				&buff_handle);
-		if (ion_flag == ION_FLAG_CACHED && buff_handle) {
+		#if !defined(CONFIG_MSM_IOMMU) && defined(CONFIG_SEC_PRODUCT_8960)
+		  if (ion_flag & ION_FLAG_CACHED && buff_handle)
+		#else
+		  if (ion_flag == ION_FLAG_CACHED && buff_handle)
+        #endif         
+		{
 			DBG("%s: Cache invalidate: size %u", __func__,
 				vcd_frame_data->alloc_len);
 			msm_ion_do_cache_op(client_ctx->user_ion_client,
@@ -1717,7 +1722,12 @@ static u32 vid_dec_decode_frame(struct video_client_ctx *client_ctx,
 						kernel_vaddr,
 						buffer_index,
 						&buff_handle);
-			if (ion_flag == ION_FLAG_CACHED && buff_handle) {
+		   #if !defined(CONFIG_MSM_IOMMU) && defined(CONFIG_SEC_PRODUCT_8960)
+            if (ion_flag & ION_FLAG_CACHED && buff_handle)
+           #else			
+			if (ion_flag == ION_FLAG_CACHED && buff_handle)
+           #endif
+			{
 				msm_ion_do_cache_op(client_ctx->user_ion_client,
 				buff_handle,
 				(unsigned long *) NULL,

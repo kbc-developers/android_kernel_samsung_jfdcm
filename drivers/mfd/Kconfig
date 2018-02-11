@@ -511,6 +511,15 @@ config MFD_MAX77693
 	  This driver provides common support for accessing the device;
 	  additional drivers
 
+config WIRELESSCHG_SUPPORT
+    bool "Wireless Charging Support for MAX77803"
+    depends on I2C && MFD_MAX77803
+	select MFD_CORE
+	default n
+	help
+	  This is the FLAG for adding wireless charging support for
+	  MAX77803 Maxim Semiconductor chip
+
 config MFD_S5M_CORE
 	bool "SAMSUNG S5M Series Support"
 	depends on I2C=y && GENERIC_HARDIRQS
@@ -1034,6 +1043,15 @@ config MFD_PM8XXX_BATT_ALARM
 	  voltage leaves the accepatable range which then calls a notifier call
 	  chain.
 
+config WCD9306_CODEC
+        tristate "WCD9306 Codec"
+        select SLIMBUS
+        select MFD_CORE
+        default n
+        help
+          Enables the WCD9306 core driver. The core driver provides
+          read/write capability to registers which are part of the
+          WCD9302/6 core and gives the ability to use the WCD9302/6 codec.
 config WCD9304_CODEC
         tristate "WCD9304 Codec"
         select SLIMBUS

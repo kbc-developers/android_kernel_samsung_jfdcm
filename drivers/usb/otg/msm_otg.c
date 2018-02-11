@@ -383,7 +383,7 @@ static void ulpi_init(struct msm_otg *motg)
 		return;
 
 	while (seq[0] >= 0) {
-		dev_vdbg(motg->phy.dev, "ulpi: write 0x%02x to 0x%02x\n",
+		dev_info(motg->phy.dev, "ulpi: write 0x%02x to 0x%02x\n",
 				seq[0], seq[1]);
 		ulpi_write(&motg->phy, seq[0], seq[1]);
 		seq += 2;
@@ -1242,8 +1242,17 @@ static void msm_otg_start_host(struct usb_otg *otg, int on)
 #ifdef CONFIG_USB_HOST_NOTIFY
 	if (on == 1) {
 		motg->ndev.mode = NOTIFY_HOST_MODE;
+#if defined(CONFIG_SEC_PRODUCT_8960)
+		if (!motg->smartdock)
+			host_state_notify(&motg->ndev, NOTIFY_HOST_ADD);
+#endif
 	} else if (on == 0) {
 		motg->ndev.mode = NOTIFY_NONE_MODE;
+#if defined(CONFIG_SEC_PRODUCT_8960)
+        if (!motg->smartdock)
+		    host_state_notify(&motg->ndev, NOTIFY_HOST_REMOVE);
+	motg->smartdock = false;
+#endif
 	}
 #endif
 	hcd = bus_to_hcd(otg->host);
@@ -3269,7 +3278,28 @@ void msm_otg_set_vbus_state(int online)
 }
 EXPORT_SYMBOL_GPL(msm_otg_set_vbus_state);
 #endif
+void msm_otg_set_charging_state(bool enable)
+{
+	struct msm_otg *motg = the_msm_otg;
+	static bool charging;
 
+	if (charging == enable)
+		return;
+	else
+		charging = enable;
+
+	pr_info("%s enable=%d\n", __func__, enable);
+
+	if (enable) {
+		motg->chg_type = USB_DCP_CHARGER;
+		motg->chg_state = USB_CHG_STATE_DETECTED;
+		schedule_work(&motg->sm_work);
+	} else {
+		motg->chg_state = USB_CHG_STATE_UNDEFINED;
+		motg->chg_type = USB_INVALID_CHARGER;
+	}
+}
+EXPORT_SYMBOL_GPL(msm_otg_set_charging_state);
 void msm_otg_set_id_state(int online)
 {
 	struct msm_otg *motg = the_msm_otg;
@@ -3299,6 +3329,9 @@ void msm_otg_set_smartdock_state(bool online)
 	if (online) {
 		dev_info(motg->phy.dev, "SMARTDOCK : ID set\n");
 		motg->smartdock = false;
+#if defined (CONFIG_SEC_PRODUCT_8960)
+		motg->smartdock = true;
+#endif
 		set_bit(ID, &motg->inputs);
 	} else {
 		dev_info(motg->phy.dev, "SMARTDOCK : ID clear\n");

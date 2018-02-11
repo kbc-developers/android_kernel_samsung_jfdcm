@@ -20,6 +20,10 @@
 
 #include "board-8930.h"
 
+#ifdef CONFIG_REGULATOR_MAX77693
+#include <linux/mfd/max77693.h>
+#endif
+
 #define VREG_CONSUMERS(_id) \
 	static struct regulator_consumer_supply vreg_consumers_##_id[]
 
@@ -90,6 +94,7 @@ VREG_CONSUMERS(L12) = {
 	REGULATOR_SUPPLY("cam_vdig",		"4-006c"),
 	REGULATOR_SUPPLY("cam_vdig",		"4-0048"),
 	REGULATOR_SUPPLY("cam_vdig",            "4-0020"),
+	REGULATOR_SUPPLY("dsi_vdc4",		"mipi_dsi.1"),
 };
 VREG_CONSUMERS(L14) = {
 	REGULATOR_SUPPLY("8917_l14",		NULL),
@@ -173,12 +178,15 @@ VREG_CONSUMERS(L32) = {
 };
 VREG_CONSUMERS(L33) = {
 	REGULATOR_SUPPLY("8917_l33",		NULL),
+	REGULATOR_SUPPLY("sensor_l33",		NULL),
 };
 VREG_CONSUMERS(L34) = {
 	REGULATOR_SUPPLY("8917_l34",		NULL),
 };
 VREG_CONSUMERS(L35) = {
 	REGULATOR_SUPPLY("8917_l35",		NULL),
+	REGULATOR_SUPPLY("dsi_vdc3",		"mipi_dsi.1"),
+	REGULATOR_SUPPLY("led_l35",		NULL),
 };
 VREG_CONSUMERS(L36) = {
 	REGULATOR_SUPPLY("8917_l36",		NULL),
@@ -223,6 +231,7 @@ VREG_CONSUMERS(S4) = {
 	REGULATOR_SUPPLY("CDC_VDD_CP",		"8-0055"),
 	REGULATOR_SUPPLY("CDC_VDD_CP",		"8-0066"),
 	REGULATOR_SUPPLY("CDC_VDD_CP",		"8-0077"),
+	REGULATOR_SUPPLY("dsi_vdc5",		"mipi_dsi.1"),
 };
 VREG_CONSUMERS(S5) = {
 	REGULATOR_SUPPLY("8917_s5",		NULL),
@@ -287,6 +296,68 @@ VREG_CONSUMERS(VDD_DIG_CORNER) = {
 	REGULATOR_SUPPLY("hsusb_vdd_dig",	"msm_otg"),
 };
 
+
+#ifdef CONFIG_REGULATOR_MAX77693
+static struct regulator_consumer_supply safeout1_supply[] = {
+	REGULATOR_SUPPLY("safeout1", NULL),
+};
+
+static struct regulator_consumer_supply safeout2_supply[] = {
+	REGULATOR_SUPPLY("safeout2", NULL),
+};
+
+static struct regulator_consumer_supply charger_supply[] = {
+	REGULATOR_SUPPLY("vinchg1", "charger-manager.0"),
+	REGULATOR_SUPPLY("vinchg1", NULL),
+};
+
+static struct regulator_init_data safeout1_init_data = {
+	.constraints	= {
+		.name		= "safeout1 range",
+		.valid_ops_mask = REGULATOR_CHANGE_STATUS,
+		.always_on	= 0,
+		.boot_on	= 1,
+		.state_mem	= {
+			.enabled = 1,
+		},
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(safeout1_supply),
+	.consumer_supplies	= safeout1_supply,
+};
+
+static struct regulator_init_data safeout2_init_data = {
+	.constraints	= {
+		.name		= "safeout2 range",
+		.valid_ops_mask = REGULATOR_CHANGE_STATUS,
+		.always_on	= 0,
+		.boot_on	= 0,
+		.state_mem	= {
+			.enabled = 1,
+		},
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(safeout2_supply),
+	.consumer_supplies	= safeout2_supply,
+};
+
+static struct regulator_init_data charger_init_data = {
+	.constraints	= {
+		.name		= "CHARGER",
+		.valid_ops_mask = REGULATOR_CHANGE_STATUS |
+		REGULATOR_CHANGE_CURRENT,
+		.boot_on	= 0,
+		.min_uA		= 60000,
+		.max_uA		= 2580000,
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(charger_supply),
+	.consumer_supplies	= charger_supply,
+};
+
+struct max77693_regulator_data max77693_regulators[] = {
+	{MAX77693_ESAFEOUT1, &safeout1_init_data,},
+	{MAX77693_ESAFEOUT2, &safeout2_init_data,},
+	{MAX77693_CHARGER, &charger_init_data,},
+};
+#endif /* CONFIG_REGULATOR_MAX77693 */
 
 #define PM8XXX_VREG_INIT(_id, _name, _min_uV, _max_uV, _modes, _ops, \
 			 _apply_uV, _pull_down, _always_on, _supply_regulator, \
@@ -546,11 +617,14 @@ msm8930_pm8917_regulator_pdata[] __devinitdata = {
 		0, 2),
 	PM8XXX_LDO(L29,      "8921_l29", 0, 1, 1800000, 1800000, 200, "8917_s8",
 		0, 3),
-#if defined(CONFIG_MACH_CRATER_CHN_CTC)
+#if defined(CONFIG_MACH_CRATER_CHN_CTC) || defined(CONFIG_MACH_WILCOX_EUR_LTE)
 	PM8XXX_LDO(L30,      "8917_l30", 0, 1, 1800000, 3300000, 200, NULL,
 		0, 4),
 #elif defined(CONFIG_FB_MSM_MIPI_ILI9341_BOE_VIDEO_QVGA_PT_PANEL)
 	PM8XXX_LDO(L30,      "8917_l30", 0, 1, 1800000, 1800000, 200, NULL,
+		0, 4),
+#elif defined(CONFIG_MACH_GOLDEN_ATT)
+	PM8XXX_LDO(L30,      "8917_l30", 0, 1, 1800000, 3000000, 200, NULL,
 		0, 4),
 #else
 	PM8XXX_LDO(L30,      "8917_l30", 0, 1, 1800000, 2800000, 200, NULL,
@@ -614,7 +688,7 @@ msm8930_rpm_regulator_init_data[] __devinitdata = {
 	RPM_LDO(L5,	 0, 1, 0, 2950000, 2950000, NULL,      0, 0),
 	RPM_LDO(L6,	 0, 1, 0, 2950000, 2950000, NULL,      0, 0),
 	RPM_LDO(L7,	 1, 1, 0, 1850000, 2950000, NULL,      10000, 10000),
-#if defined(CONFIG_MACH_CRATER) || defined (CONFIG_MACH_BAFFIN)
+#if defined(CONFIG_MACH_CRATER) || defined (CONFIG_MACH_BAFFIN) || defined (CONFIG_MACH_MELIUS_USC) || defined (CONFIG_MACH_MELIUS_SPR)
 	RPM_LDO(L8,	 0, 1, 0, 2800000, 3300000, NULL,      0, 0),
 #elif defined(CONFIG_FB_MSM_MIPI_ILI9341_BOE_VIDEO_QVGA_PT_PANEL)
 	RPM_LDO(L8,	 0, 1, 0, 2800000, 2800000, NULL,      0, 0),
@@ -647,6 +721,7 @@ msm8930_rpm_regulator_init_data[] __devinitdata = {
 	RPM_LDO(L23,	 1, 1, 1, 1800000, 1800000, "8917_s8", 10000, 10000),
 	RPM_LDO(L24,	 0, 1, 1,  500000, 1150000, "8917_s1", 10000, 10000),
 	RPM_LDO(L25,	 1, 1, 0, 1250000, 1250000, "8917_s1", 10000, 10000),
+	RPM_LDO(L29,	 0, 1, 0, 1800000, 1800000, NULL, 0, 0),
 
 	/*	ID     a_on pd ss		    supply */
 	RPM_VS(LVS1,	 0, 1, 0,		    "8917_s4"),

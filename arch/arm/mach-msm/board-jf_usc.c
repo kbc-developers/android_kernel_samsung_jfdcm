@@ -171,7 +171,7 @@ static void sensor_power_on_vdd(int, int);
 #define MSM_ION_MFC_META_SIZE  0x40000 /* 256 Kbytes */
 #define MSM_CONTIG_MEM_SIZE  0x65000
 #ifdef CONFIG_MSM_IOMMU
-#define MSM_ION_MM_SIZE		0x6600000    /* 56MB(0x3800000) -> 98MB -> 102MB */
+#define MSM_ION_MM_SIZE		0x8200000    /* 56MB(0x3800000) -> 98MB -> 102MB -> 130MB */
 #define MSM_ION_SF_SIZE		0
 #define MSM_ION_QSECOM_SIZE	0x1700000    /* 7.5MB(0x780000) -> 23MB */
 #define MSM_ION_HEAP_NUM	8
@@ -1552,7 +1552,7 @@ struct sii8240_platform_data sii8240_pdata = {
 	.power = sii8240_hw_onoff,
 	.hw_reset = sii8240_hw_reset,
 	.gpio_cfg = mhl_gpio_config,
-	.swing_level = 0x36,
+	.swing_level = 0x2E,
 	.vbus_present = muic77693_mhl_cb,
 };
 
@@ -5376,8 +5376,10 @@ static void __init apq8064_common_init(void)
 	if (!poweroff_charging) {
 		if (sec_tsp_synaptics_mode)
 			S5000_tsp_input_init(lcd_tsp_panel_version);
+#if defined(CONFIG_TOUCHSCREEN_ATMEL_MXTS)
 		else
 			mxt540s_tsp_input_init();
+#endif
 		}
 #endif
 

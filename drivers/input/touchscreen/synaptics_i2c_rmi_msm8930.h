@@ -38,7 +38,9 @@
 
 #define PROXIMITY
 /* DVFS feature : TOUCH BOOSTER */
-/*#define TSP_BOOSTER*/
+#ifdef CONFIG_SEC_DVFS
+#define TSP_BOOSTER
+#endif
 #ifdef TSP_BOOSTER
 #define DVFS_STAGE_DUAL		2
 #define DVFS_STAGE_SINGLE	1
@@ -73,7 +75,8 @@
 	|| defined(CONFIG_MACH_MELIUS_VZW) \
 	|| defined(CONFIG_MACH_MELIUS_TMO) \
 	|| defined(CONFIG_MACH_MELIUS_SPR) \
-	|| defined(CONFIG_MACH_MELIUS_USC)
+	|| defined(CONFIG_MACH_MELIUS_USC) \
+	|| defined(CONFIG_MACH_MELIUS_MTR)
 
 #define MANUFACTURERS_NEP 		0x01
 #define MANUFACTURERS_YFO 		0x02
@@ -347,7 +350,6 @@ struct synaptics_rmi4_data {
 	int touchkey_back;
 	bool force_update;
 	bool esd_reset;
-	bool is_inputmethod;
 
 #ifdef TSP_BOOSTER
 	struct delayed_work	work_dvfs_off;

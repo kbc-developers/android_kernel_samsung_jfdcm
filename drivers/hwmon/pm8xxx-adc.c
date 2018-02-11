@@ -465,6 +465,41 @@ static uint32_t pm8xxx_adc_read_adc_code(int32_t *data)
 	return 0;
 }
 
+
+#define CHG_CNTRL_2				0x212
+#define EN_BATT_THERM_MASK1			0xEF
+#define EN_BATT_THERM_MASK2			0x10
+int pm8921_enable_batt_therm(u8 en)
+{
+	int rc = 0;
+	u8 reg;
+	struct pm8xxx_adc *adc_pmic = pmic_adc;
+
+	rc = pm8xxx_readb(adc_pmic->dev->parent, CHG_CNTRL_2, &reg);
+	if (rc) {
+		pr_err("pm8xxx_readb failed: addr=%03X, rc=%d\n",
+			CHG_CNTRL_2, rc);
+		return rc;
+	}
+
+	if (en == 0) {
+		reg &= EN_BATT_THERM_MASK1;
+		pr_info("[pm8921] disable Vref_batt_therm\n");
+	} else {
+		reg |= EN_BATT_THERM_MASK2;
+		pr_info("[pm8921] enable Vref_batt_therm\n");
+	}
+
+	rc = pm8xxx_writeb(adc_pmic->dev->parent, CHG_CNTRL_2, reg);
+	if (rc) {
+		pr_err("pm8xxx_writeb failed: addr=%03X, rc=%d\n",
+			CHG_CNTRL_2, rc);
+		return rc;
+	}
+
+	return rc;
+} 
+
 static void pm8xxx_adc_btm_warm_scheduler_fn(struct work_struct *work)
 {
 	struct pm8xxx_adc *adc_pmic = container_of(work, struct pm8xxx_adc,

@@ -12,9 +12,15 @@ obj-$(CONFIG_TOUCHSCREEN_AD7879)	+= ad7879.o
 obj-$(CONFIG_TOUCHSCREEN_AD7879_I2C)	+= ad7879-i2c.o
 obj-$(CONFIG_TOUCHSCREEN_AD7879_SPI)	+= ad7879-spi.o
 obj-$(CONFIG_TOUCHSCREEN_ADS7846)	+= ads7846.o
+ifdef CONFIG_SEC_PRODUCT_8930
+obj-$(CONFIG_TOUCHSCREEN_MXTS)	+= mxts_msm8930.o
+else
+obj-$(CONFIG_TOUCHSCREEN_MXTS)	+= mxts.o
+endif
 obj-$(CONFIG_TOUCHSCREEN_ATMEL_MAXTOUCH)	+= atmel_maxtouch.o
 obj-$(CONFIG_TOUCHSCREEN_ATMEL_MXT)	+= atmel_mxt_ts.o
 obj-$(CONFIG_TOUCHSCREEN_ATMEL_TSADCC)	+= atmel_tsadcc.o
+obj-$(CONFIG_TOUCHSCREEN_MXT224)	+= mxt224e.o
 obj-$(CONFIG_TOUCHSCREEN_AUO_PIXCIR)	+= auo-pixcir-ts.o
 obj-$(CONFIG_TOUCHSCREEN_BITSY)		+= h3600_ts_input.o
 obj-$(CONFIG_TOUCHSCREEN_BU21013)       += bu21013_ts.o
@@ -91,3 +97,7 @@ obj-$(CONFIG_TOUCHSCREEN_FT5X06)	+= ft5x06_ts.o
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI4)		+= synaptics_i2c_rmi4.o
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_RMI4_DEV)	+= synaptics_rmi_dev.o
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE)	+= synaptics_fw_update.o
+obj-$(CONFIG_TOUCHSCREEN_MMS144)        += mms_ts_144.o
+obj-$(CONFIG_TOUCHSCREEN_ZINITIX_BT532)	+= zinitix_bt_532.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_TMA46X)	+= cyttsp4_core.o cyttsp4_i2c.o cyttsp4_bus.o cyttsp4_mtb.o cyttsp4_mt_common.o cyttsp4_device_access.o cyttsp4_loader.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_TMA46X_SUPPORT_BUTTON)	+= cyttsp4_btn.o

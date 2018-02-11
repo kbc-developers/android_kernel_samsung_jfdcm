@@ -309,9 +309,12 @@ struct msm_mctl_post_proc_cmd {
 #define MAX_ACTUATOR_INIT_SET 12
 #define MAX_ACTUATOR_TYPE_SIZE 32
 #define MAX_ACTUATOR_REG_TBL_SIZE 8
-
+#define MAX_ACTUATOR_AF_TOTAL_STEPS 1024
 
 #define MSM_MAX_CAMERA_CONFIGS 2
+
+#define MSM_ACTUATOR_MOVE_SIGNED_FAR -1
+#define MSM_ACTUATOR_MOVE_SIGNED_NEAR  1
 
 #define PP_SNAP  0x01
 #define PP_RAW_SNAP ((0x01)<<1)
@@ -321,6 +324,7 @@ struct msm_mctl_post_proc_cmd {
 #define PP_RDI_PREV ((0x01)<<4) //Kim
 #define PP_MASK		(PP_SNAP|PP_RAW_SNAP|PP_PREV|PP_THUMB|PP_RDI_PREV)
 #else
+#define PP_RDI_PREV ((0x01)<<4) //Kim
 #define PP_MASK		(PP_SNAP|PP_RAW_SNAP|PP_PREV|PP_THUMB)
 #endif
 
@@ -579,6 +583,7 @@ struct msm_camera_cfg_cmd {
 #define CMD_AXI_STOP   0xE2
 #define CMD_AXI_RESET  0xE3
 #define CMD_AXI_ABORT  0xE4
+#define CMD_AXI_STOP_RECOVERY  0xE5
 
 
 
@@ -917,7 +922,8 @@ struct msm_stats_buf {
 #define MSM_V4L2_PID_MMAP_INST              (V4L2_CID_PRIVATE_BASE+17)
 #define MSM_V4L2_PID_PP_PLANE_INFO          (V4L2_CID_PRIVATE_BASE+18)
 #define MSM_V4L2_PID_PREVIEW_SIZE           (V4L2_CID_PRIVATE_BASE+19)
-#define MSM_V4L2_PID_MAX                    MSM_V4L2_PID_PREVIEW_SIZE
+#define MSM_V4L2_PID_AVTIMER                (V4L2_CID_PRIVATE_BASE+20)
+#define MSM_V4L2_PID_MAX                     MSM_V4L2_PID_AVTIMER
 
 /* camera operation mode for video recording - two frame output queues */
 #define MSM_V4L2_CAM_OP_DEFAULT         0
@@ -1025,13 +1031,16 @@ struct msm_snapshot_pp_status {
 #define CFG_CONFIG_VREG_ARRAY         52
 #define CFG_CONFIG_CLK_ARRAY          53
 #define CFG_GPIO_OP                   54
-#define CFG_EEPROM_DIRECT_DATA_READ	  55
-#define CFG_EEPROM_DIRECT_DATA_WRITE  56
-#define CFG_EEPROM_DIRECT_DATA_ERASE  57
-#define CFG_SET_STREAMING_MODE        58
-#define CFG_SET_VISION_AE             59
-#define CFG_FINAL_AF				  60 	//SEMCO Request by Lizk
-#define CFG_MAX                       61
+#define CFG_SET_VISION_MODE           55
+#define CFG_HDR_UPDATE                56
+#define CFG_ACTUAOTOR_REG_INIT        57
+#define CFG_EEPROM_DIRECT_DATA_READ   58
+#define CFG_EEPROM_DIRECT_DATA_WRITE  59
+#define CFG_EEPROM_DIRECT_DATA_ERASE  60
+#define CFG_SET_STREAMING_MODE        61
+#define CFG_SET_VISION_AE             62
+#define CFG_FINAL_AF		      63	//SEMCO Request by Lizk
+#define CFG_MAX                       64
 
 
 
@@ -1334,6 +1343,8 @@ struct exp_gain_cfg {
 /*	uint16_t gain;*/
 	uint32_t gain;
 	uint32_t line;
+	int32_t luma_avg;
+	uint16_t fgain;
 };
 
 struct focus_cfg {
@@ -1442,6 +1453,17 @@ struct msm_sensor_output_reg_addr_t {
 	uint16_t y_output;
 	uint16_t line_length_pclk;
 	uint16_t frame_length_lines;
+};
+
+enum sensor_hdr_update_t {
+	SENSOR_HDR_UPDATE_AWB,
+	SENSOR_HDR_UPDATE_LSC,
+};
+
+struct sensor_hdr_update_parm_t {
+	enum sensor_hdr_update_t type;
+	uint16_t awb_gain_r, awb_gain_b;
+	uint8_t lsc_table[504];
 };
 
 struct sensor_driver_params_type {
@@ -1760,6 +1782,7 @@ struct sensor_cfg_data {
 		struct sensor_output_info_t output_info;
 		struct msm_eeprom_data_t eeprom_data;
 		struct csi_lane_params_t csi_lane_params;
+		struct sensor_hdr_update_parm_t hdr_update_parm;
 		int32_t vision_mode_enable;
 		int vision_ae;
 		/* QRD */

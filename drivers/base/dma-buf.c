@@ -38,8 +38,9 @@ static int dma_buf_release(struct inode *inode, struct file *file)
 		return -EINVAL;
 
 	dmabuf = file->private_data;
-
-	dmabuf->ops->release(dmabuf);
+	if(NULL != dmabuf) {
+		dmabuf->ops->release(dmabuf);
+	}	
 	kfree(dmabuf);
 	return 0;
 }

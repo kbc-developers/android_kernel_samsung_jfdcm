@@ -83,7 +83,7 @@ void panic(const char *fmt, ...)
 	va_list args;
 	long i, i_next = 0;
 	int state = 0;
-#if !defined(CONFIG_MACH_MELIUS)
+#if !defined(CONFIG_MACH_MELIUS) && !defined(CONFIG_SEC_PRODUCT_8960) && !defined(CONFIG_MACH_SERRANO) && !defined(CONFIG_MACH_GOLDEN) && !defined(CONFIG_MACH_LT02) && !defined(CONFIG_MACH_CANE)
 	coresight_abort();
 #endif
 	/*

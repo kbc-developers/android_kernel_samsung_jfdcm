@@ -139,6 +139,12 @@ fw-shipped-$(CONFIG_USB_SERIAL_KEYSPAN_PDA) += keyspan_pda/keyspan_pda.fw
 fw-shipped-$(CONFIG_USB_SERIAL_XIRCOM) += keyspan_pda/xircom_pgs.fw
 fw-shipped-$(CONFIG_USB_VICAM) += vicam/firmware.fw
 fw-shipped-$(CONFIG_VIDEO_CPIA2) += cpia2/stv0672_vp4.bin
+fw-shipped-$(CONFIG_TOUCHSCREEN_MXT224S_NEW) += tsp_atmel/mxt224s_Golden.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_MXT336S) += tsp_atmel/mxt336s_Serrano.fw
+fw-shipped-$(CONFIG_KEYBOARD_TC360_TOUCHKEY) += coreriver/tc360.fw
+fw-shipped-$(CONFIG_KEYBOARD_TC360_TOUCHKEY) += coreriver/tc360_serrano_eur.fw
+fw-shipped-$(CONFIG_KEYBOARD_TC360_TOUCHKEY) += coreriver/tc360_serrano_usa.fw
+fw-shipped-$(CONFIG_KEYBOARD_TC360_TOUCHKEY) += coreriver/tc360_golden.fw
 fw-shipped-$(CONFIG_YAM) += yam/1200.bin yam/9600.bin
 #for sensorhub
 fw-shipped-$(CONFIG_SENSORS_SSP) += ssp.fw ssp_rev03.fw
@@ -148,6 +154,7 @@ fw-shipped-$(CONFIG_SENSORS_SSP) += ssp_crashed.fw
 #for TSP firmware
 fw-shipped-$(CONFIG_TOUCHSCREEN_ATMEL_MXTS) += tsp_atmel/mXT540S.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_ATMEL_MXTS) += tsp_atmel/mXT540Si.fw
+ifdef CONFIG_MACH_JF
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_a1.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_b0_3_4.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_b0_4_0.fw
@@ -155,26 +162,36 @@ fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_b0
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_b0_5_1.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_b0_fac.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_b0_5_1_fac.fw
+endif
 ifdef CONFIG_MACH_JACTIVE_EUR
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_hsync.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_hsync_fac.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_non_hsync.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_non_hsync_fac.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_hsync04.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_hsync04_fac.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_d0.fw
 endif
 ifdef CONFIG_MACH_JACTIVE_ATT
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_hsync.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_hsync_fac.fw
-fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_hsync04.fw
-fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_hsync04_fac.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_non_hsync.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_non_hsync_fac.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_hsync04.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/jactive/synaptics_b0_hsync04_fac.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_d0.fw
 endif
 
+ifndef CONFIG_MACH_JF
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_b0_nep_13.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_b0_nep_14.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) += tsp_synaptics/synaptics_b0_nep_19.fw
+endif
+
+fw-shipped-$(CONFIG_TOUCHSCREEN_MMS144) += tsp_melfas/CORE.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_MMS144) += tsp_melfas/PRIV.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_MMS144) += tsp_melfas/PUBL.fw
+
 fw-shipped-all := $(fw-shipped-y) $(fw-shipped-m) $(fw-shipped-)
 
 # Directories which we _might_ need to create, so we have a rule for them.

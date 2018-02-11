@@ -244,6 +244,17 @@ int tsens_get_temp(struct tsens_device *device, unsigned long *temp)
 }
 EXPORT_SYMBOL(tsens_get_temp);
 
+int tsens_get_max_sensor_num(uint32_t *tsens_num_sensors)
+{
+        if (!tmdev)
+                return -ENODEV;
+
+        *tsens_num_sensors = tmdev->tsens_num_sensor;
+
+        return 0;
+}
+EXPORT_SYMBOL(tsens_get_max_sensor_num);
+
 static int tsens_tz_get_mode(struct thermal_zone_device *thermal,
 			      enum thermal_device_mode *mode)
 {
@@ -1050,7 +1061,13 @@ static struct platform_driver tsens_tm_driver = {
 	.probe = tsens_tm_probe,
 	.remove = tsens_tm_remove,
 	.driver = {
+#if defined(CONFIG_SEC_PRODUCT_8960)
+		.name = "tsens8960-tm",
+#elif defined(CONFIG_SEC_PRODUCT_8930)
+		.name = "msm8930-tmu",
+#else
 		.name = "apq8064-tmu",
+#endif
 		.owner = THIS_MODULE,
 #ifdef CONFIG_PM
 		.pm	= &tsens_pm_ops,

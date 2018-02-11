@@ -15,6 +15,9 @@
 #ifndef MDP4_H
 #define MDP4_H
 
+#if defined(DLOG_ENABLED)
+#include "dlog.h"
+#endif
 extern struct mdp_dma_data dma2_data;
 extern struct mdp_dma_data dma_s_data;
 extern struct mdp_dma_data dma_e_data;
@@ -383,6 +386,10 @@ struct mdp4_overlay_pipe {
 	struct completion comp;
 	struct completion dmas_comp;
 	struct mdp4_iommu_pipe_info iommu;
+#if defined(CONFIG_FEATURE_FLIPLR)
+	uint32 ext_flag; 
+	struct msm_fb_data_type *mfd; 
+#endif 
 #ifdef MDP_ODD_RESOLUTION_CTRL	
 	uint32 check_odd_res;
 #endif	
@@ -700,6 +707,10 @@ void mdp4_mixer_gc_lut_setup(int mixer_num);
 void mdp4_fetch_cfg(uint32 clk);
 uint32 mdp4_rgb_igc_lut_cvt(uint32 ndx);
 void mdp4_vg_qseed_init(int);
+#if defined(CONFIG_FB_MDP4_ENHANCE)
+void mdp4_vg_qseed_init_DMB(int vg_num);
+void mdp4_vg_qseed_init_VideoPlay(int vg_num);
+#endif
 int mdp4_overlay_blt(struct fb_info *info, struct msmfb_overlay_blt *req);
 
 #ifdef CONFIG_FB_MSM_MIPI_DSI
@@ -943,6 +954,27 @@ u32  mdp4_allocate_writeback_buf(struct msm_fb_data_type *mfd, u32 mix_num);
 void mdp4_init_writeback_buf(struct msm_fb_data_type *mfd, u32 mix_num);
 void mdp4_free_writeback_buf(struct msm_fb_data_type *mfd, u32 mix_num);
 
+#if defined(CONFIG_MIPI_SAMSUNG_ESD_REFRESH)
+void set_esd_disable(void);
+void set_esd_enable(void);
+boolean get_esd_refresh_stat(void);
+#endif
+
+extern int play_speed_1_5;
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT) || \
+	defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
+extern boolean camera_mode;
+#endif
+
+#if defined(CONFIG_SAMSUNG_CMC624)
+extern boolean video_mode;
+void cmc_timing_generator_reset(void) ;
+void mipi_samsung_oled_display_fast_init(void);
+void pull_ldi_reset_down(void);
+void pull_ldi_reset_up(void);
+bool samsung_has_cmc624(void);
+#endif
+
 int mdp4_igc_lut_config(struct mdp_igc_lut_data *cfg);
 void mdp4_overlay_iommu_pipe_free(int ndx, int all);
 void mdp4_overlay_iommu_free_list(int mixer, struct ion_handle *ihdl);
@@ -971,6 +1003,11 @@ void mdp4_vg_csc_restore(void);
 void dump_underrun_pipe_info(void);
 #if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 void dtv_update_camera_vector_override(uint8_t enable);
+#endif
+#if defined(CONFIG_MIPI_SAMSUNG_ESD_REFRESH)
+void set_esd_disable(void);
+void set_esd_enable(void);
+boolean get_esd_refresh_stat(void);
 #endif
 
 #ifndef CONFIG_FB_MSM_WRITEBACK_MSM_PANEL

@@ -333,7 +333,11 @@ static void max77693_haptic_power_onoff(int onoff)
 
 	if (!reg_l8) {
 		reg_l8 = regulator_get(NULL, "haptic_pwr");
-		ret = regulator_set_voltage(reg_l8, 3000000, 3000000);
+		#if defined(CONFIG_MACH_MELIUS_USC) || defined(CONFIG_MACH_MELIUS_SPR)
+			ret = regulator_set_voltage(reg_l8, 3300000, 3300000);
+		#else
+			ret = regulator_set_voltage(reg_l8, 3000000, 3000000);
+		#endif
 
 		if (IS_ERR(reg_l8)) {
 			printk(KERN_ERR"could not get haptic_pwr, rc = %ld\n",
@@ -669,18 +673,20 @@ static void muic_mhl_cb(bool attached, int charger)
 		 break;
 	}
 #endif
-	if (charger == 0x00) {
-		pr_info("TA charger\n");
-		power_type = ONLINE_POWER_TYPE_MHL_500;
-	} else if (charger == 0x01) {
-		pr_info("TA powered charger\n");
-		power_type = ONLINE_POWER_TYPE_MHL_900;
-	} else if (charger == 0x02) {
-		pr_info("TA powered charger\n");
-		power_type = ONLINE_POWER_TYPE_MHL_1500;
-	} else if (charger == 0x03) {
-		pr_info("USB charger\n");
-		power_type = ONLINE_POWER_TYPE_USB;
+	if (attached) {
+		switch (charger) {
+		case 0:
+		case 1:
+			pr_info("USB charger\n");
+			power_type = ONLINE_POWER_TYPE_USB;
+			break;
+		case 2:
+			pr_info("TA powered charger\n");
+			power_type = ONLINE_POWER_TYPE_MHL_900;
+			break;
+		default:
+			current_cable_type = POWER_SUPPLY_TYPE_BATTERY;
+		}
 	} else
 		current_cable_type = POWER_SUPPLY_TYPE_BATTERY;
 
@@ -1039,8 +1045,12 @@ static int __init sensor_device_init(void)
 
 	gpio_request(GPIO_GYRO_INT_N, "GYRO_INT");
 	gpio_direction_input(GPIO_GYRO_INT_N);
-#ifdef CONFIG_MACH_CRATER_CHN_CTC
+#if defined(CONFIG_MACH_CRATER_CHN_CTC)
 	magnetic_pdata.position = 3;
+#elif defined(CONFIG_MACH_MELIUS_USC)
+	magnetic_pdata.position = 4;
+#elif defined(CONFIG_MACH_MELIUS_VZW)
+	magnetic_pdata.position = 7;
 #else
 	magnetic_pdata.position = 6;
 #endif
@@ -1680,6 +1690,7 @@ static void __init reserve_pmem_memory(void)
 	reserve_memory_for(&android_pmem_pdata);
 	reserve_memory_for(&android_pmem_audio_pdata);
 #endif /*CONFIG_MSM_MULTIMEDIA_USE_ION*/
+	msm8930_reserve_table[MEMTYPE_EBI1].size += msm_contig_mem_size;
 #endif /*CONFIG_ANDROID_PMEM*/
 }
 
@@ -3168,9 +3179,9 @@ static struct msm_spi_platform_data msm8960_qup_spi_gsbi1_pdata = {
 };
 #endif
 
-//static struct msm_spi_platform_data msm8960_qup_spi_gsbi2_pdata = {
-//	.max_clock_speed = 15060000,
-//};
+static struct msm_spi_platform_data msm8960_qup_spi_gsbi2_pdata = {
+	.max_clock_speed = 15060000,
+};
 static struct msm_spi_platform_data msm8960_qup_spi_gsbi11_pdata = {
 	.max_clock_speed = 15060000,
 };
@@ -3245,7 +3256,13 @@ static int msm_hsusb_vbus_power(bool on)
 static int hsusb_phy_init_seq[] = {
 	0x44, 0x80, /* set VBUS valid threshold
 			and disconnect valid threshold */
+#if defined (CONFIG_MACH_MELIUS_SPR)
+	0x7F, 0x81, /* update DC voltage level */
+#elif defined (CONFIG_MACH_MELIUS_MTR)
+	0x6F, 0x81, /* update DC voltage level */
+#else
 	0x5F, 0x81, /* update DC voltage level */
+#endif
 	0x3C, 0x82, /* set preemphasis and rise/fall time */
 	0x13, 0x83, /* set source impedance adjusment */
 	-1};
@@ -3267,7 +3284,6 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	.mpm_otgsessvld_int	= MSM_MPM_PIN_USB1_OTGSESSVLD,
 	.vbus_power		= msm_hsusb_vbus_power,
 };
-// #include "board-8930-otg.c"
 #endif
 
 #define PID_MAGIC_ID		0x71432909
@@ -3329,7 +3345,7 @@ static struct android_usb_platform_data android_usb_pdata = {
 #else
 	.cdrom = false,
 #endif
-	//.nluns = 0,
+	.nluns = 0,
 };
 
 static struct platform_device android_usb_device = {
@@ -3368,6 +3384,21 @@ static uint8_t spm_power_collapse_with_rpm[] __initdata = {
 	0x09, 0x07, 0x01, 0x0B,
 	0x10, 0x54, 0x30, 0x0C,
 	0x24, 0x30, 0x0f,
+};
+
+static uint8_t spm_power_collapse_without_rpm_krait_v3[] __initdata = {
+	0x00, 0x30, 0x24, 0x30,
+	0x54, 0x10, 0x09, 0x03,
+	0x01, 0x10, 0x54, 0x30,
+	0x0C, 0x24, 0x30, 0x0f,
+};
+
+static uint8_t spm_power_collapse_with_rpm_krait_v3[] __initdata = {
+	0x00, 0x30, 0x24, 0x30,
+	0x54, 0x10, 0x09, 0x07,
+	0x01, 0x0B, 0x10, 0x54,
+	0x30, 0x0C, 0x24, 0x30,
+	0x0f,
 };
 
 static struct msm_spm_seq_entry msm_spm_boot_cpu_seq_list[] __initdata = {
@@ -3968,10 +3999,10 @@ static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi12_pdata = {
 #endif
 
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
-/*static struct ks8851_pdata spi_eth_pdata = {
+static struct ks8851_pdata spi_eth_pdata = {
 	.irq_gpio = KS8851_IRQ_GPIO,
 	.rst_gpio = KS8851_RST_GPIO,
-};*/
+};
 #endif
 
 #if defined(CONFIG_KS8851)
@@ -4056,7 +4087,7 @@ static struct platform_device msm_tsens_device = {
 static struct msm_thermal_data msm_thermal_pdata = {
 	.sensor_id = 9,
 	.poll_ms = 250,
-	.limit_temp_degC = 60,
+	.limit_temp_degC = 70,
 	.temp_hysteresis_degC = 10,
 	.freq_step = 2,
 };
@@ -4180,25 +4211,52 @@ static struct sec_jack_zone jack_zones_rev08[] = {
 static struct sec_jack_zone jack_zones[] = {
 	[0] = {
 		.adc_high	= 3,
-		.delay_us	= 10,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_3POLE,
 	},
 	[1] = {
 		.adc_high	= 620,
-		.delay_us	= 10,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_3POLE,
 	},
 	[2] = {
 		.adc_high	= 2700,
-		.delay_us	= 10,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_4POLE,
 	},
 	[3] = {
 		.adc_high	= 9999,
-		.delay_us	= 10,
+		.delay_us	= 10000,
+		.check_count	= 10,
+		.jack_type	= SEC_HEADSET_4POLE,
+	},
+};
+#elif defined(CONFIG_MACH_MELIUS_EUR_OPEN)
+static struct sec_jack_zone jack_zones[] = {
+	[0] = {
+		.adc_high	= 3,
+		.delay_us	= 10000,
+		.check_count	= 10,
+		.jack_type	= SEC_HEADSET_3POLE,
+	},
+	[1] = {
+		.adc_high	= 1030,
+		.delay_us	= 10000,
+		.check_count	= 10,
+		.jack_type	= SEC_HEADSET_3POLE,
+	},
+	[2] = {
+		.adc_high	= 2700,
+		.delay_us	= 10000,
+		.check_count	= 10,
+		.jack_type	= SEC_HEADSET_4POLE,
+	},
+	[3] = {
+		.adc_high	= 9999,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_4POLE,
 	},
@@ -4207,25 +4265,25 @@ static struct sec_jack_zone jack_zones[] = {
 static struct sec_jack_zone jack_zones[] = {
 	[0] = {
 		.adc_high	= 3,
-		.delay_ms	= 10,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_3POLE,
 	},
 	[1] = {
 		.adc_high	= 950,
-		.delay_ms	= 10,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_3POLE,
 	},
 	[2] = {
 		.adc_high	= 2700,
-		.delay_ms	= 10,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_4POLE,
 	},
 	[3] = {
 		.adc_high	= 9999,
-		.delay_ms	= 10,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_4POLE,
 	},
@@ -4523,7 +4581,7 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm8960_device_qup_spi_gsbi1,
 #endif
 #if !defined(CONFIG_MACH_MELIUS_EUR_OPEN) && !defined(CONFIG_MACH_MELIUS_EUR_LTE)
-//	&msm8960_device_qup_spi_gsbi2,
+	&msm8960_device_qup_spi_gsbi2,
 #endif
 #if defined(CONFIG_GSM_MODEM_SPRD6500)
 	&msm8960_device_qup_spi_gsbi5,
@@ -5206,6 +5264,27 @@ static void __init msm8930_pm8917_pdata_fixup(void)
 	pdata->uses_pm8917 = true;
 }
 
+static void __init msm8930ab_update_krait_spm(void)
+{
+	int i;
+
+	/* Update the SPM sequences for SPC and PC */
+	for (i = 0; i < ARRAY_SIZE(msm_spm_data); i++) {
+		int j;
+		struct msm_spm_platform_data *pdata = &msm_spm_data[i];
+		for (j = 0; j < pdata->num_modes; j++) {
+				if (pdata->modes[j].cmd ==
+								spm_power_collapse_without_rpm)
+							pdata->modes[j].cmd =
+							spm_power_collapse_without_rpm_krait_v3;
+				else if (pdata->modes[j].cmd ==
+								spm_power_collapse_with_rpm)
+							pdata->modes[j].cmd =
+							spm_power_collapse_with_rpm_krait_v3;
+		}
+	}
+}
+
 static void __init msm8930ab_update_retention_spm(void)
 {
 	int i;
@@ -5375,8 +5454,8 @@ void __init msm8930_melius_init(void)
 	msm8960_device_qup_spi_gsbi5.dev.platform_data =
 				&msm8960_qup_spi_gsbi5_pdata;
 #endif
-//	msm8960_device_qup_spi_gsbi2.dev.platform_data =
-//				&msm8960_qup_spi_gsbi2_pdata;
+	msm8960_device_qup_spi_gsbi2.dev.platform_data =
+				&msm8960_qup_spi_gsbi2_pdata;
 	msm8960_device_qup_spi_gsbi11.dev.platform_data =
 				&msm8960_qup_spi_gsbi11_pdata;
 #ifdef CONFIG_KS8851
@@ -5403,6 +5482,8 @@ void __init msm8930_melius_init(void)
 #endif
 	msm8930_i2c_init();
 	msm8930_init_gpu();
+	if (cpu_is_msm8930ab())
+		msm8930ab_update_krait_spm();
 	if (cpu_is_krait_v3()) {
 		msm_pm_set_tz_retention_flag(0);
 		msm8930ab_update_retention_spm();
@@ -5538,10 +5619,6 @@ void __init msm8930_melius_init(void)
 #endif
 #if defined(CONFIG_TDMB) || defined(CONFIG_TDMB_MODULE)
 	tdmb_dev_init();
-#endif
-
-#ifdef CONFIG_USB_HOST_NOTIFY
-//	msm_otg_power_init(GPIO_OTG_TEST, 0);
 #endif
 }
 

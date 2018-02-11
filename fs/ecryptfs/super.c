@@ -171,9 +171,17 @@ static int ecryptfs_show_options(struct seq_file *m, struct dentry *root)
 	if (mount_crypt_stat->flags & ECRYPTFS_ENABLE_FILTERING)
 		seq_printf(m, ",ecryptfs_enable_filtering");
 #endif
-#ifdef CONFIG_CRYPTO_FIPS
+#if defined(CONFIG_CRYPTO_FIPS) && !defined(CONFIG_FORCE_DISABLE_FIPS)
 	if (mount_crypt_stat->flags & ECRYPTFS_ENABLE_CC)
 		seq_printf(m, ",ecryptfs_enable_cc");
+	if (mount_crypt_stat->flags & ECRYPTFS_HASH_SHA256)
+		seq_printf(m, ",ecryptfs_hash=sha256");
+	if (mount_crypt_stat->flags & ECRYPTFS_HASH_MD5)
+		seq_printf(m, ",ecryptfs_hash=md5");
+	if (mount_crypt_stat->flags & ECRYPTFS_FILENAME_AES_CBC)
+		seq_printf(m, ",ecryptfs_fn_aes_mode=cbc");
+	if (mount_crypt_stat->flags & ECRYPTFS_FILENAME_AES_ECB)
+		seq_printf(m, ",ecryptfs_fn_aes_mode=ecb");
 #endif
 	if (mount_crypt_stat->flags & ECRYPTFS_PLAINTEXT_PASSTHROUGH_ENABLED)
 		seq_printf(m, ",ecryptfs_passthrough");

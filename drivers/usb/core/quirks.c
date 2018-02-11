@@ -95,6 +95,10 @@ static const struct usb_device_id usb_quirk_list[] = {
 	/* Artisman Watchdog Dongle */
 	{ USB_DEVICE(0x04b4, 0x0526), .driver_info =
 			USB_QUIRK_CONFIG_INTF_STRINGS },
+			
+	/* Qualcomm MDM9x15 */
+	{ USB_DEVICE(0x05c6, 0x9048), .driver_info = USB_QUIRK_HSIC_TUNE },
+	{ USB_DEVICE(0x05c6, 0x904C), .driver_info = USB_QUIRK_HSIC_TUNE },
 
 	/* Samsung Android phone modem - ID conflict with SPH-I500 */
 	{ USB_DEVICE(0x04e8, 0x6601), .driver_info =

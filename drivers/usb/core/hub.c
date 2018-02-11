@@ -2783,6 +2783,16 @@ int usb_port_resume(struct usb_device *udev, pm_message_t msg)
 
 		/* TRSMRCY = 10 msec */
 		msleep(10);
+		
+		/*Specific retry only for MDM9x15*/
+		
+		if (udev->quirks & USB_QUIRK_HSIC_TUNE) {
+			if (portstatus & USB_PORT_STAT_SUSPEND) {
+				usleep_range(5000, 10000);
+				status = hub_port_status(hub, port1,
+						&portstatus, &portchange);
+			}
+		}
 	}
 
  SuspendCleared:

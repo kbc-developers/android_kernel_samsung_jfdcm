@@ -30,6 +30,9 @@
 #include <linux/gpio.h>
 #include <linux/gpio_event.h>
 #include <linux/sec_jack.h>
+#if defined(CONFIG_MUIC_AUDIO_OUTPUT_CONTROL)
+#include <linux/mfd/max77693-private.h>
+#endif
 
 #define NUM_INPUT_DEVICE_ID	2
 #define MAX_ZONE_LIMIT		10
@@ -37,6 +40,11 @@
 #define DET_CHECK_TIME_MS	100		/* 100ms */
 #define WAKE_LOCK_TIME		(HZ * 5)	/* 5 sec */
 
+#ifdef CONFIG_MACH_MELIUS_EUR_OPEN
+extern unsigned int system_rev;
+#endif
+
+static bool recheck_jack;
 struct sec_jack_info {
 	struct sec_jack_platform_data *pdata;
 	struct delayed_work jack_detect_work;
@@ -57,6 +65,9 @@ struct sec_jack_info {
 	struct platform_device *send_key_dev;
 	unsigned int cur_jack_type;
 };
+
+int jack_is_detected = 0;
+EXPORT_SYMBOL(jack_is_detected);
 
 /* with some modifications like moving all the gpio structs inside
  * the platform data and getting the name for the switch and
@@ -218,6 +229,15 @@ static void sec_jack_set_type(struct sec_jack_info *hi, int jack_type)
 	pr_info("%s : jack_type = %d\n", __func__, jack_type);
 
 	switch_set_state(&switch_jack_detection, jack_type);
+
+	jack_is_detected = jack_type;
+#if defined(CONFIG_MUIC_AUDIO_OUTPUT_CONTROL)
+	if (jack_is_detected)
+		max77693_muic_set_audio_switch(0);
+	else
+		max77693_muic_set_audio_switch(1);
+#endif
+
 }
 
 static void handle_jack_not_inserted(struct sec_jack_info *hi)
@@ -236,6 +256,9 @@ static void determine_jack_type(struct sec_jack_info *hi)
 	int i;
 	unsigned npolarity = !pdata->det_active_high;
 
+	 #if defined (CONFIG_MACH_SERRANO_ATT) || defined(CONFIG_MACH_SERRANO_VZW) || defined(CONFIG_MACH_SERRANO_USC) || defined(CONFIG_MACH_SERRANO_LRA)
+	 zones = pdata->zones_rev03;
+     #endif
 	/* set mic bias to enable adc */
 	pdata->set_micbias_state(true);
 
@@ -254,8 +277,19 @@ static void determine_jack_type(struct sec_jack_info *hi)
 		for (i = 0; i < size; i++) {
 			if (adc <= zones[i].adc_high) {
 				if (++count[i] > zones[i].check_count) {
+#ifndef CONFIG_MACH_JAGUAR
+					if (recheck_jack == true && i == 3) {
+#else
+					if (recheck_jack == true && i == 5) {
+#endif
+						pr_err("%s - something wrong connectoin!\n", __func__);
+						handle_jack_not_inserted(hi);
+						recheck_jack = false;
+						return;
+					}
 					sec_jack_set_type(hi,
 						zones[i].jack_type);
+					recheck_jack = false;
 					return;
 				}
 				if (zones[i].delay_us > 0)
@@ -265,6 +299,7 @@ static void determine_jack_type(struct sec_jack_info *hi)
 		}
 	}
 	/* jack removed before detection complete */
+	recheck_jack = false;
 	pr_debug("%s : jack removed before detection complete\n", __func__);
 	handle_jack_not_inserted(hi);
 }
@@ -298,6 +333,33 @@ static ssize_t earjack_state_onoff_show(struct device *dev,
 static DEVICE_ATTR(state, 0664 , earjack_state_onoff_show,
 	NULL);
 
+static ssize_t reselect_jack_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	pr_info("%s : operate nothing\n", __func__);
+	return 0;
+}
+
+static ssize_t reselect_jack_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct sec_jack_info *hi = dev_get_drvdata(dev);
+	int value = 0;
+
+
+	sscanf(buf, "%d", &value);
+	pr_err("%s: User  selection : 0X%x", __func__, value);
+
+	if (value == 1) {
+		recheck_jack = true;
+		determine_jack_type(hi);
+	}
+
+	return size;
+}
+
+static DEVICE_ATTR(reselect_jack, 0664, reselect_jack_show,
+		reselect_jack_store);
 
 /* thread run whenever the headset detect state changes (either insertion
  * or removal).
@@ -351,6 +413,13 @@ void sec_jack_buttons_work(struct work_struct *work)
 	struct sec_jack_buttons_zone *btn_zones = pdata->buttons_zones;
 	int adc;
 	int i;
+
+#if defined (CONFIG_MACH_SERRANO_ATT) || defined(CONFIG_MACH_SERRANO_LRA)
+	btn_zones= pdata->buttons_zones_rev03;
+#elif defined (CONFIG_MACH_MELIUS_EUR_OPEN)
+	if (system_rev == 10)
+		btn_zones = pdata->buttons_zones_rev06;
+#endif
 
 	/* when button is released */
 	if (hi->pressed == 0) {
@@ -463,6 +532,11 @@ static int sec_jack_probe(struct platform_device *pdev)
 	if (ret)
 		pr_err("Failed to create device file in sysfs entries(%s)!\n",
 			dev_attr_state.attr.name);
+
+	ret = device_create_file(earjack, &dev_attr_reselect_jack);
+	if (ret)
+		pr_err("Failed to create device file in sysfs entries(%s)!\n",
+				dev_attr_reselect_jack.attr.name);
 
 	INIT_WORK(&hi->buttons_work, sec_jack_buttons_work);
 	INIT_WORK(&hi->detect_work, sec_jack_detect_work);

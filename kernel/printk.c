@@ -163,7 +163,13 @@ static char *log_buf = __log_buf;
 static int log_buf_len = __LOG_BUF_LEN;
 static unsigned logged_chars; /* Number of chars produced since last read+clear operation */
 static int saved_console_loglevel = -1;
-
+#ifdef CONFIG_SEC_SSR_DUMP
+/*
+ * variable to hold the ioremap address of kernel log buffer,
+ * which is reused in ramdump.c
+ */
+unsigned *ramdump_kernel_log_addr;
+#endif
 #ifdef CONFIG_KEXEC
 /*
  * This appends the listed symbols to /proc/vmcoreinfo
@@ -222,6 +228,11 @@ static unsigned long long sec_log_save_base;
 unsigned long long sec_log_reserve_base;
 unsigned sec_log_reserve_size;
 unsigned int *sec_log_irq_en;
+#ifdef CONFIG_SEC_LOG_LAST_KMSG
+#define LAST_LOG_BUF_SHIFT 19
+static char *last_kmsg_buffer;
+static unsigned last_kmsg_size;
+#endif /* CONFIG_SEC_LOG_LAST_KMSG */
 #endif
 static inline void emit_sec_log_char(char c)
 {
@@ -231,6 +242,35 @@ static inline void emit_sec_log_char(char c)
 	}
 }
 
+#ifdef CONFIG_SEC_LOG_LAST_KMSG
+static void __init sec_log_save_old(void)
+{
+	extern char* last_kmsg_buffer;
+	extern unsigned last_kmsg_size;
+
+	/* provide previous log as last_kmsg */
+	last_kmsg_size =
+	    min((unsigned)(1 << LAST_LOG_BUF_SHIFT), *sec_log_ptr);
+	last_kmsg_buffer = (char *)kmalloc(last_kmsg_size, GFP_KERNEL);
+
+	if (last_kmsg_size && last_kmsg_buffer && sec_log_buf) {
+		unsigned int i;
+		for (i = 0; i < last_kmsg_size; i++)
+			last_kmsg_buffer[i] =
+			    sec_log_buf[(*sec_log_ptr - last_kmsg_size +
+					 i) & (sec_log_size - 1)];
+
+		pr_info("%s: saved old log at %d@%p\n",
+			__func__, last_kmsg_size, last_kmsg_buffer);
+	} else
+		pr_err("%s: failed saving old log %d@%p\n",
+		       __func__, last_kmsg_size, last_kmsg_buffer);
+}
+#else
+static void __init sec_log_save_old(void)
+{
+}
+#endif
 
 #ifdef CONFIG_SEC_DEBUG_SUBSYS
 void sec_debug_subsys_set_kloginfo(unsigned int *idx_paddr,
@@ -256,8 +296,9 @@ static int __init printk_remap_nocache(void)
 
 	sec_getlog_supply_kloginfo(log_buf);
 
+#ifndef CONFIG_SEC_DEBUG_NOCACHE_LOG_IN_LEVEL_LOW
 	if (0 == sec_debug_is_enabled()) {
-#ifdef CONFIG_SEC_DEBUG_LOW_LOG
+#if defined(CONFIG_SEC_DEBUG_LOW_LOG) || defined(CONFIG_SEC_SSR_DUMP)
 		nocache_base = ioremap_nocache(sec_log_save_base - 4096,
 		sec_log_save_size + 8192);
 		nocache_base = nocache_base + 4096;
@@ -265,11 +306,18 @@ static int __init printk_remap_nocache(void)
 		sec_log_mag = nocache_base - 8;
 		sec_log_ptr = nocache_base - 4;
 		sec_log_buf = nocache_base;
+#ifdef CONFIG_SEC_SSR_DUMP
+             ramdump_kernel_log_addr = sec_log_ptr;
+                pr_debug("ramdump_kernel_log_addr = 0x%x\n",
+                (unsigned int)ramdump_kernel_log_addr);
+#endif
 		sec_log_size = sec_log_save_size;
 		sec_log_irq_en = nocache_base - 0xC ;
 #endif
 		return rc;
 	}
+#endif /* CONFIG_SEC_DEBUG_NOCACHE_LOG_IN_LEVEL_LOW */
+
 	pr_err("%s: sec_log_save_size %d at sec_log_save_base 0x%x\n",
 	__func__, sec_log_save_size, (unsigned int)sec_log_save_base);
 	pr_err("%s: sec_log_reserve_size %d at sec_log_reserve_base 0x%x\n",
@@ -282,15 +330,22 @@ static int __init printk_remap_nocache(void)
 	sec_log_mag = nocache_base - 8;
 	sec_log_ptr = nocache_base - 4;
 	sec_log_buf = nocache_base;
+#ifdef CONFIG_SEC_SSR_DUMP
+		ramdump_kernel_log_addr = sec_log_ptr;
+		pr_info("%s: ramdump_kernel_log_addr = 0x%x\n",
+		__func__, (unsigned int)ramdump_kernel_log_addr);
+#endif
 	sec_log_size = sec_log_save_size;
 	sec_log_irq_en = nocache_base - 0xC ;
 
-	raw_spin_lock_irqsave(&logbuf_lock, flags);
 	if (*sec_log_mag != LOG_MAGIC) {
 		*sec_log_ptr = 0;
 		*sec_log_mag = LOG_MAGIC;
+	} else {
+		sec_log_save_old();
 	}
 
+	raw_spin_lock_irqsave(&logbuf_lock, flags);
 	start = min(con_start, log_start);
 	while (start != log_end) {
 		emit_sec_log_char(__log_buf
@@ -306,8 +361,13 @@ static ssize_t seclog_read(struct file *file, char __user *buf,
 {
 	loff_t pos = *offset;
 	ssize_t count = 0;
+#ifdef CONFIG_SEC_LOG_LAST_KMSG
+	size_t log_size = last_kmsg_size;
+	const char *log = last_kmsg_buffer;
+#else
 	size_t log_size = sec_log_size;
 	const char *log = sec_log_buf;
+#endif
 
 	if (pos < log_size) {
 		count = min(len, (size_t)(log_size - pos));
@@ -345,7 +405,11 @@ static int __init seclog_late_init(void)
 	}
 
 	entry->proc_fops = &seclog_file_ops;
+#ifdef CONFIG_SEC_LOG_LAST_KMSG
+	entry->size = last_kmsg_size;
+#else
 	entry->size = sec_log_size;
+#endif
 	return 0;
 }
 late_initcall(seclog_late_init);
@@ -1066,10 +1130,12 @@ static int console_trylock_for_printk(unsigned int cpu)
 			retval = 0;
 		}
 	}
-	printk_cpu = UINT_MAX;
+	
+    printk_cpu = UINT_MAX;
+    raw_spin_unlock(&logbuf_lock);
 	if (wake)
 		up(&console_sem);
-	raw_spin_unlock(&logbuf_lock);
+	
 	return retval;
 }
 static const char recursion_bug_msg [] =

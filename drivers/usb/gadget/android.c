@@ -63,6 +63,9 @@
 #include "u_data_hsic.c"
 #include "u_ctrl_hsuart.c"
 #include "u_data_hsuart.c"
+#ifdef CONFIG_USB_DUN_SUPPORT
+#include "serial_acm.c"
+#endif
 #include "f_serial.c"
 #include "f_acm.c"
 #include "f_adb.c"
@@ -376,6 +379,7 @@ static void android_disable(struct android_dev *dev)
 struct adb_data {
 	bool opened;
 	bool enabled;
+	struct android_dev *dev;
 };
 
 static int
@@ -440,27 +444,45 @@ static void adb_ready_callback(void)
 	struct android_dev *dev = adb_function.android_dev;
 	struct adb_data *data = adb_function.config;
 
+	/* dev is null in case ADB is not in the composition */
+	if (dev)
+		mutex_lock(&dev->mutex);
+
+	/* Save dev in case the adb function will get disabled */
+	data->dev = dev;
 	data->opened = true;
 
-	if (data->enabled && dev) {
-		mutex_lock(&dev->mutex);
+	if (data->enabled && dev)
 		android_enable(dev);
+
+	if (dev)
 		mutex_unlock(&dev->mutex);
-	}
 }
 
 static void adb_closed_callback(void)
 {
-	struct android_dev *dev = adb_function.android_dev;
 	struct adb_data *data = adb_function.config;
+	struct android_dev *dev = adb_function.android_dev;
+
+	/* In case new composition is without ADB, use saved one */
+	if (!dev)
+		dev = data->dev;
+
+	if (!dev)
+		pr_err("adb_closed_callback: data->dev is NULL");
+
+	if (dev)
+		mutex_lock(&dev->mutex);
 
 	data->opened = false;
 
-	if (data->enabled) {
-		mutex_lock(&dev->mutex);
+	if (data->enabled && dev)
 		android_disable(dev);
+
+	data->dev = NULL;
+
+	if (dev)
 		mutex_unlock(&dev->mutex);
-	}
 }
 
 #ifdef CONFIG_USB_ANDROID_SAMSUNG_SIDESYNC
@@ -707,10 +729,6 @@ static int ecm_qc_function_bind_config(struct android_usb_function *f,
 		pr_err("%s: ecm_pdata\n", __func__);
 		return -EINVAL;
 	}
-
-	pr_info("%s MAC: %02X:%02X:%02X:%02X:%02X:%02X\n", __func__,
-		ecm->ethaddr[0], ecm->ethaddr[1], ecm->ethaddr[2],
-		ecm->ethaddr[3], ecm->ethaddr[4], ecm->ethaddr[5]);
 
 	ret = gether_qc_setup_name(c->cdev->gadget, ecm->ethaddr, "ecm");
 	if (ret) {
@@ -1164,7 +1182,7 @@ static struct android_usb_function ptp_function = {
 	.init		= ptp_function_init,
 	.cleanup	= ptp_function_cleanup,
 	.bind_config	= ptp_function_bind_config,
-	.ctrlrequest 	= mtp_function_ctrlrequest,
+	.ctrlrequest	= mtp_function_ctrlrequest,
 };
 
 #ifdef CONFIG_USB_ANDROID_CDC_ECM
@@ -2261,16 +2279,6 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 		while (conf_str) {
 			name = strsep(&conf_str, ",");
 			if (name) {
-#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
-				/* Enable ncm function */
-				if (is_ncm_ready(name)) {
-					printk(KERN_DEBUG "usb: %s ncm on\n",
-							__func__);
-					err = android_enable_function(dev, conf,
-							"ncm");
-					continue;
-				}
-#endif
 				err = android_enable_function(dev, conf, name);
 				if (err)
 					pr_err("android_usb: Cannot enable %s",
@@ -2375,10 +2383,6 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 		list_for_each_entry(conf, &dev->configs, list_item)
 			list_for_each_entry(f, &conf->enabled_functions,
 						enabled_list) {
-#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
-				if (is_ncm_ready(f->name))
-					set_ncm_device_descriptor(&cdev->desc);
-#endif
 				if (f->enable)
 					f->enable(f);
 			}
@@ -2877,6 +2881,15 @@ static int __devinit android_probe(struct platform_device *pdev)
 		pm_qos_add_request(&android_dev->pm_qos_req_dma,
 			PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
 	strlcpy(android_dev->pm_qos, "high", sizeof(android_dev->pm_qos));
+
+#ifdef CONFIG_USB_DUN_SUPPORT
+		ret = modem_misc_register();
+		if (ret) {
+			printk(KERN_ERR "usb: %s modem misc register is failed\n",
+					 __func__);
+			goto err_probe;
+		}
+#endif
 
 	return ret;
 err_probe:

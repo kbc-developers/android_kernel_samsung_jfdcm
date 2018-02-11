@@ -12,7 +12,11 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/spi_gpio.h>
 #include <linux/gpio.h>
+#ifdef CONFIG_SEC_PRODUCT_8960
+#include <linux/gpio_keys_msm8960.h>
+#else
 #include <linux/gpio_keys.h>
+#endif
 #include <linux/gpio_event.h>
 #include <linux/i2c.h>
 #include <linux/i2c-gpio.h>
@@ -56,7 +60,11 @@
 #endif
 
 #ifdef CONFIG_KEYBOARD_CYPRESS_TOUCH_236
+#ifdef CONFIG_SEC_PRODUCT_8960
+#include <linux/i2c/cypress_touchkey_msm8960.h>
+#else
 #include <linux/i2c/cypress_touchkey.h>
+#endif
 #endif
 
 #include <linux/sec_class.h>
@@ -168,7 +176,6 @@ int max77693_muic_charger_cb(enum cable_type_muic cable_type)
 	union power_supply_propval value;
 	static enum cable_type_muic previous_cable_type = CABLE_TYPE_NONE_MUIC;
 #endif
-	pr_info("%s: %d\n", __func__, cable_type);
 
 #ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI
 
@@ -179,7 +186,9 @@ int max77693_muic_charger_cb(enum cable_type_muic cable_type)
 #endif
 
 #ifdef CONFIG_KEYBOARD_CYPRESS_TOUCH_236
+#ifndef CONFIG_SEC_PRODUCT_8960 
 	touchkey_charger_infom(cable_type);
+#endif
 #endif
 
 #ifdef CONFIG_JACK_MON
@@ -265,7 +274,12 @@ int max77693_muic_charger_cb(enum cable_type_muic cable_type)
 		current_cable_type = POWER_SUPPLY_TYPE_MISC;
 		break;
 	case CABLE_TYPE_OTG_MUIC:
+#ifdef CONFIG_CONTROL_OTG_POPUP
+		current_cable_type = POWER_SUPPLY_TYPE_OTG;
+		break;
+#else
 		goto skip;
+#endif
 	case CABLE_TYPE_JIG_UART_OFF_MUIC:
 		current_cable_type = POWER_SUPPLY_TYPE_BATTERY;
 		break;
@@ -281,6 +295,8 @@ int max77693_muic_charger_cb(enum cable_type_muic cable_type)
 		goto skip;
 	}
 
+	pr_err("%s: cable type for charger: MUIC(%d), CHARGER(%d)\n",
+			__func__, cable_type, current_cable_type);
 	if (!psy || !psy->set_property || !psy_ps || !psy_ps->set_property) {
 		pr_err("%s: fail to get battery/ps psy\n", __func__);
 	} else {

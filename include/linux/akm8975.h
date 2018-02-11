@@ -10,10 +10,17 @@
  \anchor AK8975_Mode
  Defines an operation mode of the AK8975.*/
 /*! @{*/
+#if defined(CONFIG_MPU_SENSORS_AK8975_411)
+#define AK8975_MODE_SNG_MEASURE   0x11
+#define	AK8975_MODE_SELF_TEST     0x18
+#define	AK8975_MODE_FUSE_ACCESS   0x1F
+#define	AK8975_MODE_POWER_DOWN    0x10
+#else
 #define AK8975_MODE_SNG_MEASURE   0x01
 #define	AK8975_MODE_SELF_TEST     0x08
 #define	AK8975_MODE_FUSE_ACCESS   0x0F
 #define	AK8975_MODE_POWER_DOWN    0x00
+#endif
 /*! @}*/
 
 #define RBUFF_SIZE		8	/* Rx buffer size */

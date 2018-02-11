@@ -158,12 +158,23 @@ static int __scm_call(const struct scm_command *cmd)
 	u32 cmd_addr = virt_to_phys(cmd);
 
 	/*
-	 * Flush the entire cache here so callers don't have to remember
-	 * to flush the cache when passing physical addresses to the secure
-	 * side in the buffer.
+	 * Experimental: For MobiCore do not flush the entire cache, just flush
+	 *               the cmd. The MobiCore kernel takes care of the
+	 *               cache management of passed buffers.
 	 */
-	flush_cache_all();
-	ret = smc(cmd_addr);
+	if((cmd->id & 0x0003FC00) == (250 << 10)) {
+		__cpuc_flush_dcache_area((void *)cmd, (sizeof(*cmd) + cmd->len));
+		ret = smc(cmd_addr);
+	} else {
+		/*
+		 * Flush the entire cache here so callers don't have to remember
+		 * to flush the cache when passing physical addresses to the secure
+		 * side in the buffer.
+		 */
+		flush_cache_all();
+		ret = smc(cmd_addr);
+	}
+
 	if (ret < 0)
 		ret = scm_remap_error(ret);
 

@@ -106,12 +106,14 @@ enum pm8xxx_adc_channels {
 #define PM8XXX_CHANNEL_MPP_SCALE3_IDX	40
 
 #define PM8XXX_AMUX_MPP_1	0x1
+#define PM8XXX_AMUX_MPP_2	0x2
 #define PM8XXX_AMUX_MPP_3	0x3
 #define PM8XXX_AMUX_MPP_4	0x4
 #define PM8XXX_AMUX_MPP_5	0x5
 #define PM8XXX_AMUX_MPP_6	0x6
 #define PM8XXX_AMUX_MPP_7	0x7
 #define PM8XXX_AMUX_MPP_8	0x8
+#define PM8XXX_AMUX_MPP_10	0xA
 
 #define PM8XXX_ADC_DEV_NAME	"pm8xxx-adc"
 
@@ -623,5 +625,9 @@ static inline uint32_t pm8xxx_adc_btm_configure(
 		struct pm8xxx_adc_arb_btm_param *param)
 { return -ENXIO; }
 #endif
+
+
+int pm8921_enable_batt_therm(u8 en);
+
 
 #endif /* PM8XXX_ADC_H */

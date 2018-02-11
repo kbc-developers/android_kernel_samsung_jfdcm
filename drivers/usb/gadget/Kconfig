@@ -951,6 +951,25 @@ config USB_ANDROID_SAMSUNG_SIDESYNC
 	  If you enable this option,
 	  SideSync will be able to be used.
 
+config USB_RNDIS_VZW_REQ
+	boolean "Samsung USB RNDIS 5.x function"
+	depends on USB_G_ANDROID
+	help
+	  Provides USB RNDIS version 5.x support
+	  for samsung gadget driver.
+	  If you enable this option,
+	  you can connect via RNDIS 5.x.
+	  It's VZW carrier concept.
+
+config USB_NCM_SUPPORT_MTU_CHANGE
+	boolean "Samsung NCM MTU Change function"
+	depends on USB_G_ANDROID
+	help
+	   Provides NCM MTU Change support
+	   for samsung gadget driver.
+	   If you enable this option,
+	   NCM MTU Change will be able to be used.
+
 config USB_CDC_COMPOSITE
 	tristate "CDC Composite Device (Ethernet and ACM)"
 	depends on NET

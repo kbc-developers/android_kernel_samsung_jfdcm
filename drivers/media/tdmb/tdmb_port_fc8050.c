@@ -43,6 +43,27 @@
 static bool fc8050_on_air;
 static bool fc8050_pwr_on;
 
+/* #define TDMB_DEBUG_SCAN */
+#ifdef TDMB_DEBUG_SCAN
+static void __print_ensemble_info(struct ensemble_info_type *e_info)
+{
+	int i = 0;
+
+	DPRINTK("ensem_freq(%ld)\n", e_info->ensem_freq);
+	DPRINTK("ensem_label(%s)\n", e_info->ensem_label);
+	for (i = 0; i < e_info->tot_sub_ch; i++) {
+		DPRINTK("[%d]\n", i);
+		DPRINTK("svc_label(%s)\n", e_info->sub_ch[i].svc_label);
+		DPRINTK("sub_ch_id(0x%x)\n", e_info->sub_ch[i].sub_ch_id);
+		DPRINTK("start_addr(0x%x)\n", e_info->sub_ch[i].start_addr);
+		DPRINTK("tmid(0x%x)\n", e_info->sub_ch[i].tmid);
+		DPRINTK("svc_type(0x%x)\n", e_info->sub_ch[i].svc_type);
+		DPRINTK("svc_id(0x%lx)\n", e_info->sub_ch[i].svc_id);
+		DPRINTK("ecc(0x%x)\n", e_info->sub_ch[i].ecc);
+		DPRINTK("scids(0x%x)\n", e_info->sub_ch[i].scids);
+	}
+}
+#endif
 static bool __get_ensemble_info(struct ensemble_info_type *e_info
 							, unsigned long freq)
 {
@@ -91,6 +112,10 @@ static bool __get_ensemble_info(struct ensemble_info_type *e_info
 					= fci_sub_info->ucServiceType;
 				e_info->sub_ch[sub_i].svc_id
 					= fci_sub_info->ulServiceID;
+				e_info->sub_ch[sub_i].scids
+					= fci_sub_info->scids;
+				e_info->sub_ch[sub_i].ecc
+					= fci_sub_info->ecc;
 				if (i == 0)
 					memcpy(
 						e_info->sub_ch[sub_i].svc_label,
@@ -103,6 +128,9 @@ static bool __get_ensemble_info(struct ensemble_info_type *e_info
 
 			}
 		}
+#ifdef TDMB_DEBUG_SCAN
+		__print_ensemble_info(e_info);
+#endif
 		return true;
 	} else {
 		return false;
@@ -213,7 +241,7 @@ static bool fc8050_scan_ch(struct ensemble_info_type *e_info
 
 static unsigned long fc8050_int_size(void)
 {
-	return 188*40;
+	return 188*20;
 }
 
 static struct tdmb_drv_func fci_fc8050_drv_func = {

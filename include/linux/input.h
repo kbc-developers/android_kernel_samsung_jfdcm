@@ -159,6 +159,11 @@ struct input_keymap_entry {
 
 #define EVIOCSCLOCKID		_IOW('E', 0xa0, int)			/* Set clockid to be used for timestamps */
 
+#ifdef CONFIG_INPUT_EXPANDED_ABS
+#define EVIOCGABS_LIMIT		(0x40)
+#define EVIOCGABS_CHG_LIMIT(nr)	(nr + EVIOCGABS_LIMIT)
+#endif
+
 /*
  * Device properties and quirks
  */
@@ -471,6 +476,15 @@ struct input_keymap_entry {
 #define KEY_MICMUTE		248	/* Mute / unmute the microphone */
 
 #define KEY_RECENT   254
+#ifdef CONFIG_MACH_LT02
+#define KEY_DUMMY_HOME1	249
+#define KEY_DUMMY_HOME2	250
+#define KEY_DUMMY_MENU	251
+#define KEY_DUMMY_HOME	252
+#define KEY_DUMMY_BACK	253
+#define KEY_DUMMY_HOME	252
+#define KEY_DUMMY_BACK	253
+#endif
 
 /* Code 255 is reserved for special needs of AT keyboard driver */
 
@@ -712,6 +726,10 @@ struct input_keymap_entry {
 #define KEY_DMB_ANT_DET_UP		0x21b
 #define KEY_DMB_ANT_DET_DOWN		0x21c
 
+#define KEY_VIRTUAL_EYE 0x21d   /* Cane model only */
+#define KEY_VOICERECORD 0x21e
+
+
 #define BTN_TRIGGER_HAPPY		0x2c0
 #define BTN_TRIGGER_HAPPY1		0x2c0
 #define BTN_TRIGGER_HAPPY2		0x2c1
@@ -822,18 +840,26 @@ struct input_keymap_entry {
 #define ABS_MT_TRACKING_ID	0x39	/* Unique ID of initiated contact */
 #define ABS_MT_PRESSURE		0x3a	/* Pressure on contact area */
 #define ABS_MT_DISTANCE		0x3b	/* Contact hover distance */
-#define ABS_MT_ANGLE		0x3c	/* touch angle */
-#define ABS_MT_PALM			0x3d	/* palm touch */
-#define ABS_MT_COMPONENT	0x3e	/* touch component */
-#define ABS_MT_SUMSIZE		0x3f	/* touch sumsize */
+
+#ifdef CONFIG_INPUT_EXPANDED_ABS
+#define ABS_MT_PALM		0x40	/* palm touch */
+#define ABS_MT_GRIP		0x41	/* grip touch */
+#else
+#define ABS_MT_PALM		0x3e	/* palm touch */
+#define ABS_MT_GRIP		0x3f	/* grip touch */
+#endif
 
 #ifdef __KERNEL__
 /* Implementation details, userspace should not care about these */
 #define ABS_MT_FIRST		ABS_MT_TOUCH_MAJOR
-#define ABS_MT_LAST         ABS_MT_SUMSIZE
+#define ABS_MT_LAST		ABS_MT_GRIP
 #endif
 
+#ifdef CONFIG_INPUT_EXPANDED_ABS
+#define ABS_MAX			0x4f
+#else
 #define ABS_MAX			0x3f
+#endif
 #define ABS_CNT			(ABS_MAX+1)
 
 /*
@@ -1327,8 +1353,9 @@ struct input_dev {
 	struct mutex mutex;
 
 	unsigned int users;
+	unsigned int users_private;
 	bool going_away;
-
+	bool disabled;
 	bool sync;
 
 	struct device dev;

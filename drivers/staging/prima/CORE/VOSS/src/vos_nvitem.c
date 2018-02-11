@@ -292,7 +292,7 @@ static CountryInfoTable_t countryInfoTable =
         { REGDOMAIN_NO_5GHZ, {'S', 'C'}},  //SEYCHELLES
         { REGDOMAIN_WORLD,   {'S', 'D'}},  //SUDAN
         { REGDOMAIN_ETSI,    {'S', 'E'}},  //SWEDEN
-        { REGDOMAIN_APAC,    {'S', 'G'}},  //SINGAPORE
+        { REGDOMAIN_WORLD,    {'S', 'G'}},  //SINGAPORE
         { REGDOMAIN_WORLD,   {'S', 'H'}},  //SAINT HELENA
         { REGDOMAIN_ETSI,    {'S', 'I'}},  //SLOVENNIA
         { REGDOMAIN_WORLD,   {'S', 'J'}},  //SVALBARD AND JAN MAYEN
@@ -332,7 +332,7 @@ static CountryInfoTable_t countryInfoTable =
         { REGDOMAIN_HI_5GHZ, {'V', 'E'}},  //VENEZUELA
         { REGDOMAIN_ETSI,    {'V', 'G'}},  //VIRGIN ISLANDS, BRITISH
         { REGDOMAIN_FCC,     {'V', 'I'}},  //VIRGIN ISLANDS, US
-        { REGDOMAIN_N_AMER_EXC_FCC, {'V', 'N'}},  //VIET NAM
+        { REGDOMAIN_WORLD,	 {'V', 'N'}},  //VIET NAM
         { REGDOMAIN_NO_5GHZ, {'V', 'U'}},  //VANUATU
         { REGDOMAIN_WORLD,   {'W', 'F'}},  //WALLIS AND FUTUNA
         { REGDOMAIN_N_AMER_EXC_FCC, {'W', 'S'}},  //SOMOA

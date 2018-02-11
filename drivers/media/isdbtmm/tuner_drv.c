@@ -516,19 +516,21 @@ static void tmm_chg_ctrl_work_func(struct work_struct *work)
 
 	tmm_chg_log(KERN_ALERT"%s: schedule_delayed_work(tmm_chg_ctrl_polling_work, TMM_CHG_CTRL_POLLING_TIME(%d) * HZ(0x%x))!\n", __func__, TMM_CHG_CTRL_POLLING_TIME, HZ);
 
-	wake_unlock(&tmm_chg_ctrl_wlock);
+	/* wake_unlock(&tmm_chg_ctrl_wlock); */
 
 	return;
 }
 
 static void tmm_chg_ctrl_polling_work_func(struct work_struct *work)
 {
-	wake_lock(&tmm_chg_ctrl_wlock);
+	/* wake_lock(&tmm_chg_ctrl_wlock); */
 
 	if(tmm_chg_wqueue)
 		queue_work(tmm_chg_wqueue, &tmm_chg_ctrl_work);
+	/*
 	else
 		wake_unlock(&tmm_chg_ctrl_wlock);
+	*/
 	
 	tmm_chg_log(KERN_ALERT"%s: queue_work(tmm_chg_ctrl_work, tmm_chg_ctrl_work_func)!\n", __func__);
 
@@ -1035,6 +1037,9 @@ static int tuner_module_entry_open(struct inode* Inode, struct file* FIle)
     INFO_PRINT("tuner_module_entry_open: end << open cnt = %ld >>", 
     			open_cnt );
 
+    if (open_cnt == 1)
+	    wake_lock(&tmm_chg_ctrl_wlock);
+
     return 0;
 }
 
@@ -1072,6 +1077,7 @@ static int tuner_module_entry_close(struct inode* Inode, struct file* FIle)
 	/* close all open */
 	if( open_cnt == 0 )
 	{
+		wake_unlock(&tmm_chg_ctrl_wlock);
         /* interrupt release */
         tuner_drv_release_interrupt();
     
